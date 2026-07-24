@@ -1,25 +1,40 @@
 {
   "expo": {
-    "name": "badminton-tracker",
+    "name": "CourtSide",
     "slug": "badminton-tracker",
     "version": "1.0.0",
     "orientation": "portrait",
+    "scheme": "badminton",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#121212",
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#121212",
+        "foregroundImage": "./assets/splash.png"
       },
       "predictiveBackGestureEnabled": false
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "imageWidth": 220,
+          "resizeMode": "contain",
+          "backgroundColor": "#121212"
+        }
+      ],
+      "expo-router",
+      "expo-sqlite",
+      "expo-secure-store",
+      "expo-web-browser"
+    ]
   }
 }

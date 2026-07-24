@@ -30,8 +30,11 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
+# local env files (never commit real secrets; keep .env.example tracked)
+.env
+.env.local
 .env*.local
+!.env.example
 
 # typescript
 *.tsbuildinfo
@@ -39,3 +42,17 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# testing
+coverage/
+
+# agent & editor tooling artifacts
+.claude/bt-claude-backup/
+.claude/settings.local.json
+.codex/
+.tokensave/
+.idea/
+.vscode/
+
+# generated knowledge graph (regenerate with: graphify update .)
+graphify-out/
