@@ -9,9 +9,12 @@
     "userInterfaceStyle": "dark",
     "backgroundColor": "#121212",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.utkarsh.courtside"
     },
     "android": {
+      "package": "com.utkarsh.courtside",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#121212",
         "foregroundImage": "./assets/splash.png"
