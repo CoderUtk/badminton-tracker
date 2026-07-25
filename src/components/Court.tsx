@@ -2,6 +2,7 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import type { MatchState, TeamId } from "../engine";
 import { serviceCourt } from "../engine";
+import Icon from "./Icon";
 import { C } from "../theme";
 
 /**
@@ -61,9 +62,12 @@ function Half({ state, team }: { state: MatchState; team: TeamId }) {
           >
             {isServer && <View style={s.dot} />}
             {idx !== null && (
-              <Text style={[s.name, { color }]} numberOfLines={1}>
-                👤 {state.config.teams[team][idx].name}
-              </Text>
+              <View style={s.player}>
+                <Icon name="person" color={color} size={15} />
+                <Text style={[s.name, { color }]} numberOfLines={1}>
+                  {state.config.teams[team][idx].name}
+                </Text>
+              </View>
             )}
           </View>
         );
@@ -107,5 +111,6 @@ const s = StyleSheet.create({
     backgroundColor: C.red,
     shadowColor: C.red, shadowOpacity: 0.9, shadowRadius: 6, elevation: 4,
   },
-  name: { fontSize: 17, fontWeight: "700" },
+  player: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 6 },
+  name: { fontSize: 16, fontWeight: "700", flexShrink: 1 },
 });

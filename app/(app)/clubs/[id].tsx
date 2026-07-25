@@ -3,7 +3,7 @@ import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { getClub, type Club } from "../../../src/repos/clubRepo";
 import { getClubStats, type PlayerStat, type SessionStats } from "../../../src/repos/sessionRepo";
-import { C } from "../../../src/theme";
+import { C, F } from "../../../src/theme";
 
 function winPct(p: PlayerStat): string {
   return p.played ? `${Math.round((p.wins / p.played) * 100)}%` : "—";
@@ -75,12 +75,12 @@ const s = StyleSheet.create({
   muted: { color: C.text2 },
   hero: { backgroundColor: C.card, borderRadius: 18, padding: 18, gap: 6, borderWidth: 1, borderColor: C.line },
   eyebrow: { color: C.red, fontSize: 12, fontWeight: "900", letterSpacing: 0.8 },
-  title: { color: C.text, fontSize: 24, fontWeight: "900" },
-  code: { color: C.text2, fontSize: 13 },
+  title: { color: C.text, fontSize: 24, fontFamily: F.display, letterSpacing: 0.5 },
+  code: { color: C.text2, fontSize: 13, fontFamily: F.body },
   statRow: { flexDirection: "row", gap: 8, marginTop: 6 },
   statBox: { flex: 1, backgroundColor: C.cardHi, borderRadius: 12, paddingVertical: 14, alignItems: "center" },
-  statNum: { color: C.red, fontSize: 26, fontWeight: "900" },
-  statLbl: { color: C.text2, fontSize: 12, fontWeight: "700", marginTop: 2 },
+  statNum: { color: C.red, fontSize: 26, fontFamily: F.display },
+  statLbl: { color: C.text2, fontSize: 12, fontFamily: F.medium, marginTop: 2, letterSpacing: 0.4 },
   cta: { backgroundColor: C.red, borderRadius: 12, minHeight: 50, alignItems: "center", justifyContent: "center", marginTop: 8 },
   ctaText: { color: C.text, fontSize: 17, fontWeight: "800" },
   boardHeadRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 4, marginTop: 14, marginBottom: 2 },

@@ -5,6 +5,7 @@ import { defaultConfig, MatchConfig, replay } from "../src/engine";
 import { createMatch } from "../src/repos/matchRepo";
 import { Club, listClubs, listPlayers } from "../src/repos/clubRepo";
 import Court from "../src/components/Court";
+import Icon from "../src/components/Icon";
 import { C } from "../src/theme";
 
 export default function NewMatch() {
@@ -15,7 +16,7 @@ export default function NewMatch() {
   const [clubId, setClubId] = useState<string | null>(null);
   const [names, setNames] = useState(["", "", "", ""]);
   const [points, setPoints] = useState<11 | 15 | 21>(21);
-  const [bestOf, setBestOf] = useState<1 | 3>(3);
+  const [bestOf, setBestOf] = useState<1 | 3 | 5>(3);
   const [firstServerIdx, setFirstServerIdx] = useState(0); // index into name fields
 
   useEffect(() => {
@@ -144,15 +145,18 @@ export default function NewMatch() {
       <View style={s.swapRow}>
         {doubles && (
           <Pressable style={s.swapBtn} onPress={() => swapTeam("A")}>
-            <Text style={s.swapText}>⇅ Team A</Text>
+            <Icon name="swap-vertical" color={C.text} size={16} />
+            <Text style={s.swapText}>Team A</Text>
           </Pressable>
         )}
         <Pressable style={[s.swapBtn, s.swapSides]} onPress={swapSides}>
-          <Text style={s.swapText}>⇄ Swap sides</Text>
+          <Icon name="swap-horizontal" color={C.text} size={16} />
+          <Text style={s.swapText}>Swap sides</Text>
         </Pressable>
         {doubles && (
           <Pressable style={s.swapBtn} onPress={() => swapTeam("B")}>
-            <Text style={s.swapText}>⇅ Team B</Text>
+            <Icon name="swap-vertical" color={C.text} size={16} />
+            <Text style={s.swapText}>Team B</Text>
           </Pressable>
         )}
       </View>
@@ -166,16 +170,15 @@ export default function NewMatch() {
         ))}
       </View>
 
-      <Text style={s.h}>Games</Text>
+      <Text style={s.h}>Games to win</Text>
       <View style={s.seg}>
-        {([1, 3] as const).map((b) => (
-          <Pressable key={b} style={[s.segBtn, bestOf === b && s.segOn]} onPress={() => setBestOf(b)}>
-            <Text style={[s.segText, bestOf === b && s.segTextOn]}>
-              {b === 1 ? "Single game" : "Best of 3"}
-            </Text>
+        {([[1, 1], [2, 3], [3, 5]] as const).map(([win, bo]) => (
+          <Pressable key={bo} style={[s.segBtn, bestOf === bo && s.segOn]} onPress={() => setBestOf(bo)}>
+            <Text style={[s.segText, bestOf === bo && s.segTextOn]}>{win}</Text>
           </Pressable>
         ))}
       </View>
+      <Text style={s.hint}>First to {Math.floor(bestOf / 2) + 1} {bestOf === 1 ? "game" : "games"} · best of {bestOf}</Text>
 
       <Text style={s.h}>First serve</Text>
       <View style={s.clubRow}>
@@ -227,10 +230,11 @@ const s = StyleSheet.create({
     borderColor: C.line, padding: 14, fontSize: 16,
   },
   h: { color: C.text, fontSize: 16, fontWeight: "700" },
+  hint: { color: C.text2, fontSize: 13, marginTop: -4 },
   previewWrap: { height: 150 },
   swapRow: { flexDirection: "row", gap: 8 },
   swapBtn: {
-    flex: 1, backgroundColor: C.card, borderRadius: 10, minHeight: 44,
+    flex: 1, flexDirection: "row", gap: 5, backgroundColor: C.card, borderRadius: 10, minHeight: 44,
     alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: C.line,
   },
   swapSides: { backgroundColor: C.cardHi },

@@ -27,4 +27,23 @@ describe("generateMatchups", () => {
   test("is deterministic for the same inputs", () => {
     expect(generateMatchups(players, 2, [], 3)).toEqual(generateMatchups(players, 2, [], 3));
   });
+
+  test("auto-selects singles when fewer than four players", () => {
+    const result = generateMatchups(players.slice(0, 2), 2);
+    expect(result.matches).toHaveLength(1);
+    expect(result.matches[0].mode).toBe("singles");
+    expect(result.matches[0].teamA).toHaveLength(1);
+    expect(result.matches[0].teamB).toHaveLength(1);
+  });
+
+  test("singles mode fills courts two players at a time", () => {
+    const result = generateMatchups(players.slice(0, 6), 2, [], 0, "singles");
+    expect(result.matches).toHaveLength(2);
+    expect(result.waiting).toHaveLength(2);
+    expect(result.matches.every((m) => m.mode === "singles")).toBe(true);
+  });
+
+  test("auto-selects doubles with four or more players", () => {
+    expect(generateMatchups(players, 1).matches[0].mode).toBe("doubles");
+  });
 });

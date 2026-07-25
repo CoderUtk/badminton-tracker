@@ -1,3 +1,4 @@
+import * as Crypto from "expo-crypto";
 import { supabase } from "../lib/supabase";
 import { getDb } from "../db/db";
 
@@ -29,6 +30,23 @@ export async function joinClub(inviteCode: string): Promise<string> {
   if (error) throw error;
   await refreshClubs();
   return data as string;
+}
+
+/**
+ * Create a club locally without a backend (offline mode). The creator is the
+ * owner; roles become meaningful once accounts/sync land. Cached only — it will
+ * reconcile with Supabase when the club is later created server-side.
+ */
+export async function createLocalClub(name: string): Promise<string> {
+  const db = await getDb();
+  if (!db) throw new Error("Local database unavailable");
+  const id = Crypto.randomUUID();
+  const code = Crypto.randomUUID().replace(/-/g, "").slice(0, 6).toUpperCase();
+  await db.runAsync(
+    "insert into clubs_cache (id, name, invite_code, role) values (?, ?, ?, ?)",
+    id, name.trim(), code, "owner"
+  );
+  return id;
 }
 
 export async function addGuestPlayer(clubId: string, name: string): Promise<void> {
@@ -93,4 +111,14 @@ export async function listPlayers(clubId: string): Promise<ClubPlayer[]> {
   return db.getAllAsync<ClubPlayer>(
     "select * from club_players_cache where club_id = ? order by name", clubId
   );
+}
+
+/** Distinct player names across every club (used to pick a profile identity). */
+export async function listAllPlayerNames(): Promise<string[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.getAllAsync<{ name: string }>(
+    "select distinct name from club_players_cache order by name"
+  );
+  return rows.map((r) => r.name);
 }

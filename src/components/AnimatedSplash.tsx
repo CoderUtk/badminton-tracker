@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { Animated, Easing, Image, StyleSheet, View } from "react-native";
-import { C } from "../theme";
+import { C, F, glow } from "../theme";
 
 /**
  * JS-side animated splash shown over the app while it boots. The native splash
@@ -40,9 +40,9 @@ export default function AnimatedSplash({ onFinish }: { onFinish: () => void }) {
         <Image source={require("../../assets/splash.png")} style={styles.logo} resizeMode="contain" />
       </Animated.View>
       <Animated.Text style={[styles.word, { opacity: wordOpacity, transform: [{ translateY: wordShift }] }]}>
-        Court<Animated.Text style={styles.wordAccent}>Side</Animated.Text>
+        COURT<Animated.Text style={styles.wordAccent}>SIDE</Animated.Text>
       </Animated.Text>
-      <Animated.Text style={[styles.tag, { opacity: wordOpacity }]}>Badminton, tracked.</Animated.Text>
+      <Animated.Text style={[styles.tag, { opacity: wordOpacity }]}>BADMINTON · TRACKED</Animated.Text>
     </Animated.View>
   );
 }
@@ -55,8 +55,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     zIndex: 100,
   },
-  logo: { width: 168, height: 168 },
-  word: { color: C.text, fontSize: 34, fontWeight: "800", letterSpacing: 0.5, marginTop: 8 },
+  logo: { width: 176, height: 176 },
+  word: { color: C.text, fontFamily: F.display, fontSize: 40, letterSpacing: 2, marginTop: 6, ...glow(C.red, 18, 0.5) },
   wordAccent: { color: C.red },
-  tag: { color: C.text2, fontSize: 14, marginTop: 4, letterSpacing: 1 },
+  tag: { color: C.accent, fontFamily: F.medium, fontSize: 13, marginTop: 8, letterSpacing: 4 },
 });

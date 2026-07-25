@@ -3,10 +3,13 @@ export interface MatchPlayer {
   name: string;
 }
 
+export type MatchMode = "singles" | "doubles";
+
 export interface GeneratedMatch {
   court: number;
-  teamA: [MatchPlayer, MatchPlayer];
-  teamB: [MatchPlayer, MatchPlayer];
+  mode: MatchMode;
+  teamA: MatchPlayer[];
+  teamB: MatchPlayer[];
 }
 
 export interface MatchmakingResult {
@@ -16,23 +19,35 @@ export interface MatchmakingResult {
 
 type Pairing = [[MatchPlayer, MatchPlayer], [MatchPlayer, MatchPlayer]];
 
-/** Build a deterministic doubles round while avoiding repeat partnerships. */
+/**
+ * Build a deterministic round. Doubles pairs four players per court while
+ * avoiding repeat partnerships; singles pits two players per court. When mode
+ * is omitted it is chosen automatically: doubles if four+ players are available,
+ * otherwise singles.
+ */
 export function generateMatchups(
   players: MatchPlayer[],
   courts: number,
   previous: GeneratedMatch[] = [],
-  round = 0
+  round = 0,
+  mode?: MatchMode
 ): MatchmakingResult {
-  const usable = Math.max(0, Math.min(Math.floor(courts), Math.floor(players.length / 4)) * 4);
+  const resolved: MatchMode = mode ?? (players.length >= 4 ? "doubles" : "singles");
+  const per = resolved === "singles" ? 2 : 4;
+  const usable = Math.max(0, Math.min(Math.floor(courts), Math.floor(players.length / per)) * per);
   const rotated = rotate(players, players.length ? (round * 2) % players.length : 0);
   const active = rotated.slice(0, usable);
   const pairCounts = buildPairCounts(previous);
   const matches: GeneratedMatch[] = [];
 
-  for (let i = 0; i < active.length; i += 4) {
-    const group = active.slice(i, i + 4) as [MatchPlayer, MatchPlayer, MatchPlayer, MatchPlayer];
-    const pairing = bestPairing(group, pairCounts, round);
-    matches.push({ court: matches.length + 1, teamA: pairing[0], teamB: pairing[1] });
+  for (let i = 0; i < active.length; i += per) {
+    if (resolved === "singles") {
+      matches.push({ court: matches.length + 1, mode: resolved, teamA: [active[i]], teamB: [active[i + 1]] });
+    } else {
+      const group = active.slice(i, i + 4) as [MatchPlayer, MatchPlayer, MatchPlayer, MatchPlayer];
+      const pairing = bestPairing(group, pairCounts, round);
+      matches.push({ court: matches.length + 1, mode: resolved, teamA: pairing[0], teamB: pairing[1] });
+    }
   }
   return { matches, waiting: rotated.slice(usable) };
 }

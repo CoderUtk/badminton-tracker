@@ -8,7 +8,7 @@ export interface Player {
 
 export interface MatchConfig {
   matchType: MatchType;
-  bestOf: 1 | 3;
+  bestOf: 1 | 3 | 5; // best-of; needed = floor(bestOf/2)+1 → 1, 2 or 3 games to win
   pointsToWin: number; // 21 standard
   cap: number; // 30 standard
   intervalAt: number; // 11 standard, 0 disables

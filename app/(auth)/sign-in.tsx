@@ -3,7 +3,17 @@ import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-nativ
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import { supabase } from "../../src/lib/supabase";
+import Icon from "../../src/components/Icon";
 import { C } from "../../src/theme";
+
+function Brand() {
+  return (
+    <View style={s.brand}>
+      <Icon name="badminton" color={C.red} size={30} />
+      <Text style={s.title}>CourtSide</Text>
+    </View>
+  );
+}
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -62,7 +72,7 @@ export default function SignIn() {
   if (!supabase) {
     return (
       <View style={s.root}>
-        <Text style={s.title}>🏸 CourtSide</Text>
+        <Brand />
         <Text style={s.sub}>
           Running offline — scoring and local history work without an account.
           To enable clubs and sync, add Supabase keys to .env and restart.
@@ -73,7 +83,7 @@ export default function SignIn() {
 
   return (
     <View style={s.root}>
-      <Text style={s.title}>🏸 CourtSide</Text>
+      <Brand />
       {!codeSent ? (
         <>
           <TextInput
@@ -118,7 +128,8 @@ export default function SignIn() {
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg, justifyContent: "center", padding: 24, gap: 14 },
-  title: { color: C.text, fontSize: 28, fontWeight: "800", textAlign: "center", marginBottom: 12 },
+  brand: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 12 },
+  title: { color: C.text, fontSize: 28, fontWeight: "800", textAlign: "center" },
   sub: { color: C.text2, fontSize: 15, textAlign: "center" },
   input: {
     backgroundColor: C.card, color: C.text, borderRadius: 12, borderWidth: 1,

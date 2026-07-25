@@ -2,6 +2,12 @@ import React, { useEffect, useState } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
+import { useFonts } from "expo-font";
+import { RussoOne_400Regular } from "@expo-google-fonts/russo-one";
+import {
+  ChakraPetch_400Regular, ChakraPetch_500Medium,
+  ChakraPetch_600SemiBold, ChakraPetch_700Bold,
+} from "@expo-google-fonts/chakra-petch";
 import { SessionProvider, useSession } from "../src/stores/session";
 import { startSyncListener } from "../src/sync/runner";
 import { seedDemoData } from "../src/db/seed";
@@ -30,12 +36,24 @@ function Gate({ children }: { children: React.ReactNode }) {
 
 export default function RootLayout() {
   const [splashDone, setSplashDone] = useState(false);
+  const [fontsLoaded] = useFonts({
+    RussoOne_400Regular,
+    ChakraPetch_400Regular,
+    ChakraPetch_500Medium,
+    ChakraPetch_600SemiBold,
+    ChakraPetch_700Bold,
+  });
   useEffect(() => {
     if (!supabase) void seedDemoData();
-    // Hand the native splash off to the animated one on the next frame.
-    void SplashScreen.hideAsync();
     return startSyncListener();
   }, []);
+  useEffect(() => {
+    // Hand off from the native splash to the animated one only once the gaming
+    // fonts are ready, so no text flashes in a fallback face.
+    if (fontsLoaded) void SplashScreen.hideAsync();
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) return null;
   return (
     <SessionProvider>
       <StatusBar style="light" />
@@ -52,7 +70,7 @@ export default function RootLayout() {
           <Stack.Screen name="(auth)/sign-in" options={{ headerShown: false }} />
           <Stack.Screen
             name="score/[matchId]"
-            options={{ headerShown: false, presentation: "fullScreenModal", orientation: "landscape" }}
+            options={{ headerShown: false, presentation: "fullScreenModal", orientation: "all" }}
           />
           <Stack.Screen name="new-match" options={{ title: "New match", presentation: "modal" }} />
           <Stack.Screen name="new-session" options={{ title: "Plan session", presentation: "modal" }} />
