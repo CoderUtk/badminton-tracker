@@ -7,7 +7,7 @@
     "scheme": "badminton",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "backgroundColor": "#121212",
+    "backgroundColor": "#0C0E12",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.utkarsh.courtside"
@@ -16,8 +16,9 @@
       "package": "com.utkarsh.courtside",
       "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#121212",
-        "foregroundImage": "./assets/splash.png"
+        "backgroundImage": "./assets/adaptive-background.png",
+        "foregroundImage": "./assets/adaptive-foreground.png",
+        "backgroundColor": "#0C0E12"
       },
       "predictiveBackGestureEnabled": false
     },
@@ -31,7 +32,7 @@
           "image": "./assets/splash.png",
           "imageWidth": 220,
           "resizeMode": "contain",
-          "backgroundColor": "#121212"
+          "backgroundColor": "#0C0E12"
         }
       ],
       "expo-router",
