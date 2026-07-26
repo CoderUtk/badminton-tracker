@@ -15,7 +15,7 @@
     },
     "android": {
       "package": "com.navalo.courtside",
-      "versionCode": 2,
+      "versionCode": 4,
       "adaptiveIcon": {
         "backgroundImage": "./assets/adaptive-background.png",
         "foregroundImage": "./assets/adaptive-foreground.png",
