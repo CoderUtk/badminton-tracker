@@ -2,6 +2,7 @@
   "expo": {
     "name": "CourtSide",
     "slug": "badminton-tracker",
+    "owner": "coderutk",
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "badminton",
@@ -40,6 +41,12 @@
       "expo-secure-store",
       "expo-web-browser",
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c8ecffb0-5af5-4ac7-b8a0-dde5bdb42989"
+      }
+    }
   }
 }
