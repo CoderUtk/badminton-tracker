@@ -11,11 +11,11 @@
     "backgroundColor": "#0C0E12",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.utkarsh.courtside"
+      "bundleIdentifier": "com.navalo.courtside"
     },
     "android": {
-      "package": "com.utkarsh.courtside",
-      "versionCode": 1,
+      "package": "com.navalo.courtside",
+      "versionCode": 2,
       "adaptiveIcon": {
         "backgroundImage": "./assets/adaptive-background.png",
         "foregroundImage": "./assets/adaptive-foreground.png",
