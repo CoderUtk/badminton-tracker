@@ -1,4 +1,6 @@
+import "react-native-gesture-handler";
 import React, { useEffect, useState } from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
@@ -55,6 +57,7 @@ export default function RootLayout() {
 
   if (!fontsLoaded) return null;
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <SessionProvider>
       <StatusBar style="light" />
       {!splashDone && <AnimatedSplash onFinish={() => setSplashDone(true)} />}
@@ -77,5 +80,6 @@ export default function RootLayout() {
         </Stack>
       </Gate>
     </SessionProvider>
+    </GestureHandlerRootView>
   );
 }

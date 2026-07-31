@@ -9,6 +9,7 @@ import type { MatchRecord } from "../repos/matchRepo";
 import { useMatchStore } from "../stores/matchStore";
 import Court from "../components/Court";
 import Icon from "../components/Icon";
+import PressableScale from "../components/PressableScale";
 import { C, F, glow, textGlow } from "../theme";
 
 const DEBOUNCE_MS = 500;
@@ -142,47 +143,49 @@ export default function MatchScreen({
   );
 
   const railA = (
-    <Pressable
-      style={({ pressed }) => [portrait ? s.railWide : s.rail, { borderColor: C.red }, playing && glow(C.red, 16, 0.4), pressed && s.pressed, !playing && s.railDisabled]}
+    <PressableScale
+      style={[portrait ? s.railWide : s.rail, { borderColor: C.red }, playing && glow(C.red, 16, 0.4), !playing && s.railDisabled]}
       disabled={!playing}
+      scaleTo={0.97}
       onPress={() => score("A")}
       accessibilityLabel={`Point to ${teamName("A")}`}
     >
       {portrait && <Text style={[s.railTeam, { color: C.red }]} numberOfLines={1}>{teamName("A")}</Text>}
       <Text style={s.railText}>+1</Text>
-    </Pressable>
+    </PressableScale>
   );
   const railB = (
-    <Pressable
-      style={({ pressed }) => [portrait ? s.railWide : s.rail, { borderColor: C.blue }, playing && glow(C.blue, 16, 0.4), pressed && s.pressed, !playing && s.railDisabled]}
+    <PressableScale
+      style={[portrait ? s.railWide : s.rail, { borderColor: C.blue }, playing && glow(C.blue, 16, 0.4), !playing && s.railDisabled]}
       disabled={!playing}
+      scaleTo={0.97}
       onPress={() => score("B")}
       accessibilityLabel={`Point to ${teamName("B")}`}
     >
       {portrait && <Text style={[s.railTeam, { color: C.blue }]} numberOfLines={1}>{teamName("B")}</Text>}
       <Text style={s.railText}>+1</Text>
-    </Pressable>
+    </PressableScale>
   );
 
   const leftGroup = (
     <View style={s.group}>
-      <Pressable style={({ pressed }) => [s.iconBtn, pressed && s.pressed, events.length < 2 && s.iconDisabled]} onPress={undo} accessibilityLabel="Undo last rally">
+      <PressableScale style={[s.iconBtn, events.length < 2 && s.iconDisabled]} onPress={undo} accessibilityLabel="Undo last rally">
         <Icon name="arrow-undo" color={C.text} size={18} />
-      </Pressable>
-      <Pressable style={({ pressed }) => [s.iconBtn, pressed && s.pressed, redoStack.length === 0 && s.iconDisabled]} onPress={redo} accessibilityLabel="Redo rally">
+      </PressableScale>
+      <PressableScale style={[s.iconBtn, redoStack.length === 0 && s.iconDisabled]} onPress={redo} accessibilityLabel="Redo rally">
         <Icon name="arrow-redo" color={C.text} size={18} />
-      </Pressable>
+      </PressableScale>
     </View>
   );
   const rightGroup = (
     <View style={s.group}>
-      <Pressable style={({ pressed }) => [s.iconBtn, pressed && s.pressed]} onPress={() => router.back()} hitSlop={10} accessibilityLabel="Pause and leave (match stays live)">
+      <PressableScale style={s.iconBtn} onPress={() => router.back()} hitSlop={10} accessibilityLabel="Pause and leave (match stays live)">
         <Icon name="pause" color={C.text} size={20} />
-      </Pressable>
-      <Pressable style={({ pressed }) => [s.endBtn, pressed && s.pressed]} onPress={confirmEnd} accessibilityLabel="End match">
+      </PressableScale>
+      <PressableScale style={s.endBtn} onPress={confirmEnd} accessibilityLabel="End match">
         <Icon name="flag" color={C.text} size={15} />
         <Text style={s.endText}>End</Text>
-      </Pressable>
+      </PressableScale>
     </View>
   );
   const scoreBlock = (
