@@ -60,3 +60,6 @@ export const textGlow = (color: string, radius = 12) => ({
 });
 
 export const radius = { sm: 8, md: 12, lg: 16, xl: 20, pill: 999 } as const;
+
+/** Instant press feedback for any Pressable — subtle scale + dim. Transform/opacity only (GPU-safe). */
+export const press = { transform: [{ scale: 0.97 }], opacity: 0.9 } as const;

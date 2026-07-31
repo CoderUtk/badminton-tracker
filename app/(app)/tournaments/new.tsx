@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { createTournament } from "../../../src/repos/tournamentRepo";
 import { listClubs, listPlayers, type ClubPlayer } from "../../../src/repos/clubRepo";
 import type { BracketSize } from "../../../src/tournament/types";
-import { C, F } from "../../../src/theme";
+import { C, F, press } from "../../../src/theme";
 
 const SIZES: BracketSize[] = [4, 8, 16, 32];
 
@@ -46,7 +46,7 @@ export default function NewTournament() {
       <TextInput style={s.input} placeholder="Tournament name" placeholderTextColor={C.text2} value={name} onChangeText={setName} />
       <View style={s.sizeRow}>
         {SIZES.map((n) => (
-          <Pressable key={n} onPress={() => setSize(n)} style={[s.sizeBtn, size === n && s.sizeOn]}>
+          <Pressable key={n} onPress={() => setSize(n)} style={({ pressed }) => [s.sizeBtn, pressed && press, size === n && s.sizeOn]}>
             <Text style={[s.sizeText, size === n && s.sizeTextOn]}>{n}</Text>
           </Pressable>
         ))}
@@ -61,14 +61,14 @@ export default function NewTournament() {
           const idx = picked.indexOf(item.id);
           const on = idx >= 0;
           return (
-            <Pressable style={[s.player, on && s.playerOn]} onPress={() => toggle(item.id)}>
+            <Pressable style={({ pressed }) => [s.player, pressed && press, on && s.playerOn]} onPress={() => toggle(item.id)}>
               <Text style={[s.playerName, on && { color: C.text }]}>{item.name}</Text>
               {on ? <Text style={s.seed}>#{idx + 1}</Text> : null}
             </Pressable>
           );
         }}
       />
-      <Pressable style={[s.create, !canCreate && s.off]} disabled={!canCreate} onPress={onCreate}>
+      <Pressable style={({ pressed }) => [s.create, pressed && press, !canCreate && s.off]} disabled={!canCreate} onPress={onCreate}>
         <Text style={s.createText}>Create bracket</Text>
       </Pressable>
     </View>

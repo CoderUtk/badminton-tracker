@@ -4,7 +4,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { listTournaments, type TournamentRow } from "../../../src/repos/tournamentRepo";
 import { listClubs } from "../../../src/repos/clubRepo";
 import Icon from "../../../src/components/Icon";
-import { C, F } from "../../../src/theme";
+import { C, F, press } from "../../../src/theme";
 
 const statusColor = (s: string) => (s === "done" ? C.text3 : s === "live" ? C.red : C.accent);
 
@@ -26,7 +26,7 @@ export default function TournamentsList() {
   return (
     <View style={s.root}>
       <Pressable
-        style={[s.newBtn, !clubId && s.off]}
+        style={({ pressed }) => [s.newBtn, pressed && press, !clubId && s.off]}
         disabled={!clubId}
         onPress={() => router.push(`/tournaments/new?clubId=${clubId}`)}
       >
@@ -38,7 +38,7 @@ export default function TournamentsList() {
         keyExtractor={(t) => t.id}
         ListEmptyComponent={<Text style={s.empty}>No tournaments yet.</Text>}
         renderItem={({ item }) => (
-          <Pressable style={s.card} onPress={() => router.push(`/tournaments/${item.id}`)}>
+          <Pressable style={({ pressed }) => [s.card, pressed && press]} onPress={() => router.push(`/tournaments/${item.id}`)}>
             <Icon name="trophy" color={statusColor(item.status)} size={22} />
             <View style={{ flex: 1 }}>
               <Text style={s.name}>{item.name}</Text>

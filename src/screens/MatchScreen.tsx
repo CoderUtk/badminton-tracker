@@ -9,7 +9,7 @@ import type { MatchRecord } from "../repos/matchRepo";
 import { useMatchStore } from "../stores/matchStore";
 import Court from "../components/Court";
 import Icon from "../components/Icon";
-import { C, F, textGlow } from "../theme";
+import { C, F, glow, textGlow } from "../theme";
 
 const DEBOUNCE_MS = 500;
 
@@ -143,7 +143,7 @@ export default function MatchScreen({
 
   const railA = (
     <Pressable
-      style={[portrait ? s.railWide : s.rail, { borderColor: C.red }, !playing && s.railDisabled]}
+      style={({ pressed }) => [portrait ? s.railWide : s.rail, { borderColor: C.red }, playing && glow(C.red, 16, 0.4), pressed && s.pressed, !playing && s.railDisabled]}
       disabled={!playing}
       onPress={() => score("A")}
       accessibilityLabel={`Point to ${teamName("A")}`}
@@ -154,7 +154,7 @@ export default function MatchScreen({
   );
   const railB = (
     <Pressable
-      style={[portrait ? s.railWide : s.rail, { borderColor: C.blue }, !playing && s.railDisabled]}
+      style={({ pressed }) => [portrait ? s.railWide : s.rail, { borderColor: C.blue }, playing && glow(C.blue, 16, 0.4), pressed && s.pressed, !playing && s.railDisabled]}
       disabled={!playing}
       onPress={() => score("B")}
       accessibilityLabel={`Point to ${teamName("B")}`}
@@ -164,50 +164,65 @@ export default function MatchScreen({
     </Pressable>
   );
 
-  return (
-    <View style={s.root}>
-      {/* controls row + centered score ribbon (works in both orientations) */}
-      <View style={s.top}>
-        <View style={s.controls}>
-          <View style={s.group}>
-            <Pressable style={[s.iconBtn, events.length < 2 && s.iconDisabled]} onPress={undo} accessibilityLabel="Undo last rally">
-              <Icon name="arrow-undo" color={C.text} size={18} />
-            </Pressable>
-            <Pressable style={[s.iconBtn, redoStack.length === 0 && s.iconDisabled]} onPress={redo} accessibilityLabel="Redo rally">
-              <Icon name="arrow-redo" color={C.text} size={18} />
-            </Pressable>
-          </View>
-          <View style={s.group}>
-            <Pressable style={s.iconBtn} onPress={() => router.back()} hitSlop={10} accessibilityLabel="Pause and leave (match stays live)">
-              <Icon name="pause" color={C.text} size={20} />
-            </Pressable>
-            <Pressable style={s.endBtn} onPress={confirmEnd} accessibilityLabel="End match">
-              <Icon name="flag" color={C.text} size={15} />
-              <Text style={s.endText}>End</Text>
-            </Pressable>
-          </View>
+  const leftGroup = (
+    <View style={s.group}>
+      <Pressable style={({ pressed }) => [s.iconBtn, pressed && s.pressed, events.length < 2 && s.iconDisabled]} onPress={undo} accessibilityLabel="Undo last rally">
+        <Icon name="arrow-undo" color={C.text} size={18} />
+      </Pressable>
+      <Pressable style={({ pressed }) => [s.iconBtn, pressed && s.pressed, redoStack.length === 0 && s.iconDisabled]} onPress={redo} accessibilityLabel="Redo rally">
+        <Icon name="arrow-redo" color={C.text} size={18} />
+      </Pressable>
+    </View>
+  );
+  const rightGroup = (
+    <View style={s.group}>
+      <Pressable style={({ pressed }) => [s.iconBtn, pressed && s.pressed]} onPress={() => router.back()} hitSlop={10} accessibilityLabel="Pause and leave (match stays live)">
+        <Icon name="pause" color={C.text} size={20} />
+      </Pressable>
+      <Pressable style={({ pressed }) => [s.endBtn, pressed && s.pressed]} onPress={confirmEnd} accessibilityLabel="End match">
+        <Icon name="flag" color={C.text} size={15} />
+        <Text style={s.endText}>End</Text>
+      </Pressable>
+    </View>
+  );
+  const scoreBlock = (
+    <View style={s.scoreWrap}>
+      <View style={s.timerChip}>
+        <Icon name="time-outline" color={C.text2} size={12} />
+        <Text style={s.timerText}>{timer}</Text>
+      </View>
+      <View style={s.scoreRibbon}>
+        <View style={[s.ribbonTeam, s.ribbonTeamA]}>
+          <View style={s.serveSlot}>{state.servingTeam === "A" && <View style={s.serveDot} />}</View>
+          <Text style={[s.ribbonName, { color: C.red }]} numberOfLines={1}>{teamName("A")}</Text>
         </View>
-
-        <View style={s.scoreWrap}>
-          <View style={s.timerChip}>
-            <Icon name="time-outline" color={C.text2} size={12} />
-            <Text style={s.timerText}>{timer}</Text>
-          </View>
-          <View style={s.scoreRibbon}>
-            <View style={[s.ribbonTeam, s.ribbonTeamA]}>
-              <View style={s.serveSlot}>{state.servingTeam === "A" && <View style={s.serveDot} />}</View>
-              <Text style={[s.ribbonName, { color: C.red }]} numberOfLines={1}>{teamName("A")}</Text>
-            </View>
-            <Text style={[s.ribbonScore, { color: C.red }, textGlow(C.red, 16)]}>{state.score.A}</Text>
-            <Text style={s.scoreDivider}>—</Text>
-            <Text style={[s.ribbonScore, { color: C.blue }, textGlow(C.blue, 16)]}>{state.score.B}</Text>
-            <View style={[s.ribbonTeam, s.ribbonTeamB]}>
-              <Text style={[s.ribbonName, { color: C.blue }]} numberOfLines={1}>{teamName("B")}</Text>
-              <View style={s.serveSlot}>{state.servingTeam === "B" && <View style={s.serveDot} />}</View>
-            </View>
-          </View>
+        <Text style={[s.ribbonScore, { color: C.red }, textGlow(C.red, 16)]}>{state.score.A}</Text>
+        <Text style={s.scoreDivider}>—</Text>
+        <Text style={[s.ribbonScore, { color: C.blue }, textGlow(C.blue, 16)]}>{state.score.B}</Text>
+        <View style={[s.ribbonTeam, s.ribbonTeamB]}>
+          <Text style={[s.ribbonName, { color: C.blue }]} numberOfLines={1}>{teamName("B")}</Text>
+          <View style={s.serveSlot}>{state.servingTeam === "B" && <View style={s.serveDot} />}</View>
         </View>
       </View>
+    </View>
+  );
+
+  return (
+    <View style={s.root}>
+      {/* Landscape: controls flank the centered score in one full-width row (no
+          empty top corners). Portrait: controls row above the score. */}
+      {portrait ? (
+        <View style={s.top}>
+          <View style={s.controls}>{leftGroup}{rightGroup}</View>
+          {scoreBlock}
+        </View>
+      ) : (
+        <View style={s.topRow}>
+          {leftGroup}
+          <View style={s.scoreFill}>{scoreBlock}</View>
+          {rightGroup}
+        </View>
+      )}
 
       {/* body: side rails (landscape) or court over a +1 row (portrait) */}
       <View style={[s.body, portrait && s.bodyPortrait]}>
@@ -231,6 +246,8 @@ export default function MatchScreen({
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg, padding: 8, gap: 6 },
   top: { gap: 6 },
+  topRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 8 },
+  scoreFill: { flex: 1, alignItems: "center" },
   controls: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   group: { flexDirection: "row", gap: 8 },
   iconBtn: {
@@ -238,12 +255,13 @@ const s = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
   iconDisabled: { opacity: 0.35 },
+  pressed: { transform: [{ scale: 0.97 }], opacity: 0.92 },
   endBtn: {
     flexDirection: "row", gap: 6, backgroundColor: C.red, borderRadius: 10, height: 40, paddingHorizontal: 14,
     alignItems: "center", justifyContent: "center",
   },
   endText: { color: C.text, fontSize: 15, fontFamily: F.bold },
-  scoreWrap: { alignSelf: "center", alignItems: "center", gap: 3, width: "100%", maxWidth: 480 },
+  scoreWrap: { alignSelf: "center", alignItems: "center", gap: 3, width: "100%", maxWidth: 520 },
   timerChip: {
     flexDirection: "row", alignItems: "center", gap: 4,
     backgroundColor: C.card, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 2,
@@ -267,7 +285,7 @@ const s = StyleSheet.create({
   body: { flex: 1, flexDirection: "row", gap: 8 },
   bodyPortrait: { flexDirection: "column" },
   rail: {
-    width: 64, backgroundColor: C.card, borderRadius: 12, borderWidth: 1.5,
+    width: 78, backgroundColor: C.card, borderRadius: 14, borderWidth: 1.5,
     alignItems: "center", justifyContent: "center",
   },
   railsRow: { flexDirection: "row", gap: 8, height: 96 },

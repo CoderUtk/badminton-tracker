@@ -6,7 +6,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useSession } from "../../src/stores/session";
 import Icon from "../../src/components/Icon";
 import Logo from "../../src/components/Logo";
-import { C, F, GRAD, glow } from "../../src/theme";
+import { C, F, GRAD, glow, press } from "../../src/theme";
 
 export default function Home() {
   const router = useRouter();
@@ -43,7 +43,7 @@ export default function Home() {
   return (
     <View style={s.root}>
       <Logo size={40} style={s.brand} />
-      <Pressable style={s.ctaWrap} onPress={() => router.push("/new-match")}>
+      <Pressable style={({ pressed }) => [s.ctaWrap, pressed && press]} onPress={() => router.push("/new-match")}>
         <LinearGradient colors={GRAD.redCTA} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.cta}>
           <Icon name="play" color={C.text} size={22} />
           <Text style={s.ctaText}>START A MATCH</Text>
@@ -51,11 +51,11 @@ export default function Home() {
       </Pressable>
 
       <View style={s.row}>
-        <Pressable style={s.navPill} onPress={() => router.push("/watch")}>
+        <Pressable style={({ pressed }) => [s.navPill, pressed && press]} onPress={() => router.push("/watch")}>
           <Icon name="play" color={C.accent} size={18} />
           <Text style={s.navPillText}>Live</Text>
         </Pressable>
-        <Pressable style={s.navPill} onPress={() => router.push("/tournaments")}>
+        <Pressable style={({ pressed }) => [s.navPill, pressed && press]} onPress={() => router.push("/tournaments")}>
           <Icon name="trophy" color={C.red} size={18} />
           <Text style={s.navPillText}>Tournaments</Text>
         </Pressable>
@@ -69,7 +69,7 @@ export default function Home() {
           <Text style={s.empty}>No clubs yet. Create one below{offlineOnly ? "" : " or join with an invite code"}.</Text>
         }
         renderItem={({ item }) => (
-          <Pressable style={s.club} onPress={() => router.push(`/(app)/clubs/${item.id}`)}>
+          <Pressable style={({ pressed }) => [s.club, pressed && press]} onPress={() => router.push(`/(app)/clubs/${item.id}`)}>
             <View style={s.clubIcon}>
               <Icon name="account-group" color={C.red} size={22} />
             </View>
@@ -91,7 +91,7 @@ export default function Home() {
             style={s.input} placeholder="New club name" placeholderTextColor={C.text2}
             value={name} onChangeText={setName}
           />
-          <Pressable style={[s.btn, !name.trim() && s.btnOff]} disabled={!name.trim()} onPress={onCreate}>
+          <Pressable style={({ pressed }) => [s.btn, pressed && press, !name.trim() && s.btnOff]} disabled={!name.trim()} onPress={onCreate}>
             <Icon name="add" color={C.text} size={18} />
             <Text style={s.btnText}>Create</Text>
           </Pressable>
@@ -102,7 +102,7 @@ export default function Home() {
               style={s.input} placeholder="Invite code" placeholderTextColor={C.text2}
               autoCapitalize="characters" value={inviteCode} onChangeText={setInviteCode}
             />
-            <Pressable style={[s.btn, !inviteCode.trim() && s.btnOff]} disabled={!inviteCode.trim()} onPress={onJoin}>
+            <Pressable style={({ pressed }) => [s.btn, pressed && press, !inviteCode.trim() && s.btnOff]} disabled={!inviteCode.trim()} onPress={onJoin}>
               <Text style={s.btnText}>Join</Text>
             </Pressable>
           </View>
