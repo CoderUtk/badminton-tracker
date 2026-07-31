@@ -34,6 +34,8 @@ export default function AppTabs() {
       <Tabs.Screen name="matches" options={{ title: "Matches", tabBarIcon: icon("badminton"), headerShown: false }} />
       <Tabs.Screen name="profile" options={{ title: "Profile", tabBarIcon: icon("person") }} />
       <Tabs.Screen name="clubs" options={{ href: null, headerShown: false }} />
+      <Tabs.Screen name="watch" options={{ href: null, headerShown: false }} />
+      <Tabs.Screen name="tournaments" options={{ href: null, headerShown: false }} />
     </Tabs>
   );
 }

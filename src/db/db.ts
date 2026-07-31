@@ -1,5 +1,6 @@
 import { Platform } from "react-native";
 import type { SQLiteDatabase } from "expo-sqlite";
+import { TOURNAMENT_DDL } from "./schema";
 
 const MIGRATIONS = [
   `create table if not exists matches (
@@ -48,6 +49,7 @@ const MIGRATIONS = [
    );
    create index if not exists sessions_cache_club_starts on sessions_cache (club_id, starts_at desc);
    create index if not exists attendance_cache_session on attendance_cache (session_id);`,
+  TOURNAMENT_DDL,
 ];
 
 let dbPromise: Promise<SQLiteDatabase> | null = null;
