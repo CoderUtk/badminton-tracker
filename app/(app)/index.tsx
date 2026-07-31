@@ -50,6 +50,17 @@ export default function Home() {
         </LinearGradient>
       </Pressable>
 
+      <View style={s.row}>
+        <Pressable style={s.navPill} onPress={() => router.push("/watch")}>
+          <Icon name="play" color={C.accent} size={18} />
+          <Text style={s.navPillText}>Live</Text>
+        </Pressable>
+        <Pressable style={s.navPill} onPress={() => router.push("/tournaments")}>
+          <Icon name="trophy" color={C.red} size={18} />
+          <Text style={s.navPillText}>Tournaments</Text>
+        </Pressable>
+      </View>
+
       <Text style={s.h}>Your clubs</Text>
       <FlatList
         data={clubs}
@@ -110,6 +121,8 @@ const s = StyleSheet.create({
   ctaWrap: { borderRadius: 16, ...glow(C.red, 18, 0.5) },
   cta: { flexDirection: "row", gap: 10, borderRadius: 16, minHeight: 62, alignItems: "center", justifyContent: "center" },
   ctaText: { color: C.text, fontSize: 19, fontFamily: F.display, letterSpacing: 1 },
+  navPill: { flex: 1, flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center", backgroundColor: C.card, borderRadius: 12, borderWidth: 1, borderColor: C.line, paddingVertical: 12 },
+  navPillText: { color: C.text, fontSize: 15, fontFamily: F.semibold },
   h: { color: C.text, fontSize: 17, fontFamily: F.bold, letterSpacing: 0.4, marginTop: 6 },
   empty: { color: C.text2, fontSize: 15, paddingVertical: 12 },
   club: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: C.card, borderRadius: 12, padding: 14, marginBottom: 8 },
