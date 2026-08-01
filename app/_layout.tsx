@@ -15,7 +15,8 @@ import { getMyProfile, subscribeProfile } from "../src/repos/profileRepo";
 import { startSyncListener } from "../src/sync/runner";
 import AnimatedSplash from "../src/components/AnimatedSplash";
 import Toaster from "../src/components/Toaster";
-import { setPendingLink } from "../src/lib/pendingLink";
+import { consumePendingLink, setPendingLink } from "../src/lib/pendingLink";
+import { parseJoinTarget } from "../src/lib/joinLink";
 import { C } from "../src/theme";
 
 // Keep the native splash up until the JS animated splash takes over.
@@ -62,7 +63,12 @@ function Gate({ children }: { children: React.ReactNode }) {
       }
       return;
     }
-    if (inAuth || inWelcome) router.replace("/");
+    if (inAuth || inWelcome) {
+      const path = consumePendingLink();
+      const target = path ? parseJoinTarget(path) : null;
+      router.replace(target ? `/join/club/${target.id}` : "/");
+      return;
+    }
   }, [session, loading, needsName, segments, router]);
 
   return <>{children}</>;
