@@ -5,18 +5,21 @@ import { supabase } from "../lib/supabase";
 interface SessionCtx {
   session: Session | null;
   loading: boolean;
-  /** True when no Supabase env is configured — app runs offline-only. */
-  offlineOnly: boolean;
 }
 
-const Ctx = createContext<SessionCtx>({ session: null, loading: true, offlineOnly: true });
+const Ctx = createContext<SessionCtx>({ session: null, loading: true });
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(!!supabase);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!supabase) return;
+    if (!supabase) {
+      // Misconfiguration: without env vars the app cannot authenticate. Stop
+      // loading so the sign-in screen renders and surfaces the problem.
+      setLoading(false);
+      return;
+    }
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setLoading(false);
@@ -25,11 +28,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  return (
-    <Ctx.Provider value={{ session, loading, offlineOnly: !supabase }}>
-      {children}
-    </Ctx.Provider>
-  );
+  return <Ctx.Provider value={{ session, loading }}>{children}</Ctx.Provider>;
 }
 
 export const useSession = () => useContext(Ctx);

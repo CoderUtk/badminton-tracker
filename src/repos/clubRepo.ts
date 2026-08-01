@@ -32,23 +32,6 @@ export async function joinClub(inviteCode: string): Promise<string> {
   return data as string;
 }
 
-/**
- * Create a club locally without a backend (offline mode). The creator is the
- * owner; roles become meaningful once accounts/sync land. Cached only — it will
- * reconcile with Supabase when the club is later created server-side.
- */
-export async function createLocalClub(name: string): Promise<string> {
-  const db = await getDb();
-  if (!db) throw new Error("Local database unavailable");
-  const id = Crypto.randomUUID();
-  const code = Crypto.randomUUID().replace(/-/g, "").slice(0, 6).toUpperCase();
-  await db.runAsync(
-    "insert into clubs_cache (id, name, invite_code, role) values (?, ?, ?, ?)",
-    id, name.trim(), code, "owner"
-  );
-  return id;
-}
-
 export async function addGuestPlayer(clubId: string, name: string): Promise<void> {
   if (!supabase) throw new Error("Sign in to add players");
   const { error } = await supabase

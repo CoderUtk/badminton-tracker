@@ -12,7 +12,7 @@ import { C, F, glow } from "../../src/theme";
 const DEFAULT_ME = "Utkarsh"; // dummy identity until sign-in lands
 
 export default function Profile() {
-  const { session, offlineOnly } = useSession();
+  const { session } = useSession();
   const router = useRouter();
   const authName = session?.user.user_metadata?.full_name ?? session?.user.email ?? null;
 
@@ -44,7 +44,7 @@ export default function Profile() {
         <View style={s.avatar}><Text style={s.avatarText}>{initial}</Text></View>
         <View style={{ flex: 1 }}>
           <Text style={s.name}>{me}</Text>
-          <Text style={s.sub}>{offlineOnly ? "Local profile · dummy mode" : session?.user.email ?? ""}</Text>
+          <Text style={s.sub}>{session?.user.email ?? ""}</Text>
         </View>
         <Icon name="badminton" color={C.red} size={30} />
       </View>
@@ -65,7 +65,7 @@ export default function Profile() {
       </View>
 
       {/* Viewing-as picker (dummy mode only) */}
-      {offlineOnly && names.length > 0 && (
+      {names.length > 0 && (
         <View style={s.pickerWrap}>
           <Text style={s.pickerLbl}>Viewing as</Text>
           <View style={s.chips}>
