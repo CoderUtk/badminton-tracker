@@ -5,6 +5,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { getMyProfile, setDisplayName } from "../src/repos/profileRepo";
 import { validateName } from "../src/lib/validate";
 import { toast } from "../src/lib/toast";
+import { consumePendingLink } from "../src/lib/pendingLink";
+import { parseJoinTarget } from "../src/lib/joinLink";
 import FormScreen from "../src/components/FormScreen";
 import Logo from "../src/components/Logo";
 import PressableScale from "../src/components/PressableScale";
@@ -32,7 +34,11 @@ export default function Welcome() {
     setBusy(true);
     try {
       await setDisplayName(name);
-      router.replace("/");
+      // Gate may have re-parked a join destination while this profile lacked a
+      // display name — honour it instead of always landing on home.
+      const path = consumePendingLink();
+      const target = path ? parseJoinTarget(path) : null;
+      router.replace(target ? `/join/club/${target.id}` : "/");
     } catch (e) {
       toast((e as Error).message || "Could not save your name", "error");
     } finally {

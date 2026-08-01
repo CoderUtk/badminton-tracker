@@ -53,7 +53,15 @@ function Gate({ children }: { children: React.ReactNode }) {
       return;
     }
     if (needsName === undefined) return; // profile still loading
-    if (needsName) { if (!inWelcome) router.replace("/welcome"); return; }
+    if (needsName) {
+      if (!inWelcome) {
+        // Re-park the join destination — it may already have been consumed by
+        // sign-in's replay effect before we knew a display name was needed.
+        if (segments[0] === "join") setPendingLink(segments.join("/"));
+        router.replace("/welcome");
+      }
+      return;
+    }
     if (inAuth || inWelcome) router.replace("/");
   }, [session, loading, needsName, segments, router]);
 
