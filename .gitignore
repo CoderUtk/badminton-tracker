@@ -74,3 +74,6 @@ skills/
 
 # generated knowledge graph (regenerate with: graphify update .)
 graphify-out/
+
+# Superpowers SDD scratch (ledger, briefs, review packages)
+.superpowers/
