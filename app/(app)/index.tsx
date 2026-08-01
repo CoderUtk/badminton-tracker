@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Club, createClub, joinClub, listClubs, refreshClubs } from "../../src/repos/clubRepo";
 import { LinearGradient } from "expo-linear-gradient";
@@ -48,7 +48,9 @@ export default function Home() {
   };
 
   return (
-    <View style={s.root}>
+    // A FlatList must not be nested in a ScrollView, so this screen keeps its
+    // View root and only lifts it above the keyboard.
+    <KeyboardAvoidingView style={s.root} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <View style={s.greetRow}>
         <View style={{ flex: 1 }}>
           <Text style={s.greetEyebrow}>WELCOME BACK</Text>
@@ -115,7 +117,7 @@ export default function Home() {
           </Pressable>
         </View>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

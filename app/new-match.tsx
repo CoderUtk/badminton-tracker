@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { defaultConfig, MatchConfig, replay } from "../src/engine";
 import { createMatch } from "../src/repos/matchRepo";
 import { Club, listClubs, listPlayers } from "../src/repos/clubRepo";
 import Court from "../src/components/Court";
 import Icon from "../src/components/Icon";
+import FormScreen from "../src/components/FormScreen";
 import { C } from "../src/theme";
 
 export default function NewMatch() {
@@ -113,7 +114,7 @@ export default function NewMatch() {
             : ["Player A", "Player B"][i];
 
   return (
-    <ScrollView style={s.root} contentContainerStyle={{ padding: 16, gap: 12 }}>
+    <FormScreen contentContainerStyle={{ padding: 16, gap: 12 }}>
       <View style={s.seg}>
         {[true, false].map((d) => (
           <Pressable
@@ -214,7 +215,7 @@ export default function NewMatch() {
       <Pressable style={[s.cta, !filled && { opacity: 0.5 }]} disabled={!filled} onPress={start}>
         <Text style={s.ctaText}>Start scoring</Text>
       </Pressable>
-    </ScrollView>
+    </FormScreen>
   );
 }
 

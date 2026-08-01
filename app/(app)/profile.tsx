@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { supabase } from "../../src/lib/supabase";
 import { useSession } from "../../src/stores/session";
@@ -7,6 +7,7 @@ import { listAllPlayerNames } from "../../src/repos/clubRepo";
 import { DISPLAY_NAME_KEY, getSetting, setSetting } from "../../src/repos/settingsRepo";
 import { getPlayerAnalytics, type PlayerAnalytics } from "../../src/repos/statsRepo";
 import Icon from "../../src/components/Icon";
+import FormScreen from "../../src/components/FormScreen";
 import { C, F, glow } from "../../src/theme";
 
 const DEFAULT_ME = "Utkarsh"; // dummy identity until sign-in lands
@@ -38,7 +39,7 @@ export default function Profile() {
   const initial = me.slice(0, 1).toUpperCase();
 
   return (
-    <ScrollView style={s.root} contentContainerStyle={s.content}>
+    <FormScreen contentContainerStyle={s.content}>
       {/* Identity */}
       <View style={s.hero}>
         <View style={s.avatar}><Text style={s.avatarText}>{initial}</Text></View>
@@ -154,7 +155,7 @@ export default function Profile() {
           <Text style={s.signOutText}>Sign out</Text>
         </Pressable>
       )}
-    </ScrollView>
+    </FormScreen>
   );
 }
 

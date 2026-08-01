@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { createTournament, type MatchType } from "../../../src/repos/tournamentRepo";
 import { listClubs, listPlayers, type ClubPlayer } from "../../../src/repos/clubRepo";
@@ -75,7 +75,9 @@ export default function NewTournament() {
   const label = matchType === "doubles" ? "pairs" : "players";
 
   return (
-    <View style={s.root}>
+    // A FlatList must not be nested in a ScrollView, so this screen keeps its
+    // View root and only lifts it above the keyboard.
+    <KeyboardAvoidingView style={s.root} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <TextInput style={s.input} placeholder="Tournament name" placeholderTextColor={C.text2} value={name} onChangeText={setName} />
 
       <Text style={s.h}>Format</Text>
@@ -116,7 +118,7 @@ export default function NewTournament() {
       <Pressable style={({ pressed }) => [s.create, pressed && press, !canCreate && s.off]} disabled={!canCreate} onPress={onCreate}>
         <Text style={s.createText}>Create bracket</Text>
       </Pressable>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
-  KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
-} from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
@@ -9,6 +7,7 @@ import { supabase } from "../../src/lib/supabase";
 import { toast } from "../../src/lib/toast";
 import Icon from "../../src/components/Icon";
 import Logo from "../../src/components/Logo";
+import FormScreen from "../../src/components/FormScreen";
 import PressableScale from "../../src/components/PressableScale";
 import { C, F, GRAD, glow } from "../../src/theme";
 
@@ -120,8 +119,7 @@ export default function SignIn() {
   const emailValid = /\S+@\S+\.\S+/.test(email.trim());
 
   return (
-    <KeyboardAvoidingView style={s.root} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
+    <FormScreen contentContainerStyle={s.scroll}>
         {/* Hero */}
         <View style={s.hero}>
           <Logo size={52} />
@@ -200,8 +198,7 @@ export default function SignIn() {
         </View>
 
         <Text style={s.legal}>By continuing you agree to keep it friendly on court.</Text>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </FormScreen>
   );
 }
 

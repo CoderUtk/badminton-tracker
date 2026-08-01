@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { toast } from "../src/lib/toast";
 import { useRouter } from "expo-router";
 import { listClubs, type Club } from "../src/repos/clubRepo";
 import { createSession } from "../src/repos/sessionRepo";
 import DatePicker, { startOfDay } from "../src/components/DatePicker";
+import FormScreen from "../src/components/FormScreen";
 import { C } from "../src/theme";
 
 /** Default club-night slot: 6:00 PM on the chosen day. */
@@ -37,7 +38,7 @@ export default function NewSession() {
   };
 
   return (
-    <ScrollView style={s.root} contentContainerStyle={s.content}>
+    <FormScreen contentContainerStyle={s.content}>
       <Text style={s.intro}>Set up the court night. Players can check in from the session screen.</Text>
       <Text style={s.label}>Club</Text>
       <View style={s.chips}>
@@ -71,7 +72,7 @@ export default function NewSession() {
         ))}
       </View>
       <Pressable style={s.cta} onPress={save}><Text style={s.ctaText}>Create session</Text></Pressable>
-    </ScrollView>
+    </FormScreen>
   );
 }
 
