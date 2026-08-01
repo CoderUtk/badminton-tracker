@@ -1,6 +1,7 @@
 import { getDb } from "../db/db";
 
 export const DISPLAY_NAME_KEY = "display_name";
+export const ONBOARDING_SEEN_KEY = "onboarding_seen";
 
 export async function getSetting(key: string): Promise<string | null> {
   const db = await getDb();
