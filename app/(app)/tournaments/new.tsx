@@ -6,6 +6,7 @@ import { listClubs, listPlayers, type ClubPlayer } from "../../../src/repos/club
 import type { BracketSize } from "../../../src/tournament/types";
 import { C, F, press } from "../../../src/theme";
 import { toast } from "../../../src/lib/toast";
+import { validateName } from "../../../src/lib/validate";
 
 const SIZES: BracketSize[] = [4, 8, 16, 32, 64];
 const BESTOFS = [1, 3, 5] as const;
@@ -15,6 +16,7 @@ export default function NewTournament() {
   const params = useLocalSearchParams<{ clubId?: string }>();
   const [clubId, setClubId] = useState(params.clubId ?? "");
   const [name, setName] = useState("");
+  const [nameTouched, setNameTouched] = useState(false);
   const [size, setSize] = useState<BracketSize>(8);
   const [matchType, setMatchType] = useState<MatchType>("singles");
   const [bestOf, setBestOf] = useState<number>(3);
@@ -39,12 +41,14 @@ export default function NewTournament() {
   const setMode = (m: MatchType) => { setMatchType(m); setPicked([]); };
 
   const entrantCount = Math.floor(picked.length / perEntrant);
+  const nameError = validateName(name, "Tournament name");
   const canCreate = useMemo(
-    () => name.trim().length > 0 && entrantCount >= 2 && entrantCount <= size && picked.length % perEntrant === 0,
-    [name, entrantCount, size, picked.length, perEntrant],
+    () => nameError === null && entrantCount >= 2 && entrantCount <= size && picked.length % perEntrant === 0,
+    [nameError, entrantCount, size, picked.length, perEntrant],
   );
 
   const onCreate = async () => {
+    if (nameError) { toast(nameError, "error"); return; }
     try {
       const byId = new Map(players.map((p) => [p.id, p]));
       const nameOf = (pid: string) => byId.get(pid)?.name ?? "Player";
@@ -78,7 +82,11 @@ export default function NewTournament() {
     // A FlatList must not be nested in a ScrollView, so this screen keeps its
     // View root and only lifts it above the keyboard.
     <KeyboardAvoidingView style={s.root} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <TextInput style={s.input} placeholder="Tournament name" placeholderTextColor={C.text2} value={name} onChangeText={setName} />
+      <TextInput
+        style={s.input} placeholder="Tournament name" placeholderTextColor={C.text2}
+        value={name} onChangeText={setName} onBlur={() => setNameTouched(true)}
+      />
+      {nameTouched && nameError ? <Text style={s.err}>{nameError}</Text> : null}
 
       <Text style={s.h}>Format</Text>
       <Segmented value={matchType} options={["singles", "doubles"]} onPick={(v) => setMode(v as MatchType)} />
@@ -141,4 +149,5 @@ const s = StyleSheet.create({
   create: { backgroundColor: C.red, borderRadius: 12, paddingVertical: 15, alignItems: "center" },
   off: { opacity: 0.5 },
   createText: { color: C.text, fontFamily: F.semibold, fontSize: 16 },
+  err: { color: C.red, fontSize: 12.5, fontFamily: F.body },
 });

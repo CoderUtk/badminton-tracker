@@ -6,6 +6,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useSession } from "../../src/stores/session";
 import { DISPLAY_NAME_KEY, getSetting } from "../../src/repos/settingsRepo";
 import { toast } from "../../src/lib/toast";
+import { validateName } from "../../src/lib/validate";
 import Icon from "../../src/components/Icon";
 import Logo from "../../src/components/Logo";
 import { C, F, GRAD, glow, press } from "../../src/theme";
@@ -16,7 +17,10 @@ export default function Home() {
   const [clubs, setClubs] = useState<Club[]>([]);
   const [name, setName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
+  const [nameTouched, setNameTouched] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
+
+  const nameError = validateName(name, "Club name");
 
   const authName = session?.user.user_metadata?.full_name ?? session?.user.email ?? null;
   const greetName = authName ?? displayName ?? "Player";
@@ -29,9 +33,11 @@ export default function Home() {
   useFocusEffect(reload);
 
   const onCreate = async () => {
+    if (nameError) { toast(nameError, "error"); return; }
     try {
-      await createClub(name);
+      await createClub(name.trim());
       setName("");
+      setNameTouched(false);
       reload();
     } catch (e) {
       toast((e as Error).message || "Could not create club", "error");
@@ -100,13 +106,14 @@ export default function Home() {
         <View style={s.row}>
           <TextInput
             style={s.input} placeholder="New club name" placeholderTextColor={C.text2}
-            value={name} onChangeText={setName}
+            value={name} onChangeText={setName} onBlur={() => setNameTouched(true)}
           />
-          <Pressable style={({ pressed }) => [s.btn, pressed && press, !name.trim() && s.btnOff]} disabled={!name.trim()} onPress={onCreate}>
+          <Pressable style={({ pressed }) => [s.btn, pressed && press, !!nameError && s.btnOff]} disabled={!!nameError} onPress={onCreate}>
             <Icon name="add" color={C.text} size={18} />
             <Text style={s.btnText}>Create</Text>
           </Pressable>
         </View>
+        {nameTouched && nameError ? <Text style={s.err}>{nameError}</Text> : null}
         <View style={s.row}>
           <TextInput
             style={s.input} placeholder="Invite code" placeholderTextColor={C.text2}
@@ -146,5 +153,6 @@ const s = StyleSheet.create({
   btn: { flexDirection: "row", gap: 4, backgroundColor: C.red, borderRadius: 12, paddingHorizontal: 18, alignItems: "center", justifyContent: "center" },
   btnOff: { opacity: 0.5 },
   btnText: { color: C.text, fontSize: 16, fontWeight: "700" },
+  err: { color: C.red, fontSize: 12.5, fontFamily: F.body },
   note: { color: C.text2, fontSize: 13, lineHeight: 19, marginTop: 2 },
 });
