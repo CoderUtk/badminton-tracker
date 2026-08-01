@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { createTournament } from "../../../src/repos/tournamentRepo";
+import { createTournament, type MatchType } from "../../../src/repos/tournamentRepo";
 import { listClubs, listPlayers, type ClubPlayer } from "../../../src/repos/clubRepo";
 import type { BracketSize } from "../../../src/tournament/types";
 import { C, F, press } from "../../../src/theme";
 
 const SIZES: BracketSize[] = [4, 8, 16, 32, 64];
+const BESTOFS = [1, 3, 5] as const;
 
 export default function NewTournament() {
   const router = useRouter();
@@ -14,6 +15,9 @@ export default function NewTournament() {
   const [clubId, setClubId] = useState(params.clubId ?? "");
   const [name, setName] = useState("");
   const [size, setSize] = useState<BracketSize>(8);
+  const [matchType, setMatchType] = useState<MatchType>("singles");
+  const [bestOf, setBestOf] = useState<number>(3);
+  const [finalsBestOf, setFinalsBestOf] = useState<number>(3);
   const [players, setPlayers] = useState<ClubPlayer[]>([]);
   const [picked, setPicked] = useState<string[]>([]); // club_player_id in selection order
 
@@ -25,33 +29,72 @@ export default function NewTournament() {
     })();
   }, [clubId]);
 
-  const toggle = (id: string) =>
-    setPicked((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : cur.length < size ? [...cur, id] : cur));
+  const perEntrant = matchType === "doubles" ? 2 : 1;
+  const cap = size * perEntrant; // max individual players selectable
 
-  const canCreate = useMemo(() => name.trim().length > 0 && picked.length >= 2 && picked.length <= size, [name, picked, size]);
+  const toggle = (id: string) =>
+    setPicked((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : cur.length < cap ? [...cur, id] : cur));
+
+  const setMode = (m: MatchType) => { setMatchType(m); setPicked([]); };
+
+  const entrantCount = Math.floor(picked.length / perEntrant);
+  const canCreate = useMemo(
+    () => name.trim().length > 0 && entrantCount >= 2 && entrantCount <= size && picked.length % perEntrant === 0,
+    [name, entrantCount, size, picked.length, perEntrant],
+  );
 
   const onCreate = async () => {
     try {
       const byId = new Map(players.map((p) => [p.id, p]));
-      const entrants = picked.map((pid, i) => ({ clubPlayerId: pid, name: byId.get(pid)?.name ?? "Player", seed: i + 1 }));
-      const tid = await createTournament(clubId, name.trim(), size, entrants);
+      const nameOf = (pid: string) => byId.get(pid)?.name ?? "Player";
+      const entrants =
+        matchType === "doubles"
+          ? Array.from({ length: entrantCount }, (_, i) => {
+              const p1 = picked[i * 2], p2 = picked[i * 2 + 1];
+              return { clubPlayerId: p1, clubPlayerId2: p2, name: `${nameOf(p1)} / ${nameOf(p2)}`, seed: i + 1 };
+            })
+          : picked.map((pid, i) => ({ clubPlayerId: pid, name: nameOf(pid), seed: i + 1 }));
+      const tid = await createTournament(clubId, name.trim(), size, matchType, bestOf, finalsBestOf, entrants);
       router.replace(`/tournaments/${tid}`);
     } catch (e) {
       Alert.alert("Could not create tournament", (e as Error).message);
     }
   };
 
+  const Segmented = ({ value, options, onPick }: { value: number | string; options: readonly (number | string)[]; onPick: (v: never) => void }) => (
+    <View style={s.segRow}>
+      {options.map((o) => (
+        <Pressable key={String(o)} onPress={() => onPick(o as never)} style={({ pressed }) => [s.segBtn, pressed && press, value === o && s.segOn]}>
+          <Text style={[s.segText, value === o && s.segTextOn]}>{o}</Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+
+  const label = matchType === "doubles" ? "pairs" : "players";
+
   return (
     <View style={s.root}>
       <TextInput style={s.input} placeholder="Tournament name" placeholderTextColor={C.text2} value={name} onChangeText={setName} />
-      <View style={s.sizeRow}>
-        {SIZES.map((n) => (
-          <Pressable key={n} onPress={() => setSize(n)} style={({ pressed }) => [s.sizeBtn, pressed && press, size === n && s.sizeOn]}>
-            <Text style={[s.sizeText, size === n && s.sizeTextOn]}>{n}</Text>
-          </Pressable>
-        ))}
+
+      <Text style={s.h}>Format</Text>
+      <Segmented value={matchType} options={["singles", "doubles"]} onPick={(v) => setMode(v as MatchType)} />
+
+      <Text style={s.h}>Draw size</Text>
+      <Segmented value={size} options={SIZES} onPick={(v) => setSize(v as BracketSize)} />
+
+      <View style={s.gamesRow}>
+        <View style={s.gamesCol}>
+          <Text style={s.h}>Games / match</Text>
+          <Segmented value={bestOf} options={BESTOFS} onPick={(v) => setBestOf(v as number)} />
+        </View>
+        <View style={s.gamesCol}>
+          <Text style={s.h}>Semis onward</Text>
+          <Segmented value={finalsBestOf} options={BESTOFS} onPick={(v) => setFinalsBestOf(v as number)} />
+        </View>
       </View>
-      <Text style={s.h}>Pick entrants ({picked.length}/{size})</Text>
+
+      <Text style={s.h}>Pick entrants ({entrantCount}/{size} {label})</Text>
       <FlatList
         style={{ flex: 1 }}
         data={players}
@@ -60,10 +103,11 @@ export default function NewTournament() {
         renderItem={({ item }) => {
           const idx = picked.indexOf(item.id);
           const on = idx >= 0;
+          const badge = matchType === "doubles" ? `P${Math.floor(idx / 2) + 1}` : `#${idx + 1}`;
           return (
             <Pressable style={({ pressed }) => [s.player, pressed && press, on && s.playerOn]} onPress={() => toggle(item.id)}>
               <Text style={[s.playerName, on && { color: C.text }]}>{item.name}</Text>
-              {on ? <Text style={s.seed}>#{idx + 1}</Text> : null}
+              {on ? <Text style={s.seed}>{badge}</Text> : null}
             </Pressable>
           );
         }}
@@ -76,14 +120,16 @@ export default function NewTournament() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg, padding: 16, gap: 12 },
+  root: { flex: 1, backgroundColor: C.bg, padding: 16, gap: 10 },
   input: { backgroundColor: C.card, color: C.text, borderRadius: 12, borderWidth: 1, borderColor: C.line, padding: 12, fontSize: 16 },
-  sizeRow: { flexDirection: "row", gap: 8 },
-  sizeBtn: { flex: 1, alignItems: "center", paddingVertical: 12, backgroundColor: C.card, borderRadius: 10, borderWidth: 1, borderColor: C.line },
-  sizeOn: { borderColor: C.red, backgroundColor: "rgba(255,59,48,0.12)" },
-  sizeText: { color: C.text2, fontFamily: F.semibold, fontSize: 16 },
-  sizeTextOn: { color: C.text },
-  h: { color: C.text, fontFamily: F.bold, fontSize: 15 },
+  h: { color: C.text, fontFamily: F.bold, fontSize: 14 },
+  segRow: { flexDirection: "row", gap: 8 },
+  segBtn: { flex: 1, alignItems: "center", paddingVertical: 11, backgroundColor: C.card, borderRadius: 10, borderWidth: 1, borderColor: C.line },
+  segOn: { borderColor: C.red, backgroundColor: "rgba(255,59,48,0.12)" },
+  segText: { color: C.text2, fontFamily: F.semibold, fontSize: 15, textTransform: "capitalize" },
+  segTextOn: { color: C.text },
+  gamesRow: { flexDirection: "row", gap: 12 },
+  gamesCol: { flex: 1, gap: 6 },
   empty: { color: C.text2, textAlign: "center", marginTop: 24 },
   player: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: C.card, borderRadius: 10, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: C.line },
   playerOn: { borderColor: C.accent },
