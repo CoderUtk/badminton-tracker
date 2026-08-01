@@ -18,10 +18,9 @@ export default function ScoreRoute() {
   // Fullscreen immersive while scoring so system bars never cover the +1 rails.
   useEffect(() => {
     setStatusBarHidden(true, "fade");
-    if (Platform.OS === "android") {
-      void NavigationBar.setVisibilityAsync("hidden");
-      void NavigationBar.setBehaviorAsync("overlay-swipe");
-    }
+    // Edge-to-edge (SDK 54 default) doesn't support setBehaviorAsync; visibility
+    // still hides the nav bar. Swiping from the edge reveals bars temporarily.
+    if (Platform.OS === "android") void NavigationBar.setVisibilityAsync("hidden");
     return () => {
       setStatusBarHidden(false, "fade");
       if (Platform.OS === "android") void NavigationBar.setVisibilityAsync("visible");
