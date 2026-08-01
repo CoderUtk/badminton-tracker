@@ -6,7 +6,7 @@ import { listClubs, listPlayers, type ClubPlayer } from "../../../src/repos/club
 import type { BracketSize } from "../../../src/tournament/types";
 import { C, F, press } from "../../../src/theme";
 
-const SIZES: BracketSize[] = [4, 8, 16, 32];
+const SIZES: BracketSize[] = [4, 8, 16, 32, 64];
 
 export default function NewTournament() {
   const router = useRouter();
