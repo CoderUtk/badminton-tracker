@@ -54,14 +54,34 @@ export default function SignIn() {
       return;
     }
     const res = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-    if (res.type === "success") {
-      const params = new URL(res.url.replace("#", "?")).searchParams;
-      const access_token = params.get("access_token");
-      const refresh_token = params.get("refresh_token");
-      if (access_token && refresh_token) {
-        await supabase.auth.setSession({ access_token, refresh_token });
-      }
+    if (res.type !== "success") return; // user dismissed the browser
+
+    // Supabase returns tokens in the hash (implicit flow) or a ?code= (PKCE).
+    // Parse both, and surface provider errors instead of failing silently.
+    const url = new URL(res.url.replace("#", "?"));
+    const params = url.searchParams;
+
+    const providerError = params.get("error_description") ?? params.get("error");
+    if (providerError) { toast(providerError, "error"); return; }
+
+    const access_token = params.get("access_token");
+    const refresh_token = params.get("refresh_token");
+    if (access_token && refresh_token) {
+      const { error: sErr } = await supabase.auth.setSession({ access_token, refresh_token });
+      if (sErr) toast(sErr.message, "error");
+      return;
     }
+
+    const authCode = params.get("code");
+    if (authCode) {
+      const { error: cErr } = await supabase.auth.exchangeCodeForSession(authCode);
+      if (cErr) toast(cErr.message, "error");
+      return;
+    }
+
+    // Landed somewhere unexpected — almost always the Supabase redirect
+    // allow-list rejecting `redirectTo` and falling back to the Site URL.
+    toast(`Sign-in returned no session. Allow ${redirectTo} in Supabase redirect URLs.`, "error");
   };
 
   // Online-only build: without keys the app cannot authenticate at all.
