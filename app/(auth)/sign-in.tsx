@@ -3,8 +3,11 @@ import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
+import { useRouter } from "expo-router";
 import { supabase } from "../../src/lib/supabase";
 import { toast } from "../../src/lib/toast";
+import { consumePendingLink } from "../../src/lib/pendingLink";
+import { parseJoinTarget } from "../../src/lib/joinLink";
 import GoogleMark from "../../src/components/GoogleMark";
 import Logo from "../../src/components/Logo";
 import FormScreen from "../../src/components/FormScreen";
@@ -63,6 +66,21 @@ export default function SignIn() {
     void Linking.getInitialURL().then((url) => { if (url) onUrl({ url }); });
     return () => sub.remove();
   }, []);
+
+  const router = useRouter();
+
+  // A deep link tapped while signed out was parked by the Gate. Once a session
+  // exists, replay it so the user lands where the link pointed.
+  useEffect(() => {
+    if (!supabase) return;
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+      if (!s) return;
+      const path = consumePendingLink();
+      const target = path ? parseJoinTarget(path) : null;
+      if (target) router.replace(`/join/club/${target.id}`);
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [router]);
 
   const sendCode = async () => {
     if (!supabase) return;

@@ -15,6 +15,7 @@ import { getMyProfile, subscribeProfile } from "../src/repos/profileRepo";
 import { startSyncListener } from "../src/sync/runner";
 import AnimatedSplash from "../src/components/AnimatedSplash";
 import Toaster from "../src/components/Toaster";
+import { setPendingLink } from "../src/lib/pendingLink";
 import { C } from "../src/theme";
 
 // Keep the native splash up until the JS animated splash takes over.
@@ -43,7 +44,14 @@ function Gate({ children }: { children: React.ReactNode }) {
     if (loading) return;
     const inAuth = segments[0] === "(auth)";
     const inWelcome = segments[0] === "welcome";
-    if (!session) { if (!inAuth) router.replace("/sign-in"); return; }
+    if (!session) {
+      if (!inAuth) {
+        // Remember where they were headed; sign-in replays it once done.
+        if (segments[0] === "join") setPendingLink(segments.join("/"));
+        router.replace("/sign-in");
+      }
+      return;
+    }
     if (needsName === undefined) return; // profile still loading
     if (needsName) { if (!inWelcome) router.replace("/welcome"); return; }
     if (inAuth || inWelcome) router.replace("/");
@@ -85,6 +93,7 @@ export default function RootLayout() {
           <Stack.Screen name="(app)" options={{ headerShown: false }} />
           <Stack.Screen name="(auth)/sign-in" options={{ headerShown: false }} />
           <Stack.Screen name="welcome" options={{ headerShown: false }} />
+          <Stack.Screen name="join/club/[id]" options={{ headerShown: false }} />
           <Stack.Screen
             name="score/[matchId]"
             options={{ headerShown: false, presentation: "fullScreenModal", orientation: "all" }}
