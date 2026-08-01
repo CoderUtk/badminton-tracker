@@ -18,3 +18,14 @@ CREATE TABLE IF NOT EXISTS bracket_matches (
 CREATE INDEX IF NOT EXISTS idx_bracket_tournament ON bracket_matches(tournament_id);
 CREATE INDEX IF NOT EXISTS idx_entrants_tournament ON tournament_entrants(tournament_id);
 `;
+
+// Doubles + per-round games config. Runs once (via user_version) after the base
+// tournament tables — added as ALTERs so existing installs upgrade cleanly and
+// fresh installs (which created the base tables above without these columns) get
+// them too, with no duplicate-column conflict.
+export const TOURNAMENT_ALTER_DDL = `
+ALTER TABLE tournaments ADD COLUMN match_type TEXT NOT NULL DEFAULT 'singles';
+ALTER TABLE tournaments ADD COLUMN bestof INTEGER NOT NULL DEFAULT 3;
+ALTER TABLE tournaments ADD COLUMN finals_bestof INTEGER NOT NULL DEFAULT 3;
+ALTER TABLE tournament_entrants ADD COLUMN club_player_id_2 TEXT;
+`;
