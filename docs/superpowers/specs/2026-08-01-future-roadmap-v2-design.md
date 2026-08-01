@@ -27,6 +27,34 @@ A is independent and ships anytime. B underpins C and the join flow. C needs B. 
 
 ---
 
+## Status update (2026-08-01, later)
+
+Supabase is now **configured and live** (project provisioned, migrations applied, Realtime enabled on `match_events` + `matches`, Google OAuth wired). Consequences:
+
+- **The app is online-only.** Offline-only mode, local club creation, and demo seeding are removed; a real Supabase session is required to enter the app. Local SQLite remains the offline-tolerant write path *within* an authenticated session (queue + sync), but there is no accountless mode.
+- **The first-open onboarding tour is removed** for now; it returns once the feature set is stable and worth explaining.
+- Bucket A shipped (toast/sheet, tab animation, share-to-story); the onboarding item is deferred rather than done.
+- Backend-gated buckets (B username, C Circle, D guests/courts, Phase 3 join/approval, Phase 4 live ops) are now **unblocked** and can be planned against the live schema.
+
+### Bucket I — Guest (spectator) mode
+
+**Decision: build it, tightly scoped, alongside Phase 3.**
+
+Rationale: at a hosted tournament, spectators must be able to watch a bracket or a live match without creating an account. Forcing signup at the door blocks the exact scenario that spreads the app.
+
+- **Can:** watch a live match; view a tournament bracket and results — read-only, reached by a shared tournament/match ID or link.
+- **Cannot:** score, create anything, join a club, or appear as a player. Every wall shows a "Sign up to play" upsell.
+- **Mechanism:** Supabase **anonymous sign-in**, so `auth.uid()` still exists and RLS stays enforced — no public-read holes. Guests see only content explicitly shared by ID; club data remains members-only.
+- **Depends on Phase 3** (shareable IDs / deep links). Ships with it, not before.
+
+### UI/UX additions (extend Bucket A)
+
+- **A5. New logo.** The current mark reads dull. Explore a bolder identity — stronger silhouette, higher contrast, more energy — while keeping the shuttlecock idea and the red/cyan palette. Regenerate all derived assets (icon, adaptive icon, splash, favicon, feature graphic) from the new mark.
+- **A6. App background treatment.** Replace the flat near-black with a designed backdrop — a subtle logo watermark, court-line geometry, or a soft radial/mesh gradient — applied consistently behind screens without hurting contrast or list legibility. Direction to be decided; must stay dark-first and never compete with foreground content.
+- **A7. Win celebration animations.** A moment of delight when a match or tournament is won: a champion reveal on the bracket (crown/scale/glow), a match-over flourish on the scoring screen, and matching motion on the share card. Rare-event motion, so it can be more expressive than everyday UI (per the animation frequency rule) — still reduced-motion aware. Built on the installed reanimated.
+
+---
+
 ## Bucket A — UX & sharing (local, ship-now)
 
 Independent of any backend; each item is its own plan-able unit.

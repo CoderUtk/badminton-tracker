@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Club, createClub, createLocalClub, joinClub, listClubs, refreshClubs } from "../../src/repos/clubRepo";
+import { Club, createClub, joinClub, listClubs, refreshClubs } from "../../src/repos/clubRepo";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSession } from "../../src/stores/session";
 import { DISPLAY_NAME_KEY, getSetting } from "../../src/repos/settingsRepo";
@@ -12,7 +12,7 @@ import { C, F, GRAD, glow, press } from "../../src/theme";
 
 export default function Home() {
   const router = useRouter();
-  const { offlineOnly, session } = useSession();
+  const { session } = useSession();
   const [clubs, setClubs] = useState<Club[]>([]);
   const [name, setName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
@@ -30,7 +30,7 @@ export default function Home() {
 
   const onCreate = async () => {
     try {
-      await (offlineOnly ? createLocalClub(name) : createClub(name));
+      await createClub(name);
       setName("");
       reload();
     } catch (e) {
@@ -75,7 +75,7 @@ export default function Home() {
         data={clubs}
         keyExtractor={(c) => c.id}
         ListEmptyComponent={
-          <Text style={s.empty}>No clubs yet. Create one below{offlineOnly ? "" : " or join with an invite code"}.</Text>
+          <Text style={s.empty}>No clubs yet. Create one below or join with an invite code.</Text>
         }
         renderItem={({ item }) => (
           <Pressable style={({ pressed }) => [s.club, pressed && press]} onPress={() => router.push(`/(app)/clubs/${item.id}`)}>
@@ -105,20 +105,15 @@ export default function Home() {
             <Text style={s.btnText}>Create</Text>
           </Pressable>
         </View>
-        {!offlineOnly && (
-          <View style={s.row}>
-            <TextInput
-              style={s.input} placeholder="Invite code" placeholderTextColor={C.text2}
-              autoCapitalize="characters" value={inviteCode} onChangeText={setInviteCode}
-            />
-            <Pressable style={({ pressed }) => [s.btn, pressed && press, !inviteCode.trim() && s.btnOff]} disabled={!inviteCode.trim()} onPress={onJoin}>
-              <Text style={s.btnText}>Join</Text>
-            </Pressable>
-          </View>
-        )}
-        {offlineOnly && (
-          <Text style={s.note}>Offline mode — clubs stay on this device. Sign-in and sharing come with accounts.</Text>
-        )}
+        <View style={s.row}>
+          <TextInput
+            style={s.input} placeholder="Invite code" placeholderTextColor={C.text2}
+            autoCapitalize="characters" value={inviteCode} onChangeText={setInviteCode}
+          />
+          <Pressable style={({ pressed }) => [s.btn, pressed && press, !inviteCode.trim() && s.btnOff]} disabled={!inviteCode.trim()} onPress={onJoin}>
+            <Text style={s.btnText}>Join</Text>
+          </Pressable>
+        </View>
       </View>
     </View>
   );

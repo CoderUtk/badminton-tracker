@@ -12,33 +12,24 @@ import {
 } from "@expo-google-fonts/chakra-petch";
 import { SessionProvider, useSession } from "../src/stores/session";
 import { startSyncListener } from "../src/sync/runner";
-import { seedDemoData } from "../src/db/seed";
-import { supabase } from "../src/lib/supabase";
 import AnimatedSplash from "../src/components/AnimatedSplash";
 import Toaster from "../src/components/Toaster";
-import { ONBOARDING_SEEN_KEY, getSetting } from "../src/repos/settingsRepo";
 import { C } from "../src/theme";
 
 // Keep the native splash up until the JS animated splash takes over.
 void SplashScreen.preventAutoHideAsync();
 
 function Gate({ children }: { children: React.ReactNode }) {
-  const { session, loading, offlineOnly } = useSession();
+  const { session, loading } = useSession();
   const segments = useSegments();
   const router = useRouter();
-  const [onboarded, setOnboarded] = useState<boolean | null>(null);
-
-  useEffect(() => { void getSetting(ONBOARDING_SEEN_KEY).then((v) => setOnboarded(v === "1")); }, []);
 
   useEffect(() => {
-    if (loading || onboarded === null) return;
+    if (loading) return;
     const inAuth = segments[0] === "(auth)";
-    const inOnboarding = segments[0] === "onboarding";
-    const signedIn = offlineOnly || !!session;
-    if (!signedIn && !inAuth) router.replace("/sign-in");
-    else if (signedIn && inAuth) router.replace("/");
-    else if (signedIn && !onboarded && !inOnboarding) router.replace("/onboarding");
-  }, [session, loading, offlineOnly, onboarded, segments, router]);
+    if (!session && !inAuth) router.replace("/sign-in");
+    else if (session && inAuth) router.replace("/");
+  }, [session, loading, segments, router]);
 
   return <>{children}</>;
 }
@@ -52,10 +43,7 @@ export default function RootLayout() {
     ChakraPetch_600SemiBold,
     ChakraPetch_700Bold,
   });
-  useEffect(() => {
-    if (!supabase) void seedDemoData();
-    return startSyncListener();
-  }, []);
+  useEffect(() => startSyncListener(), []);
   useEffect(() => {
     // Hand off from the native splash to the animated one only once the gaming
     // fonts are ready, so no text flashes in a fallback face.
@@ -78,7 +66,6 @@ export default function RootLayout() {
         >
           <Stack.Screen name="(app)" options={{ headerShown: false }} />
           <Stack.Screen name="(auth)/sign-in" options={{ headerShown: false }} />
-          <Stack.Screen name="onboarding" options={{ headerShown: false }} />
           <Stack.Screen
             name="score/[matchId]"
             options={{ headerShown: false, presentation: "fullScreenModal", orientation: "all" }}
