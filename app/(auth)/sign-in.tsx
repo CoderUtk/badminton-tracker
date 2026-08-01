@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
 } from "react-native";
@@ -14,11 +14,56 @@ import { C, F, GRAD, glow } from "../../src/theme";
 
 WebBrowser.maybeCompleteAuthSession();
 
+/**
+ * Turn an OAuth callback URL into a session. Handles the implicit flow (tokens
+ * in the hash), PKCE (`?code=`), and provider errors. Returns true when a
+ * session was established or an error was reported to the user.
+ */
+async function completeAuth(callbackUrl: string, redirectTo: string): Promise<boolean> {
+  if (!supabase) return false;
+  const params = new URL(callbackUrl.replace("#", "?")).searchParams;
+
+  const providerError = params.get("error_description") ?? params.get("error");
+  if (providerError) { toast(providerError, "error"); return true; }
+
+  const access_token = params.get("access_token");
+  const refresh_token = params.get("refresh_token");
+  if (access_token && refresh_token) {
+    const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+    if (error) toast(error.message, "error");
+    return true;
+  }
+
+  const authCode = params.get("code");
+  if (authCode) {
+    const { error } = await supabase.auth.exchangeCodeForSession(authCode);
+    if (error) toast(error.message, "error");
+    return true;
+  }
+
+  // No credentials in the callback — almost always the Supabase redirect
+  // allow-list rejecting `redirectTo` and falling back to the Site URL.
+  toast(`Sign-in returned no session. Allow ${redirectTo} in Supabase redirect URLs.`, "error");
+  return false;
+}
+
 export default function SignIn() {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [codeSent, setCodeSent] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  // Android often resumes the app via the deep link instead of resolving the
+  // auth-session promise with a URL, so complete sign-in from the link too.
+  useEffect(() => {
+    const onUrl = ({ url }: { url: string }) => {
+      if (!url.includes("access_token") && !url.includes("code=") && !url.includes("error")) return;
+      void completeAuth(url, Linking.createURL("auth"));
+    };
+    const sub = Linking.addEventListener("url", onUrl);
+    void Linking.getInitialURL().then((url) => { if (url) onUrl({ url }); });
+    return () => sub.remove();
+  }, []);
 
   const sendCode = async () => {
     if (!supabase) return;
@@ -54,34 +99,9 @@ export default function SignIn() {
       return;
     }
     const res = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-    if (res.type !== "success") return; // user dismissed the browser
-
-    // Supabase returns tokens in the hash (implicit flow) or a ?code= (PKCE).
-    // Parse both, and surface provider errors instead of failing silently.
-    const url = new URL(res.url.replace("#", "?"));
-    const params = url.searchParams;
-
-    const providerError = params.get("error_description") ?? params.get("error");
-    if (providerError) { toast(providerError, "error"); return; }
-
-    const access_token = params.get("access_token");
-    const refresh_token = params.get("refresh_token");
-    if (access_token && refresh_token) {
-      const { error: sErr } = await supabase.auth.setSession({ access_token, refresh_token });
-      if (sErr) toast(sErr.message, "error");
-      return;
-    }
-
-    const authCode = params.get("code");
-    if (authCode) {
-      const { error: cErr } = await supabase.auth.exchangeCodeForSession(authCode);
-      if (cErr) toast(cErr.message, "error");
-      return;
-    }
-
-    // Landed somewhere unexpected — almost always the Supabase redirect
-    // allow-list rejecting `redirectTo` and falling back to the Site URL.
-    toast(`Sign-in returned no session. Allow ${redirectTo} in Supabase redirect URLs.`, "error");
+    // On Android the deep link can reopen the app before this resolves, in which
+    // case the result carries no URL — the listener below completes sign-in.
+    if (res.type === "success") await completeAuth(res.url, redirectTo);
   };
 
   // Online-only build: without keys the app cannot authenticate at all.
