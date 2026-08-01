@@ -20,6 +20,7 @@ export default function AppTabs() {
   return (
     <Tabs
       screenOptions={{
+        animation: "shift",
         headerStyle: { backgroundColor: C.bg },
         headerTintColor: C.text,
         tabBarStyle: { backgroundColor: C.card, borderTopColor: C.line },

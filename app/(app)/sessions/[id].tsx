@@ -10,6 +10,7 @@ import {
 } from "../../../src/repos/sessionRepo";
 import Icon from "../../../src/components/Icon";
 import { C } from "../../../src/theme";
+import { toast } from "../../../src/lib/toast";
 
 type Tab = "attendance" | "games";
 type MatchRow = MatchRecord & { live?: Record<TeamId, number> };
@@ -61,7 +62,8 @@ export default function SessionDetail() {
     if (!session) return;
     const need = effectiveMode === "singles" ? 2 : 4;
     if (checkedIn.length < need) {
-      return Alert.alert(`Need ${need} players`, `Check in at least ${need} players to build a ${effectiveMode} court.`);
+      toast(`Check in at least ${need} players to build a ${effectiveMode} court.`, "info");
+      return;
     }
     const result = generateMatchups(checkedIn, session.courts, matchups, round, effectiveMode);
     setMatchups(result.matches);
