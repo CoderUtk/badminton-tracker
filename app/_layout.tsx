@@ -15,6 +15,7 @@ import { startSyncListener } from "../src/sync/runner";
 import { seedDemoData } from "../src/db/seed";
 import { supabase } from "../src/lib/supabase";
 import AnimatedSplash from "../src/components/AnimatedSplash";
+import Toaster from "../src/components/Toaster";
 import { C } from "../src/theme";
 
 // Keep the native splash up until the JS animated splash takes over.
@@ -80,6 +81,7 @@ export default function RootLayout() {
         </Stack>
       </Gate>
     </SessionProvider>
+    <Toaster />
     </GestureHandlerRootView>
   );
 }
