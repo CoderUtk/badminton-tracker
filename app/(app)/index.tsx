@@ -65,11 +65,7 @@ export default function Home() {
       <View style={s.row}>
         <Pressable style={({ pressed }) => [s.navPill, pressed && press]} onPress={() => router.push("/watch")}>
           <Icon name="play" color={C.accent} size={18} />
-          <Text style={s.navPillText}>Live</Text>
-        </Pressable>
-        <Pressable style={({ pressed }) => [s.navPill, pressed && press]} onPress={() => router.push("/tournaments")}>
-          <Icon name="trophy" color={C.red} size={18} />
-          <Text style={s.navPillText}>Tournaments</Text>
+          <Text style={s.navPillText}>Watch live matches</Text>
         </Pressable>
       </View>
 

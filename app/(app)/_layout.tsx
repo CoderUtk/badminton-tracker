@@ -32,10 +32,10 @@ export default function AppTabs() {
       <Tabs.Screen name="index" options={{ title: "Home", tabBarIcon: icon("home") }} />
       <Tabs.Screen name="sessions" options={{ title: "Sessions", tabBarIcon: icon("calendar"), headerShown: false }} />
       <Tabs.Screen name="matches" options={{ title: "Matches", tabBarIcon: icon("badminton"), headerShown: false }} />
+      <Tabs.Screen name="tournaments" options={{ title: "Cups", tabBarIcon: icon("trophy"), headerShown: false }} />
       <Tabs.Screen name="profile" options={{ title: "Profile", tabBarIcon: icon("person") }} />
       <Tabs.Screen name="clubs" options={{ href: null, headerShown: false }} />
       <Tabs.Screen name="watch" options={{ href: null, headerShown: false }} />
-      <Tabs.Screen name="tournaments" options={{ href: null, headerShown: false }} />
     </Tabs>
   );
 }
