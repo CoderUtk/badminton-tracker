@@ -4,7 +4,9 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { supabase } from "../../src/lib/supabase";
 import { useSession } from "../../src/stores/session";
 import { listAllPlayerNames } from "../../src/repos/clubRepo";
-import { DISPLAY_NAME_KEY, getSetting, setSetting } from "../../src/repos/settingsRepo";
+import { getMyProfile, setDisplayName as saveProfileName } from "../../src/repos/profileRepo";
+import { validateName } from "../../src/lib/validate";
+import { toast } from "../../src/lib/toast";
 import { getPlayerAnalytics, type PlayerAnalytics } from "../../src/repos/statsRepo";
 import Icon from "../../src/components/Icon";
 import FormScreen from "../../src/components/FormScreen";
@@ -21,9 +23,25 @@ export default function Profile() {
   const [me, setMe] = useState<string>(authName ?? DEFAULT_ME);
   const [a, setA] = useState<PlayerAnalytics | null>(null);
   const [displayName, setDisplayName] = useState<string>("");
+  const [savedName, setSavedName] = useState<string>("");
 
-  useEffect(() => { void getSetting(DISPLAY_NAME_KEY).then((v) => setDisplayName(v ?? "")); }, []);
-  const saveDisplayName = () => { const v = displayName.trim(); if (v) void setSetting(DISPLAY_NAME_KEY, v); };
+  useEffect(() => {
+    void getMyProfile().then((p) => {
+      setDisplayName(p?.displayName ?? "");
+      setSavedName(p?.displayName ?? "");
+    });
+  }, []);
+
+  const nameError = validateName(displayName, "Display name");
+
+  const saveDisplayName = () => {
+    const v = displayName.trim();
+    if (nameError) { toast(nameError, "error"); return; }
+    if (v === savedName) return;
+    void saveProfileName(v)
+      .then(() => { setSavedName(v); toast("Name updated", "success"); })
+      .catch((e: Error) => toast(e.message || "Could not save your name", "error"));
+  };
 
   useEffect(() => {
     void listAllPlayerNames().then((n) => {
@@ -50,7 +68,7 @@ export default function Profile() {
         <Icon name="badminton" color={C.red} size={30} />
       </View>
 
-      {/* Display name (shown on Home; used when signed out) */}
+      {/* Display name — stored on the profile, so it follows the account. */}
       <View style={s.card}>
         <Text style={s.cardTitle}>Display name</Text>
         <TextInput
@@ -62,7 +80,9 @@ export default function Profile() {
           onBlur={saveDisplayName}
           onSubmitEditing={saveDisplayName}
           returnKeyType="done"
+          maxLength={60}
         />
+        {nameError ? <Text style={s.err}>{nameError}</Text> : null}
       </View>
 
       {/* Viewing-as picker (dummy mode only) */}
@@ -200,6 +220,7 @@ const s = StyleSheet.create({
   card: { backgroundColor: C.card, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: C.line, gap: 8 },
   cardTitle: { color: C.text, fontSize: 15, fontWeight: "800" },
   nameInput: { backgroundColor: C.bgElev, color: C.text, borderRadius: 10, borderWidth: 1, borderColor: C.line, padding: 12, fontSize: 16 },
+  err: { color: C.red, fontSize: 12.5, fontFamily: F.body },
   formRow: { flexDirection: "row", gap: 6 },
   formPill: { width: 30, height: 30, borderRadius: 8, alignItems: "center", justifyContent: "center" },
   pillW: { backgroundColor: C.green },

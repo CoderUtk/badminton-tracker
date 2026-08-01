@@ -4,7 +4,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { Club, createClub, joinClub, listClubs, refreshClubs } from "../../src/repos/clubRepo";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSession } from "../../src/stores/session";
-import { DISPLAY_NAME_KEY, getSetting } from "../../src/repos/settingsRepo";
+import { getMyProfile } from "../../src/repos/profileRepo";
 import { toast } from "../../src/lib/toast";
 import { validateName } from "../../src/lib/validate";
 import Icon from "../../src/components/Icon";
@@ -22,13 +22,13 @@ export default function Home() {
 
   const nameError = validateName(name, "Club name");
 
-  const authName = session?.user.user_metadata?.full_name ?? session?.user.email ?? null;
-  const greetName = authName ?? displayName ?? "Player";
+  const emailPrefix = session?.user.email?.split("@")[0] ?? null;
+  const greetName = displayName || emailPrefix || "Player";
 
   const reload = useCallback(() => {
     listClubs().then(setClubs);
     void refreshClubs().then(() => listClubs().then(setClubs));
-    void getSetting(DISPLAY_NAME_KEY).then(setDisplayName);
+    void getMyProfile().then((p) => setDisplayName(p?.displayName ?? null));
   }, []);
   useFocusEffect(reload);
 

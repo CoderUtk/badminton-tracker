@@ -11,6 +11,7 @@ import {
   ChakraPetch_600SemiBold, ChakraPetch_700Bold,
 } from "@expo-google-fonts/chakra-petch";
 import { SessionProvider, useSession } from "../src/stores/session";
+import { getMyProfile, subscribeProfile } from "../src/repos/profileRepo";
 import { startSyncListener } from "../src/sync/runner";
 import AnimatedSplash from "../src/components/AnimatedSplash";
 import Toaster from "../src/components/Toaster";
@@ -23,13 +24,30 @@ function Gate({ children }: { children: React.ReactNode }) {
   const { session, loading } = useSession();
   const segments = useSegments();
   const router = useRouter();
+  // undefined while the profile is in flight — never redirect on a guess.
+  const [needsName, setNeedsName] = useState<boolean | undefined>(undefined);
+  const [profileTick, setProfileTick] = useState(0);
+
+  useEffect(() => subscribeProfile(() => setProfileTick((n) => n + 1)), []);
+
+  useEffect(() => {
+    if (!session) { setNeedsName(undefined); return; }
+    let live = true;
+    void getMyProfile().then((p) => {
+      if (live) setNeedsName(p !== null && !p.displayNameSet);
+    });
+    return () => { live = false; };
+  }, [session, profileTick]);
 
   useEffect(() => {
     if (loading) return;
     const inAuth = segments[0] === "(auth)";
-    if (!session && !inAuth) router.replace("/sign-in");
-    else if (session && inAuth) router.replace("/");
-  }, [session, loading, segments, router]);
+    const inWelcome = segments[0] === "welcome";
+    if (!session) { if (!inAuth) router.replace("/sign-in"); return; }
+    if (needsName === undefined) return; // profile still loading
+    if (needsName) { if (!inWelcome) router.replace("/welcome"); return; }
+    if (inAuth || inWelcome) router.replace("/");
+  }, [session, loading, needsName, segments, router]);
 
   return <>{children}</>;
 }
@@ -66,6 +84,7 @@ export default function RootLayout() {
         >
           <Stack.Screen name="(app)" options={{ headerShown: false }} />
           <Stack.Screen name="(auth)/sign-in" options={{ headerShown: false }} />
+          <Stack.Screen name="welcome" options={{ headerShown: false }} />
           <Stack.Screen
             name="score/[matchId]"
             options={{ headerShown: false, presentation: "fullScreenModal", orientation: "all" }}

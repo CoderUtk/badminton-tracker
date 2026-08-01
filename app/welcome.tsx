@@ -1,0 +1,105 @@
+import React, { useEffect, useState } from "react";
+import { StyleSheet, Text, TextInput, View } from "react-native";
+import { useRouter } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
+import { getMyProfile, setDisplayName } from "../src/repos/profileRepo";
+import { validateName } from "../src/lib/validate";
+import { toast } from "../src/lib/toast";
+import FormScreen from "../src/components/FormScreen";
+import Logo from "../src/components/Logo";
+import PressableScale from "../src/components/PressableScale";
+import { C, F, GRAD, glow } from "../src/theme";
+
+/**
+ * Blocking first-run screen: every account picks a display name before entering
+ * the app. Seeded with whatever the signup trigger guessed, so Continue is
+ * usually a single tap.
+ */
+export default function Welcome() {
+  const router = useRouter();
+  const [name, setName] = useState("");
+  const [touched, setTouched] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    void getMyProfile().then((p) => { if (p?.displayName) setName(p.displayName); });
+  }, []);
+
+  const error = validateName(name, "Display name");
+
+  const onContinue = async () => {
+    if (error) { setTouched(true); toast(error, "error"); return; }
+    setBusy(true);
+    try {
+      await setDisplayName(name);
+      router.replace("/");
+    } catch (e) {
+      toast((e as Error).message || "Could not save your name", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <FormScreen contentContainerStyle={s.scroll}>
+      <View style={s.hero}>
+        <Logo size={52} />
+        <Text style={s.eyebrow}>ONE LAST THING</Text>
+        <Text style={s.headline}>What should we{"\n"}call you?</Text>
+        <Text style={s.sub}>This is the name your club sees on scoreboards.</Text>
+      </View>
+
+      <View style={s.card}>
+        <Text style={s.label}>Display name</Text>
+        <TextInput
+          style={s.input}
+          placeholder="Your name"
+          placeholderTextColor={C.text3}
+          value={name}
+          onChangeText={setName}
+          onBlur={() => setTouched(true)}
+          onSubmitEditing={() => { if (!error && !busy) void onContinue(); }}
+          returnKeyType="done"
+          autoFocus
+          maxLength={60}
+        />
+        {touched && error ? <Text style={s.err}>{error}</Text> : null}
+
+        <PressableScale
+          style={[s.ctaWrap, (!!error || busy) && s.off]}
+          disabled={!!error || busy}
+          onPress={onContinue}
+        >
+          <LinearGradient colors={GRAD.redCTA} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.cta}>
+            <Text style={s.ctaText}>{busy ? "SAVING…" : "CONTINUE"}</Text>
+          </LinearGradient>
+        </PressableScale>
+      </View>
+    </FormScreen>
+  );
+}
+
+const s = StyleSheet.create({
+  scroll: { flexGrow: 1, justifyContent: "center", padding: 22, gap: 22 },
+  hero: { alignItems: "center", gap: 10 },
+  eyebrow: { color: C.text3, fontFamily: F.medium, fontSize: 11, letterSpacing: 2.4 },
+  headline: {
+    color: C.text, fontFamily: F.display, fontSize: 27, lineHeight: 34,
+    textAlign: "center", letterSpacing: 0.2,
+  },
+  sub: { color: C.text2, fontFamily: F.body, fontSize: 14.5, textAlign: "center", lineHeight: 21 },
+  card: {
+    backgroundColor: C.card, borderRadius: 20, borderWidth: 1, borderColor: C.line,
+    padding: 20, gap: 10,
+  },
+  label: { color: C.text, fontFamily: F.semibold, fontSize: 13, letterSpacing: 0.4 },
+  input: {
+    backgroundColor: C.bgElev, color: C.text, borderRadius: 12, borderWidth: 1,
+    borderColor: C.line, paddingHorizontal: 14, paddingVertical: 14, fontSize: 17, fontFamily: F.body,
+  },
+  err: { color: C.red, fontSize: 12.5, fontFamily: F.body },
+  ctaWrap: { borderRadius: 14, marginTop: 4, ...glow(C.red, 16, 0.45) },
+  cta: { borderRadius: 14, minHeight: 54, alignItems: "center", justifyContent: "center" },
+  ctaText: { color: C.text, fontFamily: F.display, fontSize: 15, letterSpacing: 1.2 },
+  off: { opacity: 0.45 },
+});
