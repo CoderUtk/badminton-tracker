@@ -1,10 +1,11 @@
 import React, { useCallback, useState } from "react";
-import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Club, createClub, createLocalClub, joinClub, listClubs, refreshClubs } from "../../src/repos/clubRepo";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSession } from "../../src/stores/session";
 import { DISPLAY_NAME_KEY, getSetting } from "../../src/repos/settingsRepo";
+import { toast } from "../../src/lib/toast";
 import Icon from "../../src/components/Icon";
 import Logo from "../../src/components/Logo";
 import { C, F, GRAD, glow, press } from "../../src/theme";
@@ -33,7 +34,7 @@ export default function Home() {
       setName("");
       reload();
     } catch (e) {
-      Alert.alert("Could not create club", (e as Error).message);
+      toast((e as Error).message || "Could not create club", "error");
     }
   };
   const onJoin = async () => {
@@ -42,7 +43,7 @@ export default function Home() {
       setInviteCode("");
       reload();
     } catch (e) {
-      Alert.alert("Could not join club", (e as Error).message);
+      toast((e as Error).message || "Could not join club", "error");
     }
   };
 

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { toast } from "../../src/lib/toast";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import { supabase } from "../../src/lib/supabase";
@@ -31,7 +32,7 @@ export default function SignIn() {
       options: { shouldCreateUser: true },
     });
     setBusy(false);
-    if (error) Alert.alert("Could not send code", error.message);
+    if (error) toast(error.message || "Could not send code", "error");
     else setCodeSent(true);
   };
 
@@ -44,7 +45,7 @@ export default function SignIn() {
       type: "email",
     });
     setBusy(false);
-    if (error) Alert.alert("Sign-in failed", error.message);
+    if (error) toast(error.message || "Sign-in failed", "error");
   };
 
   const googleSignIn = async () => {
@@ -55,7 +56,7 @@ export default function SignIn() {
       options: { redirectTo, skipBrowserRedirect: true },
     });
     if (error || !data.url) {
-      Alert.alert("Google sign-in unavailable", error?.message ?? "No auth URL");
+      toast(error?.message ?? "Google sign-in unavailable", "error");
       return;
     }
     const res = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);

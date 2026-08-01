@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { createTournament, type MatchType } from "../../../src/repos/tournamentRepo";
 import { listClubs, listPlayers, type ClubPlayer } from "../../../src/repos/clubRepo";
 import type { BracketSize } from "../../../src/tournament/types";
 import { C, F, press } from "../../../src/theme";
+import { toast } from "../../../src/lib/toast";
 
 const SIZES: BracketSize[] = [4, 8, 16, 32, 64];
 const BESTOFS = [1, 3, 5] as const;
@@ -57,7 +58,7 @@ export default function NewTournament() {
       const tid = await createTournament(clubId, name.trim(), size, matchType, bestOf, finalsBestOf, entrants);
       router.replace(`/tournaments/${tid}`);
     } catch (e) {
-      Alert.alert("Could not create tournament", (e as Error).message);
+      toast((e as Error).message || "Could not create tournament", "error");
     }
   };
 

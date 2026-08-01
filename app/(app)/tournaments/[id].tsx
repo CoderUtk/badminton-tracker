@@ -8,6 +8,7 @@ import { getMatch } from "../../../src/repos/matchRepo";
 import { bracketStatus } from "../../../src/tournament/bracket";
 import type { BracketMatch, Entrant } from "../../../src/tournament/types";
 import BracketView from "../../../src/components/BracketView";
+import { toast } from "../../../src/lib/toast";
 import { C, F } from "../../../src/theme";
 
 export default function TournamentBracket() {
@@ -55,7 +56,7 @@ export default function TournamentBracket() {
             const matchId = await startBracketMatch(cell.id);
             router.push(`/score/${matchId}`);
           } catch (e) {
-            Alert.alert("Could not start", (e as Error).message);
+            toast((e as Error).message || "Could not start", "error");
           }
         },
       },

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { toast } from "../src/lib/toast";
 import { useRouter } from "expo-router";
 import { listClubs, type Club } from "../src/repos/clubRepo";
 import { createSession } from "../src/repos/sessionRepo";
@@ -29,7 +30,7 @@ export default function NewSession() {
   const sameDay = (a: Date, b: Date) => a.getTime() === b.getTime();
 
   const save = async () => {
-    if (!clubId) return Alert.alert("Choose a club", "Create or select a club before planning a session.");
+    if (!clubId) { toast("Create or select a club before planning a session.", "info"); return; }
     const startsAt = new Date(day.getFullYear(), day.getMonth(), day.getDate(), SLOT_HOUR).getTime();
     const id = await createSession({ clubId, startsAt, location, courts });
     router.replace(`/(app)/sessions/${id}`);
