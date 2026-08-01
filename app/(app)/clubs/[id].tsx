@@ -1,8 +1,11 @@
 import React, { useCallback, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { FlatList, Pressable, Share, StyleSheet, Text, View } from "react-native";
+import * as Linking from "expo-linking";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { getClub, type Club } from "../../../src/repos/clubRepo";
 import { getClubStats, type PlayerStat, type SessionStats } from "../../../src/repos/sessionRepo";
+import { buildClubJoinPath } from "../../../src/lib/joinLink";
+import { toast } from "../../../src/lib/toast";
 import { C, F } from "../../../src/theme";
 
 function winPct(p: PlayerStat): string {
@@ -21,6 +24,18 @@ export default function ClubDetail() {
     setStats(await getClubStats(id));
   }, [id]);
   useFocusEffect(useCallback(() => { void reload(); }, [reload]));
+
+  const isAdmin = club?.role === "owner" || club?.role === "admin";
+
+  const shareLink = async () => {
+    if (!club) return;
+    try {
+      const url = Linking.createURL(buildClubJoinPath(club.id));
+      await Share.share({ message: `Join ${club.name} on CourtSide: ${url}` });
+    } catch (e) {
+      toast((e as Error).message || "Could not share the link", "error");
+    }
+  };
 
   if (!club) return <View style={s.center}><Text style={s.muted}>Club not found.</Text></View>;
 
@@ -44,6 +59,17 @@ export default function ClubDetail() {
             <Pressable style={s.cta} onPress={() => router.push({ pathname: "/new-match", params: { clubId: club.id } })}>
               <Text style={s.ctaText}>▶  Start a match</Text>
             </Pressable>
+            <Pressable style={s.secondary} onPress={shareLink}>
+              <Text style={s.secondaryText}>Share join link</Text>
+            </Pressable>
+            {isAdmin ? (
+              <Pressable
+                style={s.secondary}
+                onPress={() => router.push(`/(app)/clubs/requests/${club.id}`)}
+              >
+                <Text style={s.secondaryText}>Pending requests</Text>
+              </Pressable>
+            ) : null}
           </View>
           <View style={s.boardHeadRow}>
             <Text style={s.rank}>#</Text>
@@ -83,6 +109,8 @@ const s = StyleSheet.create({
   statLbl: { color: C.text2, fontSize: 12, fontFamily: F.medium, marginTop: 2, letterSpacing: 0.4 },
   cta: { backgroundColor: C.red, borderRadius: 12, minHeight: 50, alignItems: "center", justifyContent: "center", marginTop: 8 },
   ctaText: { color: C.text, fontSize: 17, fontWeight: "800" },
+  secondary: { backgroundColor: C.cardHi, borderWidth: 1, borderColor: C.line, borderRadius: 12, minHeight: 46, alignItems: "center", justifyContent: "center", marginTop: 8 },
+  secondaryText: { color: C.text, fontSize: 15, fontWeight: "700" },
   boardHeadRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 4, marginTop: 14, marginBottom: 2 },
   colHead: { color: C.text2, fontSize: 12, fontWeight: "800", letterSpacing: 0.5 },
   pctCol: { width: 52, textAlign: "right" },
