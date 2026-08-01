@@ -58,6 +58,12 @@ coverage/
 .tokensave/
 .idea/
 .vscode/
+.agents/
+.kiro/
+.claude/
+.ruflo/
+skills-lock.json
+skills/
 
 # generated knowledge graph (regenerate with: graphify update .)
 graphify-out/
