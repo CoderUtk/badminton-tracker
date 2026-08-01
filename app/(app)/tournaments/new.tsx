@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { createTournament, type MatchType } from "../../../src/repos/tournamentRepo";
-import { listClubs, listPlayers, type ClubPlayer } from "../../../src/repos/clubRepo";
+import { addGuestPlayer, listClubs, listPlayers, type ClubPlayer } from "../../../src/repos/clubRepo";
 import type { BracketSize } from "../../../src/tournament/types";
 import { C, F, press } from "../../../src/theme";
 import { toast } from "../../../src/lib/toast";
@@ -23,6 +23,8 @@ export default function NewTournament() {
   const [finalsBestOf, setFinalsBestOf] = useState<number>(3);
   const [players, setPlayers] = useState<ClubPlayer[]>([]);
   const [picked, setPicked] = useState<string[]>([]); // club_player_id in selection order
+  const [guestName, setGuestName] = useState("");
+  const [addingGuest, setAddingGuest] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -66,6 +68,33 @@ export default function NewTournament() {
     }
   };
 
+  const guestError = validateName(guestName, "Player name");
+
+  /**
+   * Add a non-registered player to the club and select them straight away.
+   * addGuestPlayer returns void, so the new row is found by name in the
+   * refreshed roster — ignoring ids already picked, so repeated names still
+   * resolve to the row that was just created.
+   */
+  const onAddGuest = async () => {
+    if (guestError || !clubId) { if (guestError) toast(guestError, "error"); return; }
+    const trimmed = guestName.trim();
+    setAddingGuest(true);
+    try {
+      await addGuestPlayer(clubId, trimmed);
+      const next = await listPlayers(clubId);
+      setPlayers(next);
+      setGuestName("");
+      const added = next.find((p) => p.name === trimmed && !picked.includes(p.id));
+      if (added) setPicked((cur) => (cur.length < cap ? [...cur, added.id] : cur));
+      toast("Player added", "success");
+    } catch (e) {
+      toast((e as Error).message || "Could not add player", "error");
+    } finally {
+      setAddingGuest(false);
+    }
+  };
+
   const Segmented = ({ value, options, onPick }: { value: number | string; options: readonly (number | string)[]; onPick: (v: never) => void }) => (
     <View style={s.segRow}>
       {options.map((o) => (
@@ -106,6 +135,24 @@ export default function NewTournament() {
       </View>
 
       <Text style={s.h}>Pick entrants ({entrantCount}/{size} {label})</Text>
+      <View style={s.guestRow}>
+        <TextInput
+          style={[s.input, { flex: 1 }]}
+          placeholder="Guest player name"
+          placeholderTextColor={C.text2}
+          value={guestName}
+          onChangeText={setGuestName}
+          onSubmitEditing={() => { if (!guestError && !addingGuest) void onAddGuest(); }}
+          returnKeyType="done"
+        />
+        <Pressable
+          style={({ pressed }) => [s.guestBtn, pressed && press, (!!guestError || addingGuest) && s.off]}
+          disabled={!!guestError || addingGuest}
+          onPress={onAddGuest}
+        >
+          <Text style={s.guestBtnText}>Add</Text>
+        </Pressable>
+      </View>
       <FlatList
         style={{ flex: 1 }}
         data={players}
@@ -150,4 +197,7 @@ const s = StyleSheet.create({
   off: { opacity: 0.5 },
   createText: { color: C.text, fontFamily: F.semibold, fontSize: 16 },
   err: { color: C.red, fontSize: 12.5, fontFamily: F.body },
+  guestRow: { flexDirection: "row", gap: 8 },
+  guestBtn: { backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 12, paddingHorizontal: 18, justifyContent: "center" },
+  guestBtnText: { color: C.text, fontFamily: F.semibold, fontSize: 15 },
 });
