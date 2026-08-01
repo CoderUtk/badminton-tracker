@@ -23,3 +23,11 @@ test("returns null for unrelated or malformed links", () => {
   expect(parseJoinTarget("badminton://join/tournament/1")).toBeNull();
   expect(parseJoinTarget("")).toBeNull();
 });
+
+test("parses an https link served from a join subdomain", () => {
+  expect(parseJoinTarget("https://join.example.com/club/abc-123")).toEqual({ kind: "club", id: "abc-123" });
+});
+
+test("parses an https link where the path also contains join", () => {
+  expect(parseJoinTarget("https://join.example.com/join/club/abc-123")).toEqual({ kind: "club", id: "abc-123" });
+});
