@@ -79,8 +79,26 @@ async function openAndMigrate(): Promise<SQLiteDatabase> {
   const { user_version } = (await db.getFirstAsync<{ user_version: number }>(
     "pragma user_version"
   ))!;
+
   for (let v = user_version; v < MIGRATIONS.length; v++) {
-    await db.execAsync(MIGRATIONS[v]);
+    // Statements run one at a time rather than as a single execAsync batch:
+    // a failing batch surfaces only expo-sqlite's "cannot rollback - no
+    // transaction is active", which hides the SQLite error that actually
+    // caused it. Wrapped in a transaction so a migration either fully applies
+    // or not at all — a half-applied batch would leave user_version behind and
+    // make every later launch replay statements that now conflict.
+    const statements = MIGRATIONS[v].split(";").map((s) => s.trim()).filter(Boolean);
+    await db.withTransactionAsync(async () => {
+      for (const statement of statements) {
+        try {
+          await db.execAsync(statement);
+        } catch (e) {
+          throw new Error(
+            `migration ${v} failed on "${statement.slice(0, 120)}": ${(e as Error).message}`,
+          );
+        }
+      }
+    });
     await db.execAsync(`pragma user_version = ${v + 1}`);
   }
   return db;
