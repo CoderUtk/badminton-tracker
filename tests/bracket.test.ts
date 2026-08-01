@@ -59,6 +59,12 @@ test("bracketStatus reports champion when final resolved", () => {
   expect(bracketStatus(b)).toEqual({ status: "done", champion: "e1" });
 });
 
+test("size 64 builds 32 round-1 matches and a 6-round bracket", () => {
+  const b = buildBracket(ents(64), 64, "t1", gen);
+  expect(b.filter((m) => m.round === 1)).toHaveLength(32);
+  expect(Math.max(...b.map((m) => m.round))).toBe(6);
+});
+
 test("deterministic: same inputs produce same ids and structure", () => {
   n = 0; const a = buildBracket(ents(8), 8, "t1", gen);
   n = 0; const c = buildBracket(ents(8), 8, "t1", gen);

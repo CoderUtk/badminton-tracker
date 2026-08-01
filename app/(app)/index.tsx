@@ -4,20 +4,26 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { Club, createClub, createLocalClub, joinClub, listClubs, refreshClubs } from "../../src/repos/clubRepo";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSession } from "../../src/stores/session";
+import { DISPLAY_NAME_KEY, getSetting } from "../../src/repos/settingsRepo";
 import Icon from "../../src/components/Icon";
 import Logo from "../../src/components/Logo";
 import { C, F, GRAD, glow, press } from "../../src/theme";
 
 export default function Home() {
   const router = useRouter();
-  const { offlineOnly } = useSession();
+  const { offlineOnly, session } = useSession();
   const [clubs, setClubs] = useState<Club[]>([]);
   const [name, setName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
+  const [displayName, setDisplayName] = useState<string | null>(null);
+
+  const authName = session?.user.user_metadata?.full_name ?? session?.user.email ?? null;
+  const greetName = authName ?? displayName ?? "Player";
 
   const reload = useCallback(() => {
     listClubs().then(setClubs);
     void refreshClubs().then(() => listClubs().then(setClubs));
+    void getSetting(DISPLAY_NAME_KEY).then(setDisplayName);
   }, []);
   useFocusEffect(reload);
 
@@ -42,7 +48,13 @@ export default function Home() {
 
   return (
     <View style={s.root}>
-      <Logo size={40} style={s.brand} />
+      <View style={s.greetRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={s.greetEyebrow}>WELCOME BACK</Text>
+          <Text style={s.greetName} numberOfLines={1}>{greetName}</Text>
+        </View>
+        <Logo size={34} showWordmark={false} />
+      </View>
       <Pressable style={({ pressed }) => [s.ctaWrap, pressed && press]} onPress={() => router.push("/new-match")}>
         <LinearGradient colors={GRAD.redCTA} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.cta}>
           <Icon name="play" color={C.text} size={22} />
@@ -53,11 +65,7 @@ export default function Home() {
       <View style={s.row}>
         <Pressable style={({ pressed }) => [s.navPill, pressed && press]} onPress={() => router.push("/watch")}>
           <Icon name="play" color={C.accent} size={18} />
-          <Text style={s.navPillText}>Live</Text>
-        </Pressable>
-        <Pressable style={({ pressed }) => [s.navPill, pressed && press]} onPress={() => router.push("/tournaments")}>
-          <Icon name="trophy" color={C.red} size={18} />
-          <Text style={s.navPillText}>Tournaments</Text>
+          <Text style={s.navPillText}>Watch live matches</Text>
         </Pressable>
       </View>
 
@@ -117,7 +125,9 @@ export default function Home() {
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg, padding: 16, gap: 12 },
-  brand: { alignSelf: "center", marginTop: 4, marginBottom: 2 },
+  greetRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 2, marginBottom: 2 },
+  greetEyebrow: { color: C.text3, fontSize: 11, fontFamily: F.medium, letterSpacing: 1.5 },
+  greetName: { color: C.text, fontSize: 24, fontFamily: F.display, letterSpacing: 0.5 },
   ctaWrap: { borderRadius: 16, ...glow(C.red, 18, 0.5) },
   cta: { flexDirection: "row", gap: 10, borderRadius: 16, minHeight: 62, alignItems: "center", justifyContent: "center" },
   ctaText: { color: C.text, fontSize: 19, fontFamily: F.display, letterSpacing: 1 },
