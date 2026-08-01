@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Alert, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
   finishBracketMatch, getTournament, startBracketMatch,
@@ -8,6 +8,7 @@ import { getMatch } from "../../../src/repos/matchRepo";
 import { bracketStatus } from "../../../src/tournament/bracket";
 import type { BracketMatch, Entrant } from "../../../src/tournament/types";
 import BracketView from "../../../src/components/BracketView";
+import Sheet from "../../../src/components/Sheet";
 import { toast } from "../../../src/lib/toast";
 import { C, F } from "../../../src/theme";
 
@@ -17,6 +18,7 @@ export default function TournamentBracket() {
   const [entrants, setEntrants] = useState<Entrant[]>([]);
   const [bracket, setBracket] = useState<BracketMatch[]>([]);
   const [title, setTitle] = useState("");
+  const [pending, setPending] = useState<BracketMatch | null>(null); // cell awaiting start confirm
 
   const reload = useCallback(() => {
     if (!id) return;
@@ -47,20 +49,19 @@ export default function TournamentBracket() {
     }
     if (cell.winnerEntrant) return; // already decided
     if (!cell.entrantA || !cell.entrantB) return; // waiting on a feeder
-    Alert.alert("Start match", "Create and score this match now?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Start",
-        onPress: async () => {
-          try {
-            const matchId = await startBracketMatch(cell.id);
-            router.push(`/score/${matchId}`);
-          } catch (e) {
-            toast((e as Error).message || "Could not start", "error");
-          }
-        },
-      },
-    ]);
+    setPending(cell);
+  };
+
+  const doStart = async () => {
+    const cell = pending;
+    setPending(null);
+    if (!cell) return;
+    try {
+      const matchId = await startBracketMatch(cell.id);
+      router.push(`/score/${matchId}`);
+    } catch (e) {
+      toast((e as Error).message || "Could not start", "error");
+    }
   };
 
   const champ = bracketStatus(bracket).champion;
@@ -73,6 +74,16 @@ export default function TournamentBracket() {
         <Text style={{ color: C.red, fontFamily: F.semibold, marginBottom: 8 }}>🏆 Champion: {champName}</Text>
       ) : null}
       <BracketView bracket={bracket} entrants={entrants} onCellPress={onCellPress} />
+      <Sheet
+        visible={!!pending}
+        title="Start match"
+        message="Create and score this match now?"
+        actions={[
+          { label: "Start", onPress: doStart, primary: true },
+          { label: "Cancel", onPress: () => setPending(null) },
+        ]}
+        onClose={() => setPending(null)}
+      />
     </View>
   );
 }
