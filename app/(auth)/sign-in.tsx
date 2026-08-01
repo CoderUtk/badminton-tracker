@@ -5,7 +5,7 @@ import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import { supabase } from "../../src/lib/supabase";
 import { toast } from "../../src/lib/toast";
-import Icon from "../../src/components/Icon";
+import GoogleMark from "../../src/components/GoogleMark";
 import Logo from "../../src/components/Logo";
 import FormScreen from "../../src/components/FormScreen";
 import PressableScale from "../../src/components/PressableScale";
@@ -192,7 +192,7 @@ export default function SignIn() {
           </View>
 
           <PressableScale style={s.google} onPress={googleSignIn}>
-            <Icon name="person" color={C.text} size={18} />
+            <GoogleMark size={18} />
             <Text style={s.googleText}>Continue with Google</Text>
           </PressableScale>
         </View>
