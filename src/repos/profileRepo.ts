@@ -1,6 +1,7 @@
 import { supabase } from "../lib/supabase";
 
 export type Profile = { id: string; displayName: string; displayNameSet: boolean };
+export type Hand = "left" | "right";
 
 // The root Gate caches the profile to decide whether to show the welcome
 // screen. Writers announce changes so it can re-read instead of going stale.
@@ -43,6 +44,25 @@ export async function setDisplayName(name: string): Promise<void> {
   const { error } = await supabase
     .from("profiles")
     .update({ display_name: name.trim(), display_name_set: true })
+    .eq("id", uid);
+  if (error) throw new Error(error.message);
+  listeners.forEach((l) => l());
+}
+
+/**
+ * First-login save: name, optional age, and required hand, in one write.
+ * Distinct from setDisplayName, which app/(app)/profile.tsx uses later to
+ * edit only the name — that caller has no reason to touch age/hand.
+ */
+export async function completeOnboarding(name: string, age: number | null, hand: Hand): Promise<void> {
+  if (!supabase) return;
+  const { data: auth } = await supabase.auth.getUser();
+  const uid = auth.user?.id;
+  if (!uid) return;
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ display_name: name.trim(), display_name_set: true, age, hand })
     .eq("id", uid);
   if (error) throw new Error(error.message);
   listeners.forEach((l) => l());
