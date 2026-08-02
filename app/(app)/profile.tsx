@@ -3,7 +3,6 @@ import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { supabase } from "../../src/lib/supabase";
 import { useSession } from "../../src/stores/session";
-import { listAllPlayerNames } from "../../src/repos/clubRepo";
 import { getMyProfile, setDisplayName as saveProfileName } from "../../src/repos/profileRepo";
 import { validateName } from "../../src/lib/validate";
 import { toast } from "../../src/lib/toast";
@@ -12,23 +11,19 @@ import Icon from "../../src/components/Icon";
 import FormScreen from "../../src/components/FormScreen";
 import { C, F, glow } from "../../src/theme";
 
-const DEFAULT_ME = "Utkarsh"; // dummy identity until sign-in lands
-
 export default function Profile() {
   const { session } = useSession();
   const router = useRouter();
-  const authName = session?.user.user_metadata?.full_name ?? session?.user.email ?? null;
 
-  const [names, setNames] = useState<string[]>([]);
-  const [me, setMe] = useState<string>(authName ?? DEFAULT_ME);
   const [a, setA] = useState<PlayerAnalytics | null>(null);
   const [displayName, setDisplayName] = useState<string>("");
   const [savedName, setSavedName] = useState<string>("");
 
   useEffect(() => {
     void getMyProfile().then((p) => {
-      setDisplayName(p?.displayName ?? "");
-      setSavedName(p?.displayName ?? "");
+      const name = p?.displayName ?? "";
+      setDisplayName(name);
+      setSavedName(name);
     });
   }, []);
 
@@ -43,12 +38,9 @@ export default function Profile() {
       .catch((e: Error) => toast(e.message || "Could not save your name", "error"));
   };
 
-  useEffect(() => {
-    void listAllPlayerNames().then((n) => {
-      setNames(n);
-      if (!authName) setMe((cur) => (n.includes(cur) ? cur : n.includes(DEFAULT_ME) ? DEFAULT_ME : n[0] ?? cur));
-    });
-  }, [authName]);
+  // Stats/matches are keyed by the name recorded on club_players, which is the
+  // profile's display name — not the raw auth metadata, which can diverge.
+  const me = savedName || "Player";
 
   const load = useCallback(() => { void getPlayerAnalytics(me).then(setA); }, [me]);
   useFocusEffect(load);
@@ -84,20 +76,6 @@ export default function Profile() {
         />
         {nameError ? <Text style={s.err}>{nameError}</Text> : null}
       </View>
-
-      {/* Viewing-as picker (dummy mode only) */}
-      {names.length > 0 && (
-        <View style={s.pickerWrap}>
-          <Text style={s.pickerLbl}>Viewing as</Text>
-          <View style={s.chips}>
-            {names.map((n) => (
-              <Pressable key={n} style={[s.chip, n === me && s.chipOn]} onPress={() => setMe(n)}>
-                <Text style={[s.chipText, n === me && s.chipTextOn]}>{n}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-      )}
 
       {/* Headline stats */}
       <View style={s.statGrid}>
@@ -206,13 +184,6 @@ const s = StyleSheet.create({
   avatarText: { color: C.text, fontSize: 24, fontFamily: F.display },
   name: { color: C.text, fontSize: 22, fontFamily: F.display, letterSpacing: 0.5 },
   sub: { color: C.text2, fontSize: 13, marginTop: 2, fontFamily: F.body },
-  pickerWrap: { gap: 8 },
-  pickerLbl: { color: C.text2, fontSize: 13, fontWeight: "800", letterSpacing: 0.4 },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: { backgroundColor: C.card, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: C.line },
-  chipOn: { backgroundColor: C.red, borderColor: C.red },
-  chipText: { color: C.text2, fontWeight: "700" },
-  chipTextOn: { color: C.text },
   statGrid: { flexDirection: "row", gap: 8 },
   statBox: { flex: 1, backgroundColor: C.card, borderRadius: 12, paddingVertical: 14, alignItems: "center", borderWidth: 1, borderColor: C.line },
   statNum: { color: C.text, fontSize: 24, fontFamily: F.display, fontVariant: ["tabular-nums"] },
