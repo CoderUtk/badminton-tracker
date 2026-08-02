@@ -1,5 +1,6 @@
 import * as Crypto from "expo-crypto";
 import { getDb } from "../db/db";
+import { isStaleLive } from "../session/autoFinish";
 import type { ClubPlayer } from "./clubRepo";
 import {
   endLiveMatchesForSession, listMatchesForClub, listMatchesForSession,
@@ -44,17 +45,29 @@ export async function createSession(input: {
 export async function listSessions(clubId?: string): Promise<ClubSession[]> {
   const db = await getDb();
   if (!db) return [];
-  if (clubId) {
-    return db.getAllAsync<ClubSession>(
-      "select * from sessions_cache where club_id = ? order by starts_at desc", clubId
-    );
+  const rows = clubId
+    ? await db.getAllAsync<ClubSession>(
+        "select * from sessions_cache where club_id = ? order by starts_at desc", clubId
+      )
+    : await db.getAllAsync<ClubSession>("select * from sessions_cache order by starts_at desc");
+  const now = Date.now();
+  for (const row of rows) {
+    if (isStaleLive(row, now)) {
+      await endSession(row.id);
+      row.status = "done";
+    }
   }
-  return db.getAllAsync<ClubSession>("select * from sessions_cache order by starts_at desc");
+  return rows;
 }
 
 export async function getSession(id: string): Promise<ClubSession | null> {
   const db = await getDb();
-  return (await db?.getFirstAsync<ClubSession>("select * from sessions_cache where id = ?", id)) ?? null;
+  const row = (await db?.getFirstAsync<ClubSession>("select * from sessions_cache where id = ?", id)) ?? null;
+  if (row && isStaleLive(row, Date.now())) {
+    await endSession(row.id);
+    row.status = "done";
+  }
+  return row;
 }
 
 export async function updateSessionStatus(id: string, status: SessionStatus): Promise<void> {
