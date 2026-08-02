@@ -66,7 +66,7 @@ export default function ClubRequests() {
             disabled={busyId === item.id}
             onPress={() => decide(item, true)}
           >
-            <Icon name="add" color={C.text} size={18} />
+            <Icon name="account-plus" color={C.text} size={18} />
           </PressableScale>
         </View>
       )}

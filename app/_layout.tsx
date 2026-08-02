@@ -108,7 +108,6 @@ export default function RootLayout() {
           <Stack.Screen name="(auth)/sign-in" options={{ headerShown: false }} />
           <Stack.Screen name="welcome" options={{ headerShown: false }} />
           <Stack.Screen name="join/club/[id]" options={{ headerShown: false }} />
-          <Stack.Screen name="(app)/clubs/requests/[clubId]" options={{ title: "Pending requests" }} />
           <Stack.Screen
             name="score/[matchId]"
             options={{ headerShown: false, presentation: "fullScreenModal", orientation: "all" }}
