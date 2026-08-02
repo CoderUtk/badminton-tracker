@@ -143,6 +143,18 @@ export async function listAttendance(sessionId: string, clubId: string): Promise
   );
 }
 
+/**
+ * Hard-delete a session. Matches created under it survive, unlinked — SQLite
+ * has no FK enforcement locally, so this mirrors in code the same
+ * on-delete-set-null relationship the Supabase schema already declares for
+ * matches.session_id (0001_init.sql:77).
+ */
+export async function deleteSession(id: string): Promise<void> {
+  const db = await getDb();
+  await db?.runAsync("update matches set session_id = null where session_id = ?", id);
+  await db?.runAsync("delete from sessions_cache where id = ?", id);
+}
+
 export async function setAttendance(
   sessionId: string,
   playerId: string,

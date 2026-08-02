@@ -5,10 +5,12 @@ import { generateMatchups, type GeneratedMatch, type MatchMode } from "../../../
 import { listMatchesForSession, replayMatch, type MatchRecord } from "../../../src/repos/matchRepo";
 import type { TeamId } from "../../../src/engine";
 import {
-  endSession, getSession, getSessionStats, listAttendance, setAttendance, updateSessionStatus,
+  deleteSession, endSession, getSession, getSessionStats, listAttendance, setAttendance, updateSessionStatus,
   type Attendance, type ClubSession, type SessionStats,
 } from "../../../src/repos/sessionRepo";
+import { getClub } from "../../../src/repos/clubRepo";
 import Icon from "../../../src/components/Icon";
+import Sheet from "../../../src/components/Sheet";
 import { C } from "../../../src/theme";
 import { toast } from "../../../src/lib/toast";
 
@@ -26,12 +28,16 @@ export default function SessionDetail() {
   const [matchups, setMatchups] = useState<GeneratedMatch[]>([]);
   const [tab, setTab] = useState<Tab>("attendance");
   const [genMode, setGenMode] = useState<MatchMode>("doubles");
+  const [clubRole, setClubRole] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const reload = useCallback(async () => {
     if (!id) return;
     const next = await getSession(id);
     setSession(next);
     if (next) {
+      const club = await getClub(next.club_id);
+      setClubRole(club?.role ?? null);
       setAttendanceRows(await listAttendance(next.id, next.club_id));
       const rows = await listMatchesForSession(next.id);
       // Attach a live score snapshot so paused/in-progress games show their
@@ -94,8 +100,19 @@ export default function SessionDetail() {
   };
   const openMatch = (m: MatchRecord) =>
     m.status === "live" ? router.push(`/score/${m.id}`) : router.push(`/matches/${m.id}`);
+  const onDeleteSession = async () => {
+    if (!session) return;
+    setConfirmingDelete(false);
+    try {
+      await deleteSession(session.id);
+      router.back();
+    } catch (e) {
+      toast((e as Error).message || "Could not delete session", "error");
+    }
+  };
 
   if (!session) return <View style={s.center}><Text style={s.muted}>Session not found.</Text></View>;
+  const isAdmin = clubRole === "owner" || clubRole === "admin";
   const done = session.status === "done";
   const showAttendance = tab === "attendance" && !done;
 
@@ -242,6 +259,26 @@ export default function SessionDetail() {
           )}
         </>
       }
+      ListFooterComponent={
+        isAdmin ? (
+          <>
+            <Pressable style={s.deleteBtn} onPress={() => setConfirmingDelete(true)}>
+              <Icon name="trash-outline" color={C.red} size={18} />
+              <Text style={s.deleteText}>Delete session</Text>
+            </Pressable>
+            <Sheet
+              visible={confirmingDelete}
+              title="Delete session?"
+              message={`This permanently deletes "${session.location || "this session"}". Matches already played stay in history.`}
+              actions={[
+                { label: "Delete", onPress: onDeleteSession, destructive: true },
+                { label: "Cancel", onPress: () => setConfirmingDelete(false) },
+              ]}
+              onClose={() => setConfirmingDelete(false)}
+            />
+          </>
+        ) : null
+      }
       renderItem={({ item }) => (
         <View style={s.playerRow}>
           <View style={[s.avatar, item.status === "in" && s.avatarIn]}><Text style={s.avatarText}>{item.name.slice(0, 1).toUpperCase()}</Text></View>
@@ -296,4 +333,6 @@ const s = StyleSheet.create({
   games: { gap: 8, marginVertical: 4 }, gameCard: { backgroundColor: "#211819", borderColor: "#5B2524", borderWidth: 1, padding: 14, borderRadius: 14, gap: 3 }, court: { color: C.red, fontSize: 11, fontWeight: "900", letterSpacing: 0.8 }, teams: { color: C.text, fontSize: 16, fontWeight: "800" }, vs: { color: C.text2, fontSize: 13 }, scoreButton: { alignSelf: "flex-start", flexDirection: "row", gap: 6, marginTop: 7, paddingVertical: 9, paddingHorizontal: 13, borderRadius: 9, backgroundColor: C.red, alignItems: "center" }, scoreText: { color: C.text, fontWeight: "900", fontSize: 13 },
   matchRow: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: C.card, borderRadius: 12, padding: 13, borderWidth: 1, borderColor: C.line }, matchTeams: { color: C.text, fontSize: 15, fontWeight: "700" }, matchMeta: { color: C.text2, fontSize: 13, marginTop: 2 }, matchLive: { color: C.green, fontWeight: "800", fontSize: 12 }, matchDone: { color: C.text2, fontWeight: "800" },
   playerRow: { minHeight: 66, paddingVertical: 9, flexDirection: "row", alignItems: "center", borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line, gap: 10 }, avatar: { height: 34, width: 34, borderRadius: 17, backgroundColor: C.cardHi, alignItems: "center", justifyContent: "center" }, avatarIn: { backgroundColor: C.red }, avatarText: { color: C.text, fontWeight: "900" }, playerName: { flex: 1, color: C.text, fontSize: 16, fontWeight: "700" }, attendanceActions: { flexDirection: "row", gap: 4 }, attendanceChip: { minWidth: 43, minHeight: 32, alignItems: "center", justifyContent: "center", borderRadius: 8, backgroundColor: C.card }, attendanceChipOn: { backgroundColor: C.red }, attendanceText: { color: C.text2, fontWeight: "700", fontSize: 12 }, attendanceTextOn: { color: C.text },
+  deleteBtn: { flexDirection: "row", gap: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 12, minHeight: 52, alignItems: "center", justifyContent: "center", marginTop: 16 },
+  deleteText: { color: C.red, fontSize: 16, fontWeight: "700" },
 });

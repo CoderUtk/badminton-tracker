@@ -28,7 +28,7 @@ export type IconName =
   | "arrow-undo" | "arrow-redo"
   | "chevron-forward" | "add" | "close"
   | "log-out-outline" | "swap-horizontal" | "swap-vertical"
-  | "ellipse"
+  | "ellipse" | "trash-outline"
   // MaterialCommunityIcons
   | "badminton" | "trophy" | "trophy-outline"
   | "shuffle-variant" | "account-group" | "account-plus"
