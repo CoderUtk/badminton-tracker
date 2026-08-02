@@ -155,6 +155,19 @@ export async function startBracketMatch(bracketMatchId: string): Promise<string>
   return matchId;
 }
 
+/**
+ * Hard-delete a tournament and its bracket structure. Matches created under
+ * it survive, unlinked — SQLite has no FK cascade locally, so entrants and
+ * bracket cells are removed explicitly rather than relying on the cascade
+ * the Supabase schema declares (0002_tournaments.sql:12,18).
+ */
+export async function deleteTournament(id: string): Promise<void> {
+  const db = await getDb();
+  await db?.runAsync("delete from tournament_entrants where tournament_id = ?", id);
+  await db?.runAsync("delete from bracket_matches where tournament_id = ?", id);
+  await db?.runAsync("delete from tournaments where id = ?", id);
+}
+
 /** Record a bracket-cell winner: advance the bracket and persist changed rows + tournament status. */
 export async function finishBracketMatch(bracketMatchId: string, winnerEntrant: string): Promise<void> {
   const db = await getDb();

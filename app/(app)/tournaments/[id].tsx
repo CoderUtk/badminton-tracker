@@ -1,13 +1,15 @@
 import { useCallback, useState } from "react";
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
-  finishBracketMatch, getTournament, startBracketMatch,
+  deleteTournament, finishBracketMatch, getTournament, startBracketMatch,
 } from "../../../src/repos/tournamentRepo";
 import { getMatch } from "../../../src/repos/matchRepo";
+import { getClub } from "../../../src/repos/clubRepo";
 import { bracketStatus } from "../../../src/tournament/bracket";
 import type { BracketMatch, Entrant } from "../../../src/tournament/types";
 import BracketView from "../../../src/components/BracketView";
+import Icon from "../../../src/components/Icon";
 import Sheet from "../../../src/components/Sheet";
 import { toast } from "../../../src/lib/toast";
 import { C, F } from "../../../src/theme";
@@ -19,6 +21,8 @@ export default function TournamentBracket() {
   const [bracket, setBracket] = useState<BracketMatch[]>([]);
   const [title, setTitle] = useState("");
   const [pending, setPending] = useState<BracketMatch | null>(null); // cell awaiting start confirm
+  const [clubRole, setClubRole] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const reload = useCallback(() => {
     if (!id) return;
@@ -38,6 +42,8 @@ export default function TournamentBracket() {
       setTitle(tournament.name);
       setEntrants(ents);
       setBracket(bracket);
+      const club = await getClub(tournament.clubId);
+      setClubRole(club?.role ?? null);
     })();
   }, [id]);
   useFocusEffect(reload);
@@ -66,6 +72,18 @@ export default function TournamentBracket() {
 
   const champ = bracketStatus(bracket).champion;
   const champName = champ ? entrants.find((e) => e.id === champ)?.name : null;
+  const isAdmin = clubRole === "owner" || clubRole === "admin";
+
+  const onDeleteTournament = async () => {
+    if (!id) return;
+    setConfirmingDelete(false);
+    try {
+      await deleteTournament(id);
+      router.back();
+    } catch (e) {
+      toast((e as Error).message || "Could not delete tournament", "error");
+    }
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg, padding: 12 }}>
@@ -74,6 +92,15 @@ export default function TournamentBracket() {
         <Text style={{ color: C.red, fontFamily: F.semibold, marginBottom: 8 }}>🏆 Champion: {champName}</Text>
       ) : null}
       <BracketView bracket={bracket} entrants={entrants} onCellPress={onCellPress} />
+      {isAdmin && (
+        <Pressable
+          style={{ flexDirection: "row", gap: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 12, minHeight: 52, alignItems: "center", justifyContent: "center", marginTop: 12 }}
+          onPress={() => setConfirmingDelete(true)}
+        >
+          <Icon name="trash-outline" color={C.red} size={18} />
+          <Text style={{ color: C.red, fontSize: 16, fontWeight: "700" }}>Delete tournament</Text>
+        </Pressable>
+      )}
       <Sheet
         visible={!!pending}
         title="Start match"
@@ -83,6 +110,16 @@ export default function TournamentBracket() {
           { label: "Cancel", onPress: () => setPending(null) },
         ]}
         onClose={() => setPending(null)}
+      />
+      <Sheet
+        visible={confirmingDelete}
+        title="Delete tournament?"
+        message={`This permanently deletes "${title}". Matches already played stay in history.`}
+        actions={[
+          { label: "Delete", onPress: onDeleteTournament, destructive: true },
+          { label: "Cancel", onPress: () => setConfirmingDelete(false) },
+        ]}
+        onClose={() => setConfirmingDelete(false)}
       />
     </View>
   );
