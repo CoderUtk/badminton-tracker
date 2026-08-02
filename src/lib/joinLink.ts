@@ -49,6 +49,9 @@ export function parseJoinTarget(url: string): { kind: "club"; id: string } | nul
     const kind = parts[at + 1];
     const id = parts[at + 2];
     if (kind === "club" && id) {
+      // reject unresolved route placeholders like "[id]" and anything containing
+      // brackets — a real target is always a concrete id, never a route param name.
+      if (id.includes("[") || id.includes("]")) return null;
       return { kind: "club", id };
     }
     at = parts.indexOf("join", at + 1);

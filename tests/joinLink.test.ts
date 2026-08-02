@@ -31,3 +31,12 @@ test("parses an https link served from a join subdomain", () => {
 test("parses an https link where the path also contains join", () => {
   expect(parseJoinTarget("https://join.example.com/join/club/abc-123")).toEqual({ kind: "club", id: "abc-123" });
 });
+
+test("rejects an unresolved route segment placeholder", () => {
+  expect(parseJoinTarget("join/club/[id]")).toBeNull();
+  expect(parseJoinTarget("badminton://join/club/[id]")).toBeNull();
+});
+
+test("accepts a leading-slash resolved pathname", () => {
+  expect(parseJoinTarget("/join/club/abc-123")).toEqual({ kind: "club", id: "abc-123" });
+});

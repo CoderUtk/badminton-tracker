@@ -1,7 +1,7 @@
 import "react-native-gesture-handler";
 import React, { useEffect, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { Stack, useRouter, useSegments } from "expo-router";
+import { Stack, usePathname, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
@@ -25,6 +25,7 @@ void SplashScreen.preventAutoHideAsync();
 function Gate({ children }: { children: React.ReactNode }) {
   const { session, loading } = useSession();
   const segments = useSegments();
+  const pathname = usePathname();
   const router = useRouter();
   // undefined while the profile is in flight — never redirect on a guess.
   const [needsName, setNeedsName] = useState<boolean | undefined>(undefined);
@@ -47,8 +48,8 @@ function Gate({ children }: { children: React.ReactNode }) {
     const inWelcome = segments[0] === "welcome";
     if (!session) {
       if (!inAuth) {
-        // Remember where they were headed; sign-in replays it once done.
-        if (segments[0] === "join") setPendingLink(segments.join("/"));
+        // Remember where they were headed; Gate replays it once signed in.
+        if (segments[0] === "join") setPendingLink(pathname);
         router.replace("/sign-in");
       }
       return;
@@ -56,9 +57,9 @@ function Gate({ children }: { children: React.ReactNode }) {
     if (needsName === undefined) return; // profile still loading
     if (needsName) {
       if (!inWelcome) {
-        // Re-park the join destination — it may already have been consumed by
-        // sign-in's replay effect before we knew a display name was needed.
-        if (segments[0] === "join") setPendingLink(segments.join("/"));
+        // Park the join destination for welcome's onContinue to replay once a
+        // display name is set.
+        if (segments[0] === "join") setPendingLink(pathname);
         router.replace("/welcome");
       }
       return;

@@ -58,8 +58,6 @@ export default function JoinClub() {
     );
   }
 
-  const decided = outcome === "pending" || outcome === "denied";
-
   return (
     <FormScreen contentContainerStyle={s.scroll}>
       <View style={s.hero}>
@@ -92,11 +90,9 @@ export default function JoinClub() {
             </PressableScale>
           </>
         )}
-        {decided ? (
-          <PressableScale style={s.ghost} onPress={() => router.replace("/")}>
-            <Text style={s.ghostText}>Back to CourtSide</Text>
-          </PressableScale>
-        ) : null}
+        <PressableScale style={s.ghost} onPress={() => router.replace("/")}>
+          <Text style={s.ghostText}>Back to CourtSide</Text>
+        </PressableScale>
       </View>
     </FormScreen>
   );

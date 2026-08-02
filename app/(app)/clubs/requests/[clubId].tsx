@@ -12,6 +12,7 @@ export default function ClubRequests() {
   const [requests, setRequests] = useState<JoinRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     if (!clubId) return;
@@ -41,6 +42,22 @@ export default function ClubRequests() {
     }
   };
 
+  const onApprove = (request: JoinRequest) => {
+    setConfirmingId(null);
+    void decide(request, true);
+  };
+
+  // Deny is permanent (the unique constraint blocks re-requesting after a
+  // denial), so require a second tap on the same row before it fires.
+  const onDenyTap = (request: JoinRequest) => {
+    if (confirmingId !== request.id) {
+      setConfirmingId(request.id);
+      return;
+    }
+    setConfirmingId(null);
+    void decide(request, false);
+  };
+
   if (loading) return <View style={s.center}><ActivityIndicator color={C.red} /></View>;
 
   return (
@@ -55,16 +72,16 @@ export default function ClubRequests() {
           <View style={s.avatar}><Text style={s.avatarText}>{item.displayName.slice(0, 1).toUpperCase()}</Text></View>
           <Text style={s.name} numberOfLines={1}>{item.displayName}</Text>
           <PressableScale
-            style={[s.btn, s.deny, busyId === item.id && s.off]}
+            style={[s.btn, s.deny, confirmingId === item.id && s.denyConfirm, busyId === item.id && s.off]}
             disabled={busyId === item.id}
-            onPress={() => decide(item, false)}
+            onPress={() => onDenyTap(item)}
           >
-            <Icon name="close" color={C.text2} size={18} />
+            <Icon name="close" color={confirmingId === item.id ? C.text : C.text2} size={18} />
           </PressableScale>
           <PressableScale
             style={[s.btn, s.approve, busyId === item.id && s.off]}
             disabled={busyId === item.id}
-            onPress={() => decide(item, true)}
+            onPress={() => onApprove(item)}
           >
             <Icon name="account-plus" color={C.text} size={18} />
           </PressableScale>
@@ -85,6 +102,7 @@ const s = StyleSheet.create({
   name: { flex: 1, color: C.text, fontSize: 16, fontFamily: F.semibold },
   btn: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   deny: { backgroundColor: C.cardHi, borderWidth: 1, borderColor: C.line },
+  denyConfirm: { backgroundColor: C.red, borderColor: C.red },
   approve: { backgroundColor: C.green },
   off: { opacity: 0.45 },
 });

@@ -56,7 +56,8 @@ begin
     return 'denied';
   end if;
   if v_status is null then
-    insert into club_join_requests (club_id, profile_id) values (p_club_id, auth.uid());
+    insert into club_join_requests (club_id, profile_id) values (p_club_id, auth.uid())
+    on conflict (club_id, profile_id) do nothing;
   end if;
   return 'pending';
 end $$;
