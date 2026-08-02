@@ -17,10 +17,12 @@ import AnimatedSplash from "../src/components/AnimatedSplash";
 import Toaster from "../src/components/Toaster";
 import { consumePendingLink, setPendingLink } from "../src/lib/pendingLink";
 import { parseJoinTarget } from "../src/lib/joinLink";
+import { initObservability } from "../src/lib/observability";
 import { C } from "../src/theme";
 
 // Keep the native splash up until the JS animated splash takes over.
 void SplashScreen.preventAutoHideAsync();
+initObservability();
 
 function Gate({ children }: { children: React.ReactNode }) {
   const { session, loading } = useSession();

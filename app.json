@@ -42,7 +42,14 @@
       "expo-sqlite",
       "expo-secure-store",
       "expo-web-browser",
-      "expo-font"
+      "expo-font",
+      [
+        "@sentry/react-native/expo",
+        {
+          "organization": "TODO_SENTRY_ORG",
+          "project": "TODO_SENTRY_PROJECT"
+        }
+      ]
     ],
     "extra": {
       "router": {},
