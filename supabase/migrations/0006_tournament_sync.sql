@@ -39,6 +39,9 @@ begin
   if not is_club_member(v_club_id) then
     raise exception 'Not a member of this tournament''s club';
   end if;
+  if p_winner_entrant is null then
+    raise exception 'Winner entrant is required';
+  end if;
   if p_winner_entrant is distinct from v_entrant_a and p_winner_entrant is distinct from v_entrant_b then
     raise exception 'Winner is not one of this match''s entrants';
   end if;
@@ -64,3 +67,9 @@ begin
 
   update tournaments set status = 'live' where id = v_tournament_id;
 end $$;
+
+-- tournament_entrants and bracket_matches are already `on delete cascade`
+-- from tournaments (0002_tournaments.sql:12,18), and cascades bypass RLS,
+-- so this single parent policy is sufficient for deleteTournament.
+create policy "admins delete tournaments" on public.tournaments for delete to authenticated
+  using (is_club_admin(club_id));

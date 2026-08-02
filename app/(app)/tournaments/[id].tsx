@@ -27,23 +27,27 @@ export default function TournamentBracket() {
   const reload = useCallback(() => {
     if (!id) return;
     (async () => {
-      // Reconcile: any cell whose linked match has completed advances the winner.
-      const { bracket: b0 } = await getTournament(id);
-      for (const cell of b0) {
-        if (cell.matchId && !cell.winnerEntrant) {
-          const m = await getMatch(cell.matchId);
-          if (m && m.status !== "live" && m.winner) {
-            const winnerEntrant = m.winner === "A" ? cell.entrantA : cell.entrantB;
-            if (winnerEntrant) await finishBracketMatch(cell.id, winnerEntrant);
+      try {
+        // Reconcile: any cell whose linked match has completed advances the winner.
+        const { bracket: b0 } = await getTournament(id);
+        for (const cell of b0) {
+          if (cell.matchId && !cell.winnerEntrant) {
+            const m = await getMatch(cell.matchId);
+            if (m && m.status !== "live" && m.winner) {
+              const winnerEntrant = m.winner === "A" ? cell.entrantA : cell.entrantB;
+              if (winnerEntrant) await finishBracketMatch(cell.id, winnerEntrant);
+            }
           }
         }
+        const { tournament, entrants: ents, bracket } = await getTournament(id);
+        setTitle(tournament.name);
+        setEntrants(ents);
+        setBracket(bracket);
+        const club = await getClub(tournament.clubId);
+        setClubRole(club?.role ?? null);
+      } catch (e) {
+        toast((e as Error).message || "Could not load the tournament", "error");
       }
-      const { tournament, entrants: ents, bracket } = await getTournament(id);
-      setTitle(tournament.name);
-      setEntrants(ents);
-      setBracket(bracket);
-      const club = await getClub(tournament.clubId);
-      setClubRole(club?.role ?? null);
     })();
   }, [id]);
   useFocusEffect(reload);

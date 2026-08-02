@@ -3,7 +3,7 @@ import { getDb } from "../db/db";
 import { supabase } from "../lib/supabase";
 import { buildBracket } from "../tournament/bracket";
 import type { BracketMatch, BracketSize, Entrant } from "../tournament/types";
-import { bracketMatchToRow, rowToBracketMatch, changedRows, type BracketRow } from "../tournament/rows";
+import { bracketMatchToRow, rowToBracketMatch, type BracketRow } from "../tournament/rows";
 import { pickBestOf } from "../tournament/format";
 import { buildTournamentConfig } from "../tournament/matchConfig";
 import { createMatch } from "./matchRepo";
@@ -20,14 +20,6 @@ type EntrantRow = {
   id: string; club_player_id: string; club_player_id_2: string | null; seed: number;
   name1: string | null; name2: string | null;
 };
-const ENTRANT_SELECT = `
-  select e.id, e.club_player_id, e.club_player_id_2, e.seed,
-         p1.name as name1, p2.name as name2
-    from tournament_entrants e
-    left join club_players_cache p1 on p1.id = e.club_player_id
-    left join club_players_cache p2 on p2.id = e.club_player_id_2
-   where e.tournament_id = ? order by e.seed`;
-
 const entrantName = (r: EntrantRow) =>
   r.club_player_id_2 ? `${r.name1 ?? "P1"} / ${r.name2 ?? "P2"}` : (r.name1 ?? "Player");
 
@@ -203,18 +195,31 @@ export async function startBracketMatch(bracketMatchId: string): Promise<string>
   const db = await getDb();
   await db?.runAsync("update matches set synced = 1 where id = ?", matchId);
 
-  const { error: linkErr } = await supabase.from("bracket_matches").update({ match_id: matchId }).eq("id", bracketMatchId);
+  const { data: linkedRow, error: linkErr } = await supabase
+    .from("bracket_matches")
+    .update({ match_id: matchId })
+    .eq("id", bracketMatchId)
+    .is("match_id", null)
+    .select();
   if (linkErr) throw new Error(linkErr.message);
+  if (!linkedRow || linkedRow.length === 0) throw new Error("This match was already started");
   return matchId;
 }
 
 /**
- * Hard-delete a tournament and its bracket structure. Matches created under
- * it survive, unlinked — SQLite has no FK cascade locally, so entrants and
- * bracket cells are removed explicitly rather than relying on the cascade
- * the Supabase schema declares (0002_tournaments.sql:12,18).
+ * Hard-delete a tournament and its bracket structure. `tournament_entrants`
+ * and `bracket_matches` cascade from `tournaments` in Supabase
+ * (0002_tournaments.sql:12,18), so deleting the parent row is sufficient.
+ * The DELETE policy on `tournaments` (0006_tournament_sync.sql) means a
+ * blocked delete returns zero rows with no error — we treat that as failure
+ * rather than letting the UI navigate away believing it worked.
  */
 export async function deleteTournament(id: string): Promise<void> {
+  if (!supabase) throw new Error("Sign in to delete a tournament");
+  const { data, error } = await supabase.from("tournaments").delete().eq("id", id).select();
+  if (error) throw new Error(error.message);
+  if (!data || data.length === 0) throw new Error("Could not delete tournament");
+  // Cleanup for any pre-migration tournament that still has a local row.
   const db = await getDb();
   await db?.runAsync("delete from tournament_entrants where tournament_id = ?", id);
   await db?.runAsync("delete from bracket_matches where tournament_id = ?", id);
