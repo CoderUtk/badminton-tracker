@@ -1,7 +1,7 @@
 import * as Crypto from "expo-crypto";
 import { getDb } from "../db/db";
 import { supabase } from "../lib/supabase";
-import { advanceWinner, bracketStatus, buildBracket } from "../tournament/bracket";
+import { buildBracket } from "../tournament/bracket";
 import type { BracketMatch, BracketSize, Entrant } from "../tournament/types";
 import { bracketMatchToRow, rowToBracketMatch, changedRows, type BracketRow } from "../tournament/rows";
 import { pickBestOf } from "../tournament/format";
@@ -221,21 +221,11 @@ export async function deleteTournament(id: string): Promise<void> {
   await db?.runAsync("delete from tournaments where id = ?", id);
 }
 
-/** Record a bracket-cell winner: advance the bracket and persist changed rows + tournament status. */
+/** Record a bracket-cell winner: advance the bracket via atomic RPC. */
 export async function finishBracketMatch(bracketMatchId: string, winnerEntrant: string): Promise<void> {
-  const db = await getDb();
-  const cell = await db?.getFirstAsync<{ tournament_id: string }>(
-    "select tournament_id from bracket_matches where id = ?", bracketMatchId,
-  );
-  if (!cell) return;
-  const before = await loadBracket(cell.tournament_id);
-  const after = advanceWinner(before, bracketMatchId, winnerEntrant);
-  for (const m of changedRows(before, after)) {
-    await db?.runAsync(
-      "update bracket_matches set entrant_a = ?, entrant_b = ?, winner_entrant = ?, match_id = ? where id = ?",
-      m.entrantA, m.entrantB, m.winnerEntrant, m.matchId, m.id,
-    );
-  }
-  const status = bracketStatus(after).status === "done" ? "done" : "live";
-  await db?.runAsync("update tournaments set status = ? where id = ?", status, cell.tournament_id);
+  if (!supabase) throw new Error("Sign in to record a result");
+  const { error } = await supabase.rpc("finish_bracket_match", {
+    p_bracket_match_id: bracketMatchId, p_winner_entrant: winnerEntrant,
+  });
+  if (error) throw new Error(error.message);
 }
