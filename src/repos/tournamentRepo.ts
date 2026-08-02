@@ -1,5 +1,6 @@
 import * as Crypto from "expo-crypto";
 import { getDb } from "../db/db";
+import { supabase } from "../lib/supabase";
 import { advanceWinner, bracketStatus, buildBracket } from "../tournament/bracket";
 import type { BracketMatch, BracketSize, Entrant } from "../tournament/types";
 import { bracketMatchToRow, rowToBracketMatch, changedRows, type BracketRow } from "../tournament/rows";
@@ -41,86 +42,116 @@ export async function createTournament(
   finalsBestOf: number,
   entrants: { clubPlayerId: string; clubPlayerId2?: string | null; name: string; seed: number }[],
 ): Promise<string> {
-  const db = await getDb();
+  if (!supabase) throw new Error("Sign in to create a tournament");
   const tid = Crypto.randomUUID();
   const ents: Entrant[] = entrants.map((e) => ({
     id: Crypto.randomUUID(), clubPlayerId: e.clubPlayerId, name: e.name, seed: e.seed,
   }));
   const bracket = buildBracket(ents, size, tid, () => Crypto.randomUUID());
-  await db?.runAsync(
-    `insert into tournaments (id, club_id, name, format, size, status, created_at, match_type, bestof, finals_bestof)
-     values (?, ?, ?, 'single_elim', ?, 'draft', ?, ?, ?, ?)`,
-    tid, clubId, name, size, Date.now(), matchType, bestOf, finalsBestOf,
+
+  const { error: tErr } = await supabase.from("tournaments").insert({
+    id: tid, club_id: clubId, name, format: "single_elim", size, status: "draft",
+    match_type: matchType, bestof: bestOf, finals_bestof: finalsBestOf,
+  });
+  if (tErr) throw new Error(tErr.message);
+
+  const { error: eErr } = await supabase.from("tournament_entrants").insert(
+    ents.map((e, i) => ({
+      id: e.id, tournament_id: tid, club_player_id: e.clubPlayerId, seed: e.seed,
+      club_player_id_2: entrants[i].clubPlayerId2 ?? null,
+    })),
   );
-  for (let i = 0; i < ents.length; i++) {
-    await db?.runAsync(
-      "insert into tournament_entrants (id, tournament_id, club_player_id, seed, club_player_id_2) values (?, ?, ?, ?, ?)",
-      ents[i].id, tid, ents[i].clubPlayerId, ents[i].seed, entrants[i].clubPlayerId2 ?? null,
-    );
-  }
-  for (const m of bracket) {
-    const r = bracketMatchToRow(m);
-    await db?.runAsync(
-      `insert into bracket_matches (id, tournament_id, round, idx, match_id, entrant_a, entrant_b, winner_entrant)
-       values (?, ?, ?, ?, ?, ?, ?, ?)`,
-      r.id, r.tournament_id, r.round, r.idx, r.match_id, r.entrant_a, r.entrant_b, r.winner_entrant,
-    );
-  }
+  if (eErr) throw new Error(eErr.message);
+
+  const { error: bErr } = await supabase.from("bracket_matches").insert(
+    bracket.map((m) => bracketMatchToRow(m)),
+  );
+  if (bErr) throw new Error(bErr.message);
+
   return tid;
 }
 
+async function loadEntrantNames(playerIds: string[]): Promise<Map<string, string>> {
+  if (!supabase || playerIds.length === 0) return new Map();
+  const { data } = await supabase.from("club_players").select("id, name").in("id", playerIds);
+  return new Map((data ?? []).map((p) => [p.id as string, p.name as string]));
+}
+
 async function loadEntrants(tournamentId: string): Promise<Entrant[]> {
-  const db = await getDb();
-  if (!db) return [];
-  const rows = await db.getAllAsync<EntrantRow>(ENTRANT_SELECT, tournamentId);
-  return rows.map((r) => ({ id: r.id, clubPlayerId: r.club_player_id, name: entrantName(r), seed: r.seed }));
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from("tournament_entrants")
+    .select("id, club_player_id, club_player_id_2, seed")
+    .eq("tournament_id", tournamentId)
+    .order("seed");
+  const rows = (data ?? []) as EntrantRow[];
+  const ids = rows.flatMap((r) => [r.club_player_id, r.club_player_id_2].filter((x): x is string => !!x));
+  const names = await loadEntrantNames(ids);
+  return rows.map((r) => ({
+    id: r.id,
+    clubPlayerId: r.club_player_id,
+    name: entrantName({ ...r, name1: names.get(r.club_player_id) ?? null, name2: r.club_player_id_2 ? names.get(r.club_player_id_2) ?? null : null }),
+    seed: r.seed,
+  }));
 }
 
 /** Per-entrant player list (1 for singles, 2 for doubles) for building a MatchConfig. */
 async function loadEntrantSides(tournamentId: string): Promise<Map<string, { club_player_id: string; name: string }[]>> {
-  const db = await getDb();
+  if (!supabase) return new Map();
+  const { data } = await supabase
+    .from("tournament_entrants")
+    .select("id, club_player_id, club_player_id_2")
+    .eq("tournament_id", tournamentId);
+  const rows = (data ?? []) as EntrantRow[];
+  const ids = rows.flatMap((r) => [r.club_player_id, r.club_player_id_2].filter((x): x is string => !!x));
+  const names = await loadEntrantNames(ids);
   const map = new Map<string, { club_player_id: string; name: string }[]>();
-  if (!db) return map;
-  const rows = await db.getAllAsync<EntrantRow>(ENTRANT_SELECT, tournamentId);
   for (const r of rows) {
-    const players = [{ club_player_id: r.club_player_id, name: r.name1 ?? "Player" }];
-    if (r.club_player_id_2) players.push({ club_player_id: r.club_player_id_2, name: r.name2 ?? "Player" });
+    const players = [{ club_player_id: r.club_player_id, name: names.get(r.club_player_id) ?? "Player" }];
+    if (r.club_player_id_2) players.push({ club_player_id: r.club_player_id_2, name: names.get(r.club_player_id_2) ?? "Player" });
     map.set(r.id, players);
   }
   return map;
 }
 
 async function loadBracket(tournamentId: string): Promise<BracketMatch[]> {
-  const db = await getDb();
-  if (!db) return [];
-  const rows = await db.getAllAsync<BracketRow>(
-    "select * from bracket_matches where tournament_id = ? order by round, idx",
-    tournamentId,
-  );
-  return rows.map(rowToBracketMatch);
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from("bracket_matches")
+    .select("*")
+    .eq("tournament_id", tournamentId)
+    .order("round")
+    .order("idx");
+  return (data ?? []).map((row) => rowToBracketMatch(row as BracketRow));
 }
 
 const toTournamentRow = (r: Record<string, unknown>): TournamentRow => ({
   id: r.id as string, clubId: (r.club_id as string) ?? "", name: (r.name as string) ?? "",
-  size: (r.size as number) ?? 0, status: (r.status as string) ?? "draft", createdAt: (r.created_at as number) ?? 0,
+  size: (r.size as number) ?? 0, status: (r.status as string) ?? "draft",
+  createdAt: r.created_at ? new Date(r.created_at as string).getTime() : 0,
   matchType: ((r.match_type as MatchType) ?? "singles"), bestOf: (r.bestof as number) ?? 3, finalsBestOf: (r.finals_bestof as number) ?? 3,
 });
 
 export async function getTournament(
   id: string,
 ): Promise<{ tournament: TournamentRow; entrants: Entrant[]; bracket: BracketMatch[] }> {
-  const db = await getDb();
-  const row = await db?.getFirstAsync<Record<string, unknown>>("select * from tournaments where id = ?", id);
-  return { tournament: toTournamentRow(row ?? {}), entrants: await loadEntrants(id), bracket: await loadBracket(id) };
+  if (!supabase) return { tournament: toTournamentRow({}), entrants: [], bracket: [] };
+  const { data: row } = await supabase.from("tournaments").select("*").eq("id", id).maybeSingle();
+  return {
+    tournament: toTournamentRow((row as Record<string, unknown>) ?? {}),
+    entrants: await loadEntrants(id),
+    bracket: await loadBracket(id),
+  };
 }
 
 export async function listTournaments(clubId: string): Promise<TournamentRow[]> {
-  const db = await getDb();
-  if (!db) return [];
-  const rows = await db.getAllAsync<Record<string, unknown>>(
-    "select * from tournaments where club_id = ? order by created_at desc", clubId,
-  );
-  return rows.map(toTournamentRow);
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from("tournaments")
+    .select("*")
+    .eq("club_id", clubId)
+    .order("created_at", { ascending: false });
+  return (data ?? []).map((row) => toTournamentRow(row as Record<string, unknown>));
 }
 
 /** Create a real match for a bracket cell (singles or doubles), link it, return matchId. */
