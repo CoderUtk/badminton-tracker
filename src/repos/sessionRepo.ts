@@ -52,9 +52,13 @@ export async function listSessions(clubId?: string): Promise<ClubSession[]> {
     : await db.getAllAsync<ClubSession>("select * from sessions_cache order by starts_at desc");
   const now = Date.now();
   for (const row of rows) {
-    if (isStaleLive(row, now)) {
+    if (!isStaleLive(row, now)) continue;
+    try {
       await endSession(row.id);
       row.status = "done";
+    } catch {
+      // Leave this row live; the next read retries it. A failed sweep must
+      // never prevent the rest of the list from loading.
     }
   }
   return rows;
@@ -64,8 +68,13 @@ export async function getSession(id: string): Promise<ClubSession | null> {
   const db = await getDb();
   const row = (await db?.getFirstAsync<ClubSession>("select * from sessions_cache where id = ?", id)) ?? null;
   if (row && isStaleLive(row, Date.now())) {
-    await endSession(row.id);
-    row.status = "done";
+    try {
+      await endSession(row.id);
+      row.status = "done";
+    } catch {
+      // Leave this row live; the next read retries it. A failed sweep must
+      // never prevent the rest of the list from loading.
+    }
   }
   return row;
 }
@@ -152,6 +161,7 @@ export async function listAttendance(sessionId: string, clubId: string): Promise
 export async function deleteSession(id: string): Promise<void> {
   const db = await getDb();
   await db?.runAsync("update matches set session_id = null where session_id = ?", id);
+  await db?.runAsync("delete from attendance_cache where session_id = ?", id);
   await db?.runAsync("delete from sessions_cache where id = ?", id);
 }
 

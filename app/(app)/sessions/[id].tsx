@@ -117,12 +117,13 @@ export default function SessionDetail() {
   const showAttendance = tab === "attendance" && !done;
 
   return (
-    <FlatList
-      style={s.root}
-      contentContainerStyle={s.content}
-      data={showAttendance ? attendance : []}
-      keyExtractor={(player) => player.id}
-      ListHeaderComponent={
+    <View style={{ flex: 1 }}>
+      <FlatList
+        style={s.root}
+        contentContainerStyle={s.content}
+        data={showAttendance ? attendance : []}
+        keyExtractor={(player) => player.id}
+        ListHeaderComponent={
         <>
           <View style={s.hero}>
             <Text style={s.eyebrow}>{session.status.toUpperCase()} · {session.courts} {session.courts === 1 ? "COURT" : "COURTS"}</Text>
@@ -261,22 +262,10 @@ export default function SessionDetail() {
       }
       ListFooterComponent={
         isAdmin ? (
-          <>
-            <Pressable style={s.deleteBtn} onPress={() => setConfirmingDelete(true)}>
-              <Icon name="trash-outline" color={C.red} size={18} />
-              <Text style={s.deleteText}>Delete session</Text>
-            </Pressable>
-            <Sheet
-              visible={confirmingDelete}
-              title="Delete session?"
-              message={`This permanently deletes "${session.location || "this session"}". Matches already played stay in history.`}
-              actions={[
-                { label: "Delete", onPress: onDeleteSession, destructive: true },
-                { label: "Cancel", onPress: () => setConfirmingDelete(false) },
-              ]}
-              onClose={() => setConfirmingDelete(false)}
-            />
-          </>
+          <Pressable style={s.deleteBtn} onPress={() => setConfirmingDelete(true)}>
+            <Icon name="trash-outline" color={C.red} size={18} />
+            <Text style={s.deleteText}>Delete session</Text>
+          </Pressable>
         ) : null
       }
       renderItem={({ item }) => (
@@ -292,7 +281,20 @@ export default function SessionDetail() {
           </View>
         </View>
       )}
-    />
+      />
+      {isAdmin && (
+        <Sheet
+          visible={confirmingDelete}
+          title="Delete session?"
+          message={`This permanently deletes "${session.location || "this session"}". Matches already played stay in history.`}
+          actions={[
+            { label: "Delete", onPress: onDeleteSession, destructive: true },
+            { label: "Cancel", onPress: () => setConfirmingDelete(false) },
+          ]}
+          onClose={() => setConfirmingDelete(false)}
+        />
+      )}
+    </View>
   );
 }
 
