@@ -156,33 +156,55 @@ export async function listTournaments(clubId: string): Promise<TournamentRow[]> 
 
 /** Create a real match for a bracket cell (singles or doubles), link it, return matchId. */
 export async function startBracketMatch(bracketMatchId: string): Promise<string> {
-  const db = await getDb();
-  const cell = await db?.getFirstAsync<BracketRow>("select * from bracket_matches where id = ?", bracketMatchId);
-  if (!cell || !cell.entrant_a || !cell.entrant_b) throw new Error("Bracket cell missing an entrant");
-  const trow = await db?.getFirstAsync<{ club_id: string; match_type: string; bestof: number; finals_bestof: number }>(
-    "select club_id, match_type, bestof, finals_bestof from tournaments where id = ?", cell.tournament_id,
-  );
-  const sides = await loadEntrantSides(cell.tournament_id);
-  const a = sides.get(cell.entrant_a);
-  const b = sides.get(cell.entrant_b);
+  if (!supabase) throw new Error("Sign in to start a match");
+  const { data: cellRow } = await supabase.from("bracket_matches").select("*").eq("id", bracketMatchId).maybeSingle();
+  const cell = cellRow ? rowToBracketMatch(cellRow as BracketRow) : null;
+  if (!cell || !cell.entrantA || !cell.entrantB) throw new Error("Bracket cell missing an entrant");
+
+  const { data: trow } = await supabase
+    .from("tournaments")
+    .select("club_id, match_type, bestof, finals_bestof")
+    .eq("id", cell.tournamentId)
+    .maybeSingle();
+  if (!trow) throw new Error("Tournament not found");
+
+  const sides = await loadEntrantSides(cell.tournamentId);
+  const a = sides.get(cell.entrantA);
+  const b = sides.get(cell.entrantB);
   if (!a || !b) throw new Error("Entrant not found");
-  const bracket = await loadBracket(cell.tournament_id);
+
+  const bracket = await loadBracket(cell.tournamentId);
   const maxRound = Math.max(...bracket.map((m) => m.round));
-  const matchType = (trow?.match_type as MatchType) ?? "singles";
-  const bestOf = pickBestOf(cell.round, maxRound, trow?.bestof ?? 3, trow?.finals_bestof ?? 3) as 1 | 3 | 5;
+  const matchType = (trow.match_type as MatchType) ?? "singles";
+  const bestOf = pickBestOf(cell.round, maxRound, trow.bestof ?? 3, trow.finals_bestof ?? 3) as 1 | 3 | 5;
+  const sideA = a.map((p) => ({ club_player_id: p.club_player_id, name: p.name }));
+  const sideB = b.map((p) => ({ club_player_id: p.club_player_id, name: p.name }));
   const config = buildTournamentConfig(
-    a.map((p) => ({ id: p.club_player_id, name: p.name })),
-    b.map((p) => ({ id: p.club_player_id, name: p.name })),
+    sideA.map((p) => ({ id: p.club_player_id, name: p.name })),
+    sideB.map((p) => ({ id: p.club_player_id, name: p.name })),
     matchType, bestOf,
   );
-  const matchId = await createMatch(
-    config,
-    a.map((p) => ({ club_player_id: p.club_player_id, name: p.name })),
-    b.map((p) => ({ club_player_id: p.club_player_id, name: p.name })),
-    trow?.club_id ?? null,
-    null,
-  );
-  await db?.runAsync("update bracket_matches set match_id = ? where id = ?", matchId, bracketMatchId);
+
+  // Local row first (offline-capable point scoring once the match exists),
+  // then push the match's own row to Supabase synchronously — bracket_matches
+  // has a foreign key to matches(id), so it must exist there before it can be
+  // linked. Only match_events (points) still queue through the regular
+  // offline-first sync path in src/sync/runner.ts.
+  const matchId = await createMatch(config, sideA, sideB, trow.club_id as string, null);
+
+  const { data: auth } = await supabase.auth.getUser();
+  const uid = auth.user?.id;
+  if (!uid) throw new Error("Sign in to start a match");
+  const { error: mErr } = await supabase.from("matches").insert({
+    id: matchId, club_id: trow.club_id, session_id: null,
+    config, side_a: sideA, side_b: sideB, status: "live", created_by: uid,
+  });
+  if (mErr) throw new Error(mErr.message);
+  const db = await getDb();
+  await db?.runAsync("update matches set synced = 1 where id = ?", matchId);
+
+  const { error: linkErr } = await supabase.from("bracket_matches").update({ match_id: matchId }).eq("id", bracketMatchId);
+  if (linkErr) throw new Error(linkErr.message);
   return matchId;
 }
 
