@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { getMyProfile, setDisplayName } from "../src/repos/profileRepo";
+import { completeOnboarding, getMyProfile, type Hand } from "../src/repos/profileRepo";
 import { validateName } from "../src/lib/validate";
 import { toast } from "../src/lib/toast";
 import { consumePendingLink } from "../src/lib/pendingLink";
@@ -22,6 +22,8 @@ export default function Welcome() {
   const [name, setName] = useState("");
   const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [age, setAge] = useState("");
+  const [hand, setHand] = useState<Hand | null>(null);
 
   useEffect(() => {
     void getMyProfile().then((p) => { if (p?.displayName) setName(p.displayName); });
@@ -31,9 +33,11 @@ export default function Welcome() {
 
   const onContinue = async () => {
     if (error) { setTouched(true); toast(error, "error"); return; }
+    if (!hand) { toast("Choose your playing hand", "error"); return; }
     setBusy(true);
     try {
-      await setDisplayName(name);
+      const ageValue = age.trim() ? Number(age.trim()) : null;
+      await completeOnboarding(name, ageValue, hand);
       // Gate may have re-parked a join destination while this profile lacked a
       // display name — honour it instead of always landing on home.
       const path = consumePendingLink();
@@ -71,9 +75,30 @@ export default function Welcome() {
         />
         {touched && error ? <Text style={s.err}>{error}</Text> : null}
 
+        <Text style={[s.label, { marginTop: 4 }]}>Age (optional)</Text>
+        <TextInput
+          style={s.input}
+          placeholder="Your age"
+          placeholderTextColor={C.text3}
+          keyboardType="number-pad"
+          maxLength={3}
+          value={age}
+          onChangeText={setAge}
+          returnKeyType="done"
+        />
+
+        <Text style={[s.label, { marginTop: 4 }]}>Playing hand</Text>
+        <View style={s.handRow}>
+          {(["left", "right"] as Hand[]).map((h) => (
+            <Pressable key={h} style={[s.handChip, hand === h && s.handChipOn]} onPress={() => setHand(h)}>
+              <Text style={[s.handChipText, hand === h && s.handChipTextOn]}>{h === "left" ? "Left" : "Right"}</Text>
+            </Pressable>
+          ))}
+        </View>
+
         <PressableScale
-          style={[s.ctaWrap, (!!error || busy) && s.off]}
-          disabled={!!error || busy}
+          style={[s.ctaWrap, (!!error || !hand || busy) && s.off]}
+          disabled={!!error || !hand || busy}
           onPress={onContinue}
         >
           <LinearGradient colors={GRAD.redCTA} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.cta}>
@@ -108,4 +133,9 @@ const s = StyleSheet.create({
   cta: { borderRadius: 14, minHeight: 54, alignItems: "center", justifyContent: "center" },
   ctaText: { color: C.text, fontFamily: F.display, fontSize: 15, letterSpacing: 1.2 },
   off: { opacity: 0.45 },
+  handRow: { flexDirection: "row", gap: 8 },
+  handChip: { flex: 1, backgroundColor: C.bgElev, borderRadius: 12, borderWidth: 1, borderColor: C.line, paddingVertical: 14, alignItems: "center" },
+  handChipOn: { backgroundColor: C.red, borderColor: C.red },
+  handChipText: { color: C.text2, fontFamily: F.semibold, fontSize: 15 },
+  handChipTextOn: { color: C.text },
 });
