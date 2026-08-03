@@ -1,10 +1,14 @@
 import React, { useCallback, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { getClub, type Club } from "../../../src/repos/clubRepo";
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { deleteClub, getClub, type Club } from "../../../src/repos/clubRepo";
 import { getClubStats, type PlayerStat, type SessionStats } from "../../../src/repos/sessionRepo";
 import { buildClubJoinPath } from "../../../src/lib/joinLink";
 import { shareJoinLink } from "../../../src/lib/shareJoin";
+import { toast } from "../../../src/lib/toast";
+import Sheet from "../../../src/components/Sheet";
+import MenuButton from "../../../src/components/MenuButton";
+import { LogoMark } from "../../../src/components/Logo";
 import { C, F } from "../../../src/theme";
 
 function winPct(p: PlayerStat): string {
@@ -16,6 +20,7 @@ export default function ClubDetail() {
   const router = useRouter();
   const [club, setClub] = useState<Club | null>(null);
   const [stats, setStats] = useState<SessionStats | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const reload = useCallback(async () => {
     if (!id) return;
@@ -25,10 +30,40 @@ export default function ClubDetail() {
   useFocusEffect(useCallback(() => { void reload(); }, [reload]));
 
   const isAdmin = club?.role === "owner" || club?.role === "admin";
+  // Owners only: deleting a club takes every member's history with it.
+  const isOwner = club?.role === "owner";
+
+  const onDeleteClub = async () => {
+    setConfirmingDelete(false);
+    if (!id) return;
+    try {
+      await deleteClub(id);
+      router.replace("/");
+    } catch (e) {
+      toast((e as Error).message || "Could not delete club", "error");
+    }
+  };
 
   if (!club) return <View style={s.center}><Text style={s.muted}>Club not found.</Text></View>;
 
   return (
+    <>
+      {/* The clubs stack sets a global headerRight (the logo); a per-screen
+          headerRight replaces it outright, so render both here. */}
+      <Stack.Screen
+        options={{
+          headerRight: isOwner
+            ? () => (
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <MenuButton
+                    actions={[{ label: "Delete club", destructive: true, onPress: () => setConfirmingDelete(true) }]}
+                  />
+                  <View style={{ paddingRight: 16 }}><LogoMark size={26} /></View>
+                </View>
+              )
+            : undefined,
+        }}
+      />
     <FlatList
       style={s.root}
       contentContainerStyle={s.content}
@@ -86,6 +121,17 @@ export default function ClubDetail() {
         </View>
       )}
     />
+      <Sheet
+        visible={confirmingDelete}
+        title="Delete club?"
+        message={`This permanently deletes "${club.name}" for every member, including its sessions, matches, and tournaments.`}
+        actions={[
+          { label: "Delete", onPress: onDeleteClub, destructive: true },
+          { label: "Cancel", onPress: () => setConfirmingDelete(false) },
+        ]}
+        onClose={() => setConfirmingDelete(false)}
+      />
+    </>
   );
 }
 

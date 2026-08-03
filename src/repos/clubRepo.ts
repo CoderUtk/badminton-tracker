@@ -94,6 +94,22 @@ export async function getClub(clubId: string): Promise<Club | null> {
   return (await db.getFirstAsync<Club>("select * from clubs_cache where id = ?", clubId)) ?? null;
 }
 
+/**
+ * Delete a club. Owners only (enforced by RLS in 0008_club_delete.sql). The
+ * .select() and row-count check are load-bearing: a policy-blocked delete
+ * returns success with zero rows, so without this the caller would report a
+ * delete that never happened.
+ */
+export async function deleteClub(id: string): Promise<void> {
+  if (!supabase) throw new Error("Sign in to delete a club");
+  const { data, error } = await supabase.from("clubs").delete().eq("id", id).select();
+  if (error) throw new Error(error.message);
+  if (!data || data.length === 0) throw new Error("Could not delete club");
+  const db = await getDb();
+  await db?.runAsync("delete from clubs_cache where id = ?", id);
+  await db?.runAsync("delete from club_players_cache where club_id = ?", id);
+}
+
 export async function listPlayers(clubId: string): Promise<ClubPlayer[]> {
   const db = await getDb();
   if (!db) return [];

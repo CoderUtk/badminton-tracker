@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { Pressable, Text, View } from "react-native";
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
   deleteTournament, finishBracketMatch, getTournament, startBracketMatch,
 } from "../../../src/repos/tournamentRepo";
@@ -11,6 +11,7 @@ import type { BracketMatch, Entrant } from "../../../src/tournament/types";
 import BracketView from "../../../src/components/BracketView";
 import Icon from "../../../src/components/Icon";
 import Sheet from "../../../src/components/Sheet";
+import MenuButton from "../../../src/components/MenuButton";
 import { buildTournamentJoinPath } from "../../../src/lib/joinLink";
 import { shareJoinLink } from "../../../src/lib/shareJoin";
 import { toast } from "../../../src/lib/toast";
@@ -98,6 +99,17 @@ export default function TournamentBracket() {
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg, padding: 12 }}>
+      <Stack.Screen
+        options={{
+          headerRight: isAdmin
+            ? () => (
+                <MenuButton
+                  actions={[{ label: "Delete tournament", destructive: true, onPress: () => setConfirmingDelete(true) }]}
+                />
+              )
+            : undefined,
+        }}
+      />
       {title ? <Text style={{ color: C.text, fontFamily: F.bold, fontSize: 18, marginBottom: 4 }}>{title}</Text> : null}
       {champName ? (
         <Text style={{ color: C.red, fontFamily: F.semibold, marginBottom: 8 }}>🏆 Champion: {champName}</Text>
@@ -125,13 +137,6 @@ export default function TournamentBracket() {
           >
             <Icon name="cog" color={C.text} size={18} />
             <Text style={{ color: C.text, fontSize: 16, fontWeight: "700" }}>Live Ops Dashboard</Text>
-          </Pressable>
-          <Pressable
-            style={{ flexDirection: "row", gap: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 12, minHeight: 52, alignItems: "center", justifyContent: "center", marginTop: 12 }}
-            onPress={() => setConfirmingDelete(true)}
-          >
-            <Icon name="trash-outline" color={C.red} size={18} />
-            <Text style={{ color: C.red, fontSize: 16, fontWeight: "700" }}>Delete tournament</Text>
           </Pressable>
         </>
       )}
