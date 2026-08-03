@@ -2,6 +2,7 @@ import { Platform } from "react-native";
 import type { SQLiteDatabase } from "expo-sqlite";
 import { TOURNAMENT_DDL, TOURNAMENT_ALTER_DDL } from "./schema";
 import { SETTINGS_DDL } from "./settings";
+import { captureError } from "../lib/observability";
 
 const MIGRATIONS = [
   `create table if not exists matches (
@@ -93,6 +94,7 @@ async function openAndMigrate(): Promise<SQLiteDatabase> {
         try {
           await db.execAsync(statement);
         } catch (e) {
+          captureError(e, { area: "db" });
           throw new Error(
             `migration ${v} failed on "${statement.slice(0, 120)}": ${(e as Error).message}`,
           );

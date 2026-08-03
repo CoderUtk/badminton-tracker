@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import { getDb } from "../db/db";
 import { pushAll, SyncStore, SyncClient } from "./sync";
 import { refreshClubs } from "../repos/clubRepo";
+import { captureError } from "../lib/observability";
 
 let running = false;
 
@@ -46,6 +47,9 @@ export async function syncNow(): Promise<void> {
     };
     await pushAll(store, client, user.id);
     await refreshClubs();
+  } catch (e) {
+    captureError(e, { area: "sync" });
+    throw e;
   } finally {
     running = false;
   }

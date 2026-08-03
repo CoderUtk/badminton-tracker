@@ -17,7 +17,8 @@ import AnimatedSplash from "../src/components/AnimatedSplash";
 import Toaster from "../src/components/Toaster";
 import { consumePendingLink, setPendingLink } from "../src/lib/pendingLink";
 import { parseJoinTarget } from "../src/lib/joinLink";
-import { initObservability } from "../src/lib/observability";
+import * as Sentry from "@sentry/react-native";
+import { initObservability, sentryEnabled } from "../src/lib/observability";
 import { C } from "../src/theme";
 
 // Keep the native splash up until the JS animated splash takes over.
@@ -77,7 +78,7 @@ function Gate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-export default function RootLayout() {
+function RootLayout() {
   const [splashDone, setSplashDone] = useState(false);
   const [fontsLoaded] = useFonts({
     RussoOne_400Regular,
@@ -124,3 +125,8 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+// Sentry.wrap adds an error boundary (with component stacks) around the root
+// component. Only wrap when Sentry is actually enabled — never let an
+// uninitialized SDK sit between React and the app.
+export default sentryEnabled() ? Sentry.wrap(RootLayout) : RootLayout;
