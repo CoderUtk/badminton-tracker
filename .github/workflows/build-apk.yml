@@ -29,12 +29,12 @@ jobs:
           echo "EXPO_PUBLIC_SUPABASE_URL=${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}" >> .env
           echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}" >> .env
 
+      - name: Generate native android project
+        run: npx expo prebuild --platform android --no-install
+
       - name: Setup upload keystore
         run: |
           echo "${{ secrets.UPLOAD_KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload.keystore
-
-      - name: Generate native android project
-        run: npx expo prebuild --platform android --no-install
 
       - name: Build release APK
         working-directory: android
