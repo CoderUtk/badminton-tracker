@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS tournament_entrants (
 CREATE TABLE IF NOT EXISTS bracket_matches (
   id TEXT PRIMARY KEY, tournament_id TEXT NOT NULL, round INTEGER NOT NULL,
   idx INTEGER NOT NULL, match_id TEXT, entrant_a TEXT, entrant_b TEXT,
-  winner_entrant TEXT
+  winner_entrant TEXT, court TEXT, scored_by TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_bracket_tournament ON bracket_matches(tournament_id);
 CREATE INDEX IF NOT EXISTS idx_entrants_tournament ON tournament_entrants(tournament_id);
@@ -28,4 +28,6 @@ ALTER TABLE tournaments ADD COLUMN match_type TEXT NOT NULL DEFAULT 'singles';
 ALTER TABLE tournaments ADD COLUMN bestof INTEGER NOT NULL DEFAULT 3;
 ALTER TABLE tournaments ADD COLUMN finals_bestof INTEGER NOT NULL DEFAULT 3;
 ALTER TABLE tournament_entrants ADD COLUMN club_player_id_2 TEXT;
+ALTER TABLE bracket_matches ADD COLUMN court TEXT;
+ALTER TABLE bracket_matches ADD COLUMN scored_by TEXT;
 `;

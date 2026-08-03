@@ -234,3 +234,17 @@ export async function finishBracketMatch(bracketMatchId: string, winnerEntrant: 
   });
   if (error) throw new Error(error.message);
 }
+
+/** Assign a court to a match before or while it runs. Null clears it. */
+export async function assignBracketMatchCourt(bracketMatchId: string, court: string | null): Promise<void> {
+  if (!supabase) throw new Error("Sign in to assign a court");
+  const { error } = await supabase.from("bracket_matches").update({ court }).eq("id", bracketMatchId);
+  if (error) throw new Error(error.message);
+}
+
+/** Lock a match to a scorer. Scorer must be a tournament staff/admin or just profile_id. */
+export async function claimBracketMatch(bracketMatchId: string, profileId: string | null): Promise<void> {
+  if (!supabase) throw new Error("Sign in to claim a match");
+  const { error } = await supabase.from("bracket_matches").update({ scored_by: profileId }).eq("id", bracketMatchId);
+  if (error) throw new Error(error.message);
+}

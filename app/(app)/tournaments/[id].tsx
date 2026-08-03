@@ -107,6 +107,13 @@ export default function TournamentBracket() {
           </Pressable>
           <Pressable
             style={{ flexDirection: "row", gap: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 12, minHeight: 52, alignItems: "center", justifyContent: "center", marginTop: 12 }}
+            onPress={() => router.push(`/tournaments/ops/${id}`)}
+          >
+            <Icon name="cog" color={C.text} size={18} />
+            <Text style={{ color: C.text, fontSize: 16, fontWeight: "700" }}>Live Ops Dashboard</Text>
+          </Pressable>
+          <Pressable
+            style={{ flexDirection: "row", gap: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 12, minHeight: 52, alignItems: "center", justifyContent: "center", marginTop: 12 }}
             onPress={() => setConfirmingDelete(true)}
           >
             <Icon name="trash-outline" color={C.red} size={18} />
