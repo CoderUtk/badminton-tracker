@@ -1,28 +1,32 @@
 import { useEffect, useState } from "react";
 import { FlatList, Text, TouchableOpacity, View } from "react-native";
-import { router } from "expo-router";
-import { getRealtimeBackend } from "../../../src/realtime";
-import type { LiveMatch } from "../../../src/realtime/backend";
-import { listClubs } from "../../../src/repos/clubRepo";
-import { C, F } from "../../../src/theme";
+import { router, useLocalSearchParams } from "expo-router";
+import { getRealtimeBackend } from "../../../../src/realtime";
+import type { LiveMatch } from "../../../../src/realtime/backend";
+import { C, F } from "../../../../src/theme";
 
-export default function WatchList() {
+/**
+ * Live matches for one club. The club id comes from the route: an earlier
+ * version guessed it with `clubs[0]`, so it only ever watched the user's first
+ * club and subscribed to "" when they had none.
+ */
+export default function ClubLive() {
+  const { id } = useLocalSearchParams<{ id: string }>();
   const [items, setItems] = useState<LiveMatch[]>([]);
 
   useEffect(() => {
+    if (!id) return;
     let off = () => {};
     let cancelled = false;
     (async () => {
-      const clubs = await listClubs();
-      const clubId = clubs[0]?.id ?? "";
       const rt = getRealtimeBackend();
-      const initial = await rt.listLiveMatches(clubId);
+      const initial = await rt.listLiveMatches(id);
       if (cancelled) return;
       setItems(initial);
-      off = rt.onLiveMatchesChange(clubId, setItems);
+      off = rt.onLiveMatchesChange(id, setItems);
     })();
     return () => { cancelled = true; off(); };
-  }, []);
+  }, [id]);
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg, padding: 16 }}>

@@ -1,7 +1,7 @@
 import { Stack } from "expo-router";
 import { C } from "../../../src/theme";
 
-export const unstable_settings = { initialRouteName: "index" };
+export const unstable_settings = { initialRouteName: "[matchId]" };
 
 export default function WatchLayout() {
   return (
@@ -12,7 +12,6 @@ export default function WatchLayout() {
         contentStyle: { backgroundColor: C.bg },
       }}
     >
-      <Stack.Screen name="index" options={{ title: "Live matches" }} />
       <Stack.Screen name="[matchId]" options={{ title: "Live" }} />
     </Stack>
   );

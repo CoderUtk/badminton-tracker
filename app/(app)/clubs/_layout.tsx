@@ -24,6 +24,7 @@ export default function ClubsLayout() {
     >
       <Stack.Screen name="[id]" options={{ title: "Club" }} />
       <Stack.Screen name="requests/[clubId]" options={{ title: "Pending requests" }} />
+      <Stack.Screen name="[id]/live" options={{ title: "Live matches" }} />
     </Stack>
   );
 }

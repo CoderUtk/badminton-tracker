@@ -54,6 +54,9 @@ export default function ClubDetail() {
             >
               <Text style={s.secondaryText}>Share join link</Text>
             </Pressable>
+            <Pressable style={s.secondary} onPress={() => router.push(`/(app)/clubs/${club.id}/live`)}>
+              <Text style={s.secondaryText}>Live now</Text>
+            </Pressable>
             {isAdmin ? (
               <Pressable
                 style={s.secondary}
