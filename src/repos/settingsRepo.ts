@@ -4,6 +4,10 @@ import { getDb } from "../db/db";
 // follows the account across devices.
 export const ONBOARDING_SEEN_KEY = "onboarding_seen";
 
+// "1" when the user has opted in to local inactivity reminder notifications
+// (see src/lib/reminders.ts); absent/anything else means off.
+export const REMINDERS_KEY = "reminders_on";
+
 export async function getSetting(key: string): Promise<string | null> {
   const db = await getDb();
   if (!db) return null;

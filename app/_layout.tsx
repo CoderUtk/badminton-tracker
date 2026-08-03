@@ -14,6 +14,7 @@ import {
 import { SessionProvider, useSession } from "../src/stores/session";
 import { getMyProfile, subscribeProfile } from "../src/repos/profileRepo";
 import { startSyncListener } from "../src/sync/runner";
+import { scheduleInactivityReminder } from "../src/lib/reminders";
 import AnimatedSplash from "../src/components/AnimatedSplash";
 import Toaster from "../src/components/Toaster";
 import { consumePendingLink, setPendingLink } from "../src/lib/pendingLink";
@@ -106,6 +107,9 @@ function RootLayout() {
     ChakraPetch_700Bold,
   });
   useEffect(() => startSyncListener(), []);
+  // Pushes the 7-day inactivity-reminder clock forward on every app open;
+  // no-ops if the setting is off, permission isn't granted, or on web.
+  useEffect(() => { void scheduleInactivityReminder(); }, []);
   useEffect(() => {
     // Hand off from the native splash to the animated one only once the gaming
     // fonts are ready, so no text flashes in a fallback face.

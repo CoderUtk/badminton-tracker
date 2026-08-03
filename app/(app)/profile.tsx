@@ -11,6 +11,8 @@ import Icon from "../../src/components/Icon";
 import FormScreen from "../../src/components/FormScreen";
 import BadgeGrid from "../../src/components/BadgeGrid";
 import { evaluateBadges } from "../../src/achievements/rules";
+import { getSetting, setSetting, REMINDERS_KEY } from "../../src/repos/settingsRepo";
+import { scheduleInactivityReminder, cancelReminders } from "../../src/lib/reminders";
 import { C, F, glow } from "../../src/theme";
 
 export default function Profile() {
@@ -20,6 +22,7 @@ export default function Profile() {
   const [a, setA] = useState<PlayerAnalytics | null>(null);
   const [displayName, setDisplayName] = useState<string>("");
   const [savedName, setSavedName] = useState<string>("");
+  const [remindersOn, setRemindersOn] = useState(false);
 
   useEffect(() => {
     void getMyProfile().then((p) => {
@@ -28,6 +31,18 @@ export default function Profile() {
       setSavedName(name);
     });
   }, []);
+
+  useEffect(() => {
+    void getSetting(REMINDERS_KEY).then((v) => setRemindersOn(v === "1"));
+  }, []);
+
+  const toggleReminders = () => {
+    const next = !remindersOn;
+    setRemindersOn(next);
+    void setSetting(REMINDERS_KEY, next ? "1" : "0").then(() =>
+      next ? scheduleInactivityReminder() : cancelReminders(),
+    );
+  };
 
   const nameError = validateName(displayName, "Display name");
 
@@ -158,6 +173,26 @@ export default function Profile() {
         )
       )}
 
+      {/* Local inactivity reminders */}
+      <View style={s.card}>
+        <View style={s.reminderRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={s.cardTitle}>Play reminders</Text>
+            <Text style={s.reminderSub}>A nudge on your device if you haven't played in a while.</Text>
+          </View>
+          <Pressable
+            style={[s.toggleChip, remindersOn && s.toggleChipOn]}
+            onPress={toggleReminders}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: remindersOn }}
+          >
+            <Text style={[s.toggleChipText, remindersOn && s.toggleChipTextOn]}>
+              {remindersOn ? "ON" : "OFF"}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+
       {session && (
         <Pressable style={s.signOut} onPress={() => supabase?.auth.signOut()}>
           <Icon name="log-out-outline" color={C.red} size={18} />
@@ -218,6 +253,12 @@ const s = StyleSheet.create({
   resultText: { color: C.bg, fontWeight: "900", fontSize: 14 },
   matchOpp: { color: C.text, fontSize: 15, fontWeight: "700" },
   matchMeta: { color: C.text2, fontSize: 13, marginTop: 1, fontVariant: ["tabular-nums"] },
+  reminderRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  reminderSub: { color: C.text2, fontSize: 12.5, marginTop: 2, fontFamily: F.body },
+  toggleChip: { backgroundColor: C.bgElev, borderRadius: 999, borderWidth: 1, borderColor: C.line, paddingHorizontal: 16, paddingVertical: 8, minWidth: 56, alignItems: "center" },
+  toggleChipOn: { backgroundColor: C.red, borderColor: C.red },
+  toggleChipText: { color: C.text2, fontFamily: F.semibold, fontSize: 13 },
+  toggleChipTextOn: { color: C.text },
   emptyCard: { backgroundColor: C.card, borderRadius: 14, padding: 22, alignItems: "center", gap: 10, borderWidth: 1, borderColor: C.line },
   emptyText: { color: C.text2, fontSize: 15, textAlign: "center" },
   startBtn: { flexDirection: "row", gap: 8, backgroundColor: C.red, borderRadius: 12, paddingHorizontal: 20, minHeight: 46, alignItems: "center", justifyContent: "center" },
