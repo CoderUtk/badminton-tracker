@@ -77,3 +77,12 @@ graphify-out/
 
 # Superpowers SDD scratch (ledger, briefs, review packages)
 .superpowers/
+
+# Agent tooling scaffolding (local only)
+.agent/
+
+# Signing material. The upload keystore reaches CI through the
+# UPLOAD_KEYSTORE_BASE64 repo secret — it must never be committed again.
+keystore.txt
+*.keystore
+*.jks
