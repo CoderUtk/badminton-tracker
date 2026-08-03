@@ -1,5 +1,4 @@
 import { supabase } from "../lib/supabase";
-import { refreshTournaments } from "./tournamentRepo";
 
 export type TournamentPreview = { id: string; name: string; maxEntrants: number; entrantCount: number };
 export type RequestOutcome = "member" | "pending" | "denied";

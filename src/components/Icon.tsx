@@ -21,7 +21,8 @@ export type IconName =
   // Ionicons
   | "home" | "home-outline"
   | "calendar" | "calendar-outline"
-  | "person" | "person-outline"
+  | "person" | "person-outline" | "person-add"
+  | "cog"
   | "people-outline"
   | "play" | "pause" | "stop" | "flag"
   | "time-outline"

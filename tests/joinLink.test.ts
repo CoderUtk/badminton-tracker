@@ -20,8 +20,14 @@ test("ignores query strings and trailing slashes", () => {
 test("returns null for unrelated or malformed links", () => {
   expect(parseJoinTarget("badminton://score/123")).toBeNull();
   expect(parseJoinTarget("badminton://join/club/")).toBeNull();
-  expect(parseJoinTarget("badminton://join/tournament/1")).toBeNull();
+  expect(parseJoinTarget("badminton://join/tournament/")).toBeNull();
   expect(parseJoinTarget("")).toBeNull();
+});
+
+test("parses a tournament join link", () => {
+  expect(parseJoinTarget("badminton://join/tournament/t-1")).toEqual({ kind: "tournament", id: "t-1" });
+  expect(parseJoinTarget("https://join.example.com/tournament/t-1")).toEqual({ kind: "tournament", id: "t-1" });
+  expect(parseJoinTarget("join/tournament/[id]")).toBeNull();
 });
 
 test("parses an https link served from a join subdomain", () => {
