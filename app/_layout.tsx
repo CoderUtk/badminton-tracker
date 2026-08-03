@@ -90,7 +90,7 @@ function Gate({ children }: { children: React.ReactNode }) {
     if (inAuth || inWelcome) {
       const path = consumePendingLink();
       const target = path ? parseJoinTarget(path) : null;
-      router.replace(target ? `/join/club/${target.id}` : "/");
+      router.replace(target ? `/join/${target.kind}/${target.id}` : "/");
       return;
     }
   }, [session, loading, needsName, segments, router]);
@@ -149,6 +149,7 @@ function RootLayout() {
           <Stack.Screen name="(auth)/sign-in" options={{ headerShown: false }} />
           <Stack.Screen name="welcome" options={{ headerShown: false }} />
           <Stack.Screen name="join/club/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="join/tournament/[id]" options={{ headerShown: false }} />
           <Stack.Screen
             name="score/[matchId]"
             options={{ headerShown: false, presentation: "fullScreenModal", orientation: "all" }}
