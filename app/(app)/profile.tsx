@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { supabase } from "../../src/lib/supabase";
 import { useSession } from "../../src/stores/session";
@@ -24,6 +24,7 @@ export default function Profile() {
   const [savedName, setSavedName] = useState<string>("");
   const [remindersOn, setRemindersOn] = useState(false);
   const [remindersBusy, setRemindersBusy] = useState(false);
+  const [editingName, setEditingName] = useState(false);
 
   useEffect(() => {
     void getMyProfile().then((p) => {
@@ -59,16 +60,23 @@ export default function Profile() {
     }
   };
 
-  const nameError = validateName(displayName, "Display name");
+  const nameError = validateName(displayName, "Display name", { requireLetter: true });
 
   const saveDisplayName = () => {
     const v = displayName.trim();
     if (nameError) { toast(nameError, "error"); return; }
+    setEditingName(false);
+    // `me` derives from savedName and keys every analytics query, so a no-op
+    // rename must not trigger a write and a reload.
     if (v === savedName) return;
     void saveProfileName(v)
       .then(() => { setSavedName(v); toast("Name updated", "success"); })
       .catch((e: Error) => toast(e.message || "Could not save your name", "error"));
   };
+
+  // Abandoning the edit must not leave the draft in the field — the hero reads
+  // savedName, but the input is bound to displayName.
+  const cancelNameEdit = () => { setDisplayName(savedName); setEditingName(false); };
 
   // Stats/matches are keyed by the name recorded on club_players, which is the
   // profile's display name — not the raw auth metadata, which can diverge.
@@ -84,31 +92,51 @@ export default function Profile() {
   return (
     <FormScreen contentContainerStyle={s.content}>
       {/* Identity */}
+      {/* Tap the name to edit it. The name is set once at signup and rarely
+          changes, so a standing text field here just pushed the stats down. */}
       <View style={s.hero}>
         <View style={s.avatar}><Text style={s.avatarText}>{initial}</Text></View>
-        <View style={{ flex: 1 }}>
-          <Text style={s.name}>{me}</Text>
-          <Text style={s.sub}>{session?.user.email ?? ""}</Text>
-        </View>
+        <Pressable
+          onPress={() => { setDisplayName(savedName); setEditingName(true); }}
+          style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8 }}
+          accessibilityLabel="Edit display name"
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={s.name}>{me}</Text>
+            <Text style={s.sub}>{session?.user.email ?? ""}</Text>
+          </View>
+          <Icon name="create-outline" color={C.text2} size={18} />
+        </Pressable>
         <Icon name="badminton" color={C.red} size={30} />
       </View>
 
-      {/* Display name — stored on the profile, so it follows the account. */}
-      <View style={s.card}>
-        <Text style={s.cardTitle}>Display name</Text>
-        <TextInput
-          style={s.nameInput}
-          placeholder="Your name"
-          placeholderTextColor={C.text2}
-          value={displayName}
-          onChangeText={setDisplayName}
-          onBlur={saveDisplayName}
-          onSubmitEditing={saveDisplayName}
-          returnKeyType="done"
-          maxLength={60}
-        />
-        {nameError ? <Text style={s.err}>{nameError}</Text> : null}
-      </View>
+      <Modal visible={editingName} transparent animationType="fade" onRequestClose={cancelNameEdit}>
+        <Pressable style={s.modalBack} onPress={cancelNameEdit}>
+          <Pressable style={s.modalCard} onPress={(e) => e.stopPropagation()}>
+            <Text style={s.cardTitle}>Display name</Text>
+            <TextInput
+              style={s.nameInput}
+              placeholder="Your name"
+              placeholderTextColor={C.text2}
+              value={displayName}
+              onChangeText={setDisplayName}
+              onSubmitEditing={saveDisplayName}
+              returnKeyType="done"
+              autoFocus
+              maxLength={60}
+            />
+            {nameError ? <Text style={s.err}>{nameError}</Text> : null}
+            <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
+              <Pressable style={[s.modalBtn, s.modalCancel]} onPress={cancelNameEdit}>
+                <Text style={s.modalCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable style={[s.modalBtn, s.modalSave, !!nameError && { opacity: 0.5 }]} disabled={!!nameError} onPress={saveDisplayName}>
+                <Text style={s.modalSaveText}>Save</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* Headline stats */}
       <View style={s.statGrid}>
@@ -254,6 +282,13 @@ const s = StyleSheet.create({
   cardTitle: { color: C.text, fontSize: 15, fontWeight: "800" },
   nameInput: { backgroundColor: C.bgElev, color: C.text, borderRadius: 10, borderWidth: 1, borderColor: C.line, padding: 12, fontSize: 16 },
   err: { color: C.red, fontSize: 12.5, fontFamily: F.body },
+  modalBack: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center", padding: 24 },
+  modalCard: { width: "100%", backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.lineHi, padding: 18, gap: 10 },
+  modalBtn: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: "center" },
+  modalCancel: { backgroundColor: C.cardHi, borderWidth: 1, borderColor: C.line },
+  modalCancelText: { color: C.text2, fontFamily: F.semibold, fontSize: 16 },
+  modalSave: { backgroundColor: C.red },
+  modalSaveText: { color: C.text, fontFamily: F.semibold, fontSize: 16 },
   formRow: { flexDirection: "row", gap: 6 },
   formPill: { width: 30, height: 30, borderRadius: 8, alignItems: "center", justifyContent: "center" },
   pillW: { backgroundColor: C.green },
