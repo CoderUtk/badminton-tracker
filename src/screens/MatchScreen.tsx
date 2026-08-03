@@ -113,7 +113,7 @@ export default function MatchScreen({
   const centerBlock = (
     <View style={s.center}>
       {playing && (
-        <View style={s.bubble} pointerEvents="none">
+        <View style={[s.bubble, { backgroundColor: state.servingTeam === "A" ? C.red : C.blue }]} pointerEvents="none">
           <Text style={s.bubbleText}>{announcement(state)}</Text>
         </View>
       )}
@@ -196,7 +196,7 @@ export default function MatchScreen({
       </View>
       <View style={s.scoreRibbon}>
         <View style={[s.ribbonTeam, s.ribbonTeamA]}>
-          <View style={s.serveSlot}>{state.servingTeam === "A" && <View style={s.serveDot} />}</View>
+          <View style={s.serveSlot}>{state.servingTeam === "A" && <View style={[s.serveDot, { backgroundColor: C.red }]} />}</View>
           <Text style={[s.ribbonName, { color: C.red }]} numberOfLines={1}>{teamName("A")}</Text>
         </View>
         <Text style={[s.ribbonScore, { color: C.red }, textGlow(C.red, 16)]}>{state.score.A}</Text>
@@ -204,7 +204,7 @@ export default function MatchScreen({
         <Text style={[s.ribbonScore, { color: C.blue }, textGlow(C.blue, 16)]}>{state.score.B}</Text>
         <View style={[s.ribbonTeam, s.ribbonTeamB]}>
           <Text style={[s.ribbonName, { color: C.blue }]} numberOfLines={1}>{teamName("B")}</Text>
-          <View style={s.serveSlot}>{state.servingTeam === "B" && <View style={s.serveDot} />}</View>
+          <View style={s.serveSlot}>{state.servingTeam === "B" && <View style={[s.serveDot, { backgroundColor: C.blue }]} />}</View>
         </View>
       </View>
     </View>
@@ -282,7 +282,7 @@ const s = StyleSheet.create({
   ribbonName: { flexShrink: 1, fontSize: 15, fontFamily: F.semibold, letterSpacing: 0.3 },
   // Fixed-width slot so the serve dot appearing/disappearing never reflows names.
   serveSlot: { width: 8, alignItems: "center", flexShrink: 0 },
-  serveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: C.green },
+  serveDot: { width: 8, height: 8, borderRadius: 4 },
   ribbonScore: { minWidth: 42, color: C.text, fontSize: 32, fontFamily: F.display, textAlign: "center", fontVariant: ["tabular-nums"] },
   scoreDivider: { color: C.text3, fontSize: 20, marginHorizontal: 2 },
   body: { flex: 1, flexDirection: "row", gap: 8 },

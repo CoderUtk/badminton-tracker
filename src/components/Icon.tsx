@@ -27,10 +27,11 @@ export type IconName =
   | "play" | "pause" | "stop" | "flag"
   | "time-outline"
   | "arrow-undo" | "arrow-redo"
-  | "chevron-forward" | "add" | "close"
+  | "chevron-forward" | "chevron-back" | "add" | "close"
   | "log-out-outline" | "swap-horizontal" | "swap-vertical"
   | "share-social-outline" | "create-outline"
   | "ellipse" | "trash-outline"
+  | "information-circle-outline"
   // MaterialCommunityIcons
   | "badminton" | "trophy" | "trophy-outline"
   | "shuffle-variant" | "account-group" | "account-plus"

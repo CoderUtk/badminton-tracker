@@ -11,7 +11,7 @@ const icon = (name: IconName) =>
   };
 
 export const headerLogo = () => (
-  <View style={{ paddingRight: 16 }}>
+  <View style={{ paddingLeft: 16 }}>
     <LogoMark size={26} />
   </View>
 );
@@ -27,7 +27,7 @@ export default function AppTabs() {
         tabBarActiveTintColor: C.red,
         tabBarInactiveTintColor: C.text2,
         sceneStyle: { backgroundColor: C.bg },
-        headerRight: headerLogo,
+        headerLeft: headerLogo,
       }}
     >
       <Tabs.Screen name="index" options={{ title: "Home", tabBarIcon: icon("home") }} />

@@ -1,0 +1,4 @@
+app logo on the header should be on the left.
+
+1. In match screen. there is by default . team blue and team red.
+the serve indicator is also red. so red team has a visual advantage.. we should change this.

@@ -1,0 +1,1 @@
+1. When user logins with google account and is redirected back to app. it again lands on login page. but after few seconds automatically goes to the home page. 

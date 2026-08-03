@@ -1,14 +1,10 @@
-import React from "react";
 import { View } from "react-native";
 import { Stack } from "expo-router";
-import { LogoMark } from "../../../src/components/Logo";
+import HeaderLogoLeft from "../../../src/components/HeaderLogoLeft";
 import { C } from "../../../src/theme";
 
 export const unstable_settings = { initialRouteName: "index" };
 
-const headerLogo = () => (
-  <View style={{ paddingRight: 16 }}><LogoMark size={26} /></View>
-);
 
 export default function MatchesLayout() {
   return (
@@ -17,7 +13,7 @@ export default function MatchesLayout() {
         headerStyle: { backgroundColor: C.bg },
         headerTintColor: C.text,
         contentStyle: { backgroundColor: C.bg },
-        headerRight: headerLogo,
+        headerLeft: (props) => <HeaderLogoLeft {...props} />,
       }}
     >
       <Stack.Screen name="index" options={{ title: "Matches" }} />

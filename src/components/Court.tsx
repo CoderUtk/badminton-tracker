@@ -25,6 +25,8 @@ function Half({ state, team }: { state: MatchState; team: TeamId }) {
   const singles = state.config.matchType === "singles";
   const left = team === "A";
   const color = left ? C.red : C.blue;
+  // Use the SERVING team's color for serve highlights so neither team has a visual advantage.
+  const servingColor = state.servingTeam === "A" ? C.red : C.blue;
 
   // The row (top/bottom) of this team's right vs left service court.
   const rowOf = (court: "right" | "left"): "top" | "bottom" =>
@@ -58,9 +60,21 @@ function Half({ state, team }: { state: MatchState; team: TeamId }) {
         return (
           <View
             key={row}
-            style={[s.box, row === "top" && s.boxDivider, isServer && s.boxServing]}
+            style={[
+              s.box,
+              row === "top" && s.boxDivider,
+              isServer && [
+                s.boxServing,
+                {
+                  borderColor: servingColor,
+                  backgroundColor: servingColor === C.red
+                    ? "rgba(255,59,48,0.12)"
+                    : "rgba(59,130,246,0.12)",
+                },
+              ],
+            ]}
           >
-            {isServer && <View style={s.dot} />}
+            {isServer && <View style={[s.dot, { backgroundColor: servingColor, shadowColor: servingColor }]} />}
             {idx !== null && (
               <View style={s.player}>
                 <Icon name="person" color={color} size={15} />
@@ -102,14 +116,13 @@ const s = StyleSheet.create({
   boxDivider: { borderBottomWidth: 1, borderColor: LINE },
   boxServing: {
     borderWidth: 1.5,
-    borderColor: C.red,
-    backgroundColor: "rgba(255,59,48,0.10)",
+    // borderColor and backgroundColor are overridden dynamically per serving team
   },
   dot: {
     position: "absolute", top: 10, right: 10,
     width: 14, height: 14, borderRadius: 7,
-    backgroundColor: C.red,
-    shadowColor: C.red, shadowOpacity: 0.9, shadowRadius: 6, elevation: 4,
+    // backgroundColor and shadowColor are overridden dynamically per serving team
+    shadowOpacity: 0.9, shadowRadius: 6, elevation: 4,
   },
   player: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 6 },
   name: { fontSize: 16, fontWeight: "700", flexShrink: 1 },

@@ -8,7 +8,7 @@ import { shareJoinLink } from "../../../src/lib/shareJoin";
 import { toast } from "../../../src/lib/toast";
 import Sheet from "../../../src/components/Sheet";
 import MenuButton from "../../../src/components/MenuButton";
-import { LogoMark } from "../../../src/components/Logo";
+import HeaderLogoLeft from "../../../src/components/HeaderLogoLeft";
 import { C, F } from "../../../src/theme";
 
 function winPct(p: PlayerStat): string {
@@ -49,18 +49,14 @@ export default function ClubDetail() {
 
   return (
     <>
-      {/* The clubs stack sets a global headerRight (the logo); a per-screen
-          headerRight replaces it outright, so render both here. */}
+      {/* Logo lives in headerLeft; owner screens additionally get a menu button in headerRight. */}
       <Stack.Screen
         options={{
+          headerLeft: isOwner
+            ? (props) => <HeaderLogoLeft {...props} />
+            : undefined,
           headerRight: isOwner
-            ? () => (
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
-                  {/* Trigger only — the menu Sheet is mounted in the body. */}
-                  <MenuButton onPress={() => setMenuOpen(true)} />
-                  <View style={{ paddingRight: 16 }}><LogoMark size={26} /></View>
-                </View>
-              )
+            ? () => <MenuButton onPress={() => setMenuOpen(true)} />
             : undefined,
         }}
       />

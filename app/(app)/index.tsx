@@ -19,6 +19,7 @@ export default function Home() {
   const [inviteCode, setInviteCode] = useState("");
   const [nameTouched, setNameTouched] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [showInlineCreate, setShowInlineCreate] = useState(false);
 
   const nameError = validateName(name, "Club name");
 
@@ -73,14 +74,56 @@ export default function Home() {
         </LinearGradient>
       </Pressable>
 
-      <Text style={s.h}>Your clubs</Text>
+      <View style={s.sectionRow}>
+        <Text style={s.h}>Your clubs</Text>
+        {clubs.length > 0 && (
+          <Pressable
+            style={({ pressed }) => [s.plusBtn, pressed && press]}
+            onPress={() => setShowInlineCreate((v) => !v)}
+            accessibilityLabel="Create a new club"
+          >
+            <Icon name="add" color={C.text} size={18} />
+          </Pressable>
+        )}
+      </View>
+      {/* Compact inline create form — visible only when '+' is tapped and clubs exist */}
+      {showInlineCreate && clubs.length > 0 && (
+        <View style={s.inlineCreate}>
+          <View style={s.row}>
+            <TextInput
+              style={s.input} placeholder="New club name" placeholderTextColor={C.text2}
+              value={name} onChangeText={setName} onBlur={() => setNameTouched(true)}
+            />
+            <Pressable style={({ pressed }) => [s.btn, pressed && press, !!nameError && s.btnOff]} disabled={!!nameError} onPress={onCreate}>
+              <Icon name="add" color={C.text} size={18} />
+              <Text style={s.btnText}>Create</Text>
+            </Pressable>
+          </View>
+          {nameTouched && nameError ? <Text style={s.err}>{nameError}</Text> : null}
+        </View>
+      )}
       <FlatList
         data={clubs}
         keyExtractor={(c) => c.id}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: 24 }}
         ListEmptyComponent={
-          <Text style={s.empty}>No clubs yet. Create one below or join with an invite code.</Text>
+          <View>
+            <Text style={s.empty}>No clubs yet. Create one below or join with an invite code.</Text>
+            <View style={s.forms}>
+              <View style={s.row}>
+                <TextInput
+                  style={s.input} placeholder="New club name" placeholderTextColor={C.text2}
+                  value={name} onChangeText={setName} onBlur={() => setNameTouched(true)}
+                />
+                <Pressable style={({ pressed }) => [s.btn, pressed && press, !!nameError && s.btnOff]} disabled={!!nameError} onPress={onCreate}>
+                  <Icon name="add" color={C.text} size={18} />
+                  <Text style={s.btnText}>Create</Text>
+                </Pressable>
+              </View>
+              {nameTouched && nameError ? <Text style={s.err}>{nameError}</Text> : null}
+            </View>
+          </View>
         }
         renderItem={({ item }) => (
           <Pressable style={({ pressed }) => [s.club, pressed && press]} onPress={() => router.push(`/(app)/clubs/${item.id}`)}>
@@ -99,17 +142,6 @@ export default function Home() {
         )}
         ListFooterComponent={
           <View style={s.forms}>
-            <View style={s.row}>
-              <TextInput
-                style={s.input} placeholder="New club name" placeholderTextColor={C.text2}
-                value={name} onChangeText={setName} onBlur={() => setNameTouched(true)}
-              />
-              <Pressable style={({ pressed }) => [s.btn, pressed && press, !!nameError && s.btnOff]} disabled={!!nameError} onPress={onCreate}>
-                <Icon name="add" color={C.text} size={18} />
-                <Text style={s.btnText}>Create</Text>
-              </Pressable>
-            </View>
-            {nameTouched && nameError ? <Text style={s.err}>{nameError}</Text> : null}
             <View style={s.row}>
               <TextInput
                 style={s.input} placeholder="Invite code" placeholderTextColor={C.text2}
@@ -134,7 +166,13 @@ const s = StyleSheet.create({
   ctaWrap: { borderRadius: 16, ...glow(C.red, 18, 0.5) },
   cta: { flexDirection: "row", gap: 10, borderRadius: 16, minHeight: 62, alignItems: "center", justifyContent: "center" },
   ctaText: { color: C.text, fontSize: 19, fontFamily: F.display, letterSpacing: 1 },
-  h: { color: C.text, fontSize: 17, fontFamily: F.bold, letterSpacing: 0.4, marginTop: 6 },
+  h: { color: C.text, fontSize: 17, fontFamily: F.bold, letterSpacing: 0.4 },
+  sectionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 6 },
+  plusBtn: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: C.red, alignItems: "center", justifyContent: "center",
+  },
+  inlineCreate: { gap: 4 },
   empty: { color: C.text2, fontSize: 15, paddingVertical: 12 },
   club: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: C.card, borderRadius: 12, padding: 14, marginBottom: 8 },
   clubIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,59,48,0.12)", alignItems: "center", justifyContent: "center" },

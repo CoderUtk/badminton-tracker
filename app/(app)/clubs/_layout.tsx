@@ -1,12 +1,8 @@
-import React from "react";
 import { View } from "react-native";
 import { Stack } from "expo-router";
-import { LogoMark } from "../../../src/components/Logo";
+import HeaderLogoLeft from "../../../src/components/HeaderLogoLeft";
 import { C } from "../../../src/theme";
 
-const headerLogo = () => (
-  <View style={{ paddingRight: 16 }}><LogoMark size={26} /></View>
-);
 
 // Clubs are opened from Home; this isolated stack means back returns to Home
 // rather than jumping between tabs.
@@ -19,7 +15,7 @@ export default function ClubsLayout() {
         headerStyle: { backgroundColor: C.bg },
         headerTintColor: C.text,
         contentStyle: { backgroundColor: C.bg },
-        headerRight: headerLogo,
+        headerLeft: (props) => <HeaderLogoLeft {...props} />,
       }}
     >
       <Stack.Screen name="[id]" options={{ title: "Club" }} />

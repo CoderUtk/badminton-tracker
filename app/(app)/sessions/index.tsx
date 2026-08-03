@@ -4,6 +4,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { listSessions, type ClubSession } from "../../../src/repos/sessionRepo";
 import Icon from "../../../src/components/Icon";
 import { C } from "../../../src/theme";
+import { useHasRealClubs } from "../../../src/hooks/useHasRealClubs";
 
 const STATUS_COLOR: Record<ClubSession["status"], string> = {
   scheduled: C.amber,
@@ -26,13 +27,26 @@ export default function Sessions() {
   const [sessions, setSessions] = useState<ClubSession[]>([]);
   const reload = useCallback(() => void listSessions().then(setSessions), []);
   useFocusEffect(reload);
+  const hasRealClubs = useHasRealClubs();
 
   return (
     <View style={s.root}>
-      <Pressable style={s.cta} onPress={() => router.push("/new-session")}>
-        <Icon name="add" color={C.text} size={20} />
-        <Text style={s.ctaText}>Plan a session</Text>
-      </Pressable>
+      {hasRealClubs ? (
+        <Pressable style={s.cta} onPress={() => router.push("/new-session")}>
+          <Icon name="add" color={C.text} size={20} />
+          <Text style={s.ctaText}>Plan a session</Text>
+        </Pressable>
+      ) : (
+        <View style={s.explanatory}>
+          <Icon name="information-circle-outline" color={C.text2} size={20} />
+          <Text style={s.explanatoryText}>
+            Join a club to plan sessions.{" "}
+            <Text style={s.explanatoryLink} onPress={() => router.push("/(app)")}>
+              Go to Home
+            </Text>
+          </Text>
+        </View>
+      )}
       <FlatList
         data={sessions}
         keyExtractor={(item) => item.id}
@@ -63,6 +77,28 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg, padding: 16, gap: 14 },
   cta: { flexDirection: "row", gap: 8, minHeight: 56, alignItems: "center", justifyContent: "center", backgroundColor: C.red, borderRadius: 14 },
   ctaText: { color: C.text, fontSize: 18, fontWeight: "800" },
+  explanatory: {
+    flexDirection: "row",
+    gap: 8,
+    minHeight: 56,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: C.card,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: C.line,
+  },
+  explanatoryText: {
+    color: C.text2,
+    fontSize: 16,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  explanatoryLink: {
+    color: C.accent,
+    textDecorationLine: "underline",
+    fontWeight: "700",
+  },
   list: { gap: 10 },
   emptyWrap: { flexGrow: 1, justifyContent: "center" },
   empty: { color: C.text2, fontSize: 16, lineHeight: 24, textAlign: "center", padding: 28 },
