@@ -6,23 +6,31 @@ export function sentryEnabled(dsn: string | undefined = DSN): boolean {
   return typeof dsn === "string" && dsn.length > 0;
 }
 
+type ScrubbableEvent = { user?: { id?: unknown; [key: string]: unknown } };
+
+/** Strip PII from an event before it leaves the device. Exported so the
+ * privacy contract this function enforces is independently testable. */
+export function scrubEvent<T extends ScrubbableEvent>(event: T): T {
+  if (event.user) event.user = { id: event.user.id } as T["user"];
+  return event;
+}
+
 let started = false;
 export function initObservability(): void {
   if (started || !sentryEnabled()) return;
   started = true;
   Sentry.init({
     dsn: DSN,
-    tracesSampleRate: 0.1,
     // Strip PII: drop usernames/emails and request/user data before send.
     beforeSend(event) {
-      if (event.user) event.user = { id: event.user.id };
-      return event;
+      return scrubEvent(event);
     },
+    beforeBreadcrumb: (breadcrumb) => (breadcrumb.category === "console" ? null : breadcrumb),
     sendDefaultPii: false,
   });
 }
 
-export function captureError(e: unknown, context?: Record<string, string>): void {
+export function captureError(e: unknown, tags?: Record<string, string>): void {
   if (!sentryEnabled()) return;
-  Sentry.captureException(e, context ? { tags: context } : undefined);
+  Sentry.captureException(e, tags ? { tags } : undefined);
 }

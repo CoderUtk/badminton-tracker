@@ -1,5 +1,6 @@
 import "react-native-gesture-handler";
 import React, { useEffect, useState } from "react";
+import { Pressable, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Stack, usePathname, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -19,11 +20,28 @@ import { consumePendingLink, setPendingLink } from "../src/lib/pendingLink";
 import { parseJoinTarget } from "../src/lib/joinLink";
 import * as Sentry from "@sentry/react-native";
 import { initObservability, sentryEnabled } from "../src/lib/observability";
-import { C } from "../src/theme";
+import { C, F } from "../src/theme";
 
 // Keep the native splash up until the JS animated splash takes over.
 void SplashScreen.preventAutoHideAsync();
 initObservability();
+
+function CrashFallback({ resetError }: { resetError: () => void }) {
+  return (
+    <View style={{ flex: 1, backgroundColor: C.bg, alignItems: "center", justifyContent: "center", padding: 24, gap: 16 }}>
+      <Text style={{ color: C.text, fontFamily: F.display, fontSize: 20 }}>Something went wrong</Text>
+      <Text style={{ color: C.text2, fontFamily: F.body, fontSize: 14, textAlign: "center" }}>
+        The app hit an unexpected error. Tap below to try again.
+      </Text>
+      <Pressable
+        onPress={resetError}
+        style={{ backgroundColor: C.red, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 14 }}
+      >
+        <Text style={{ color: C.text, fontFamily: F.semibold, fontSize: 15 }}>Try again</Text>
+      </Pressable>
+    </View>
+  );
+}
 
 function Gate({ children }: { children: React.ReactNode }) {
   const { session, loading } = useSession();
@@ -131,7 +149,13 @@ function RootLayout() {
   // version, not an error boundary. Only wrap when Sentry is actually
   // enabled — when disabled, render the tree with no wrapper at all, exactly
   // as before this file used Sentry.
-  return sentryEnabled() ? <Sentry.ErrorBoundary>{tree}</Sentry.ErrorBoundary> : tree;
+  return sentryEnabled() ? (
+    <Sentry.ErrorBoundary fallback={({ resetError }) => <CrashFallback resetError={resetError} />}>
+      {tree}
+    </Sentry.ErrorBoundary>
+  ) : (
+    tree
+  );
 }
 
 export default RootLayout;

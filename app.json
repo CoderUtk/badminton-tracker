@@ -43,13 +43,7 @@
       "expo-secure-store",
       "expo-web-browser",
       "expo-font",
-      [
-        "@sentry/react-native/expo",
-        {
-          "organization": "TODO_SENTRY_ORG",
-          "project": "TODO_SENTRY_PROJECT"
-        }
-      ]
+      "@sentry/react-native/expo"
     ],
     "extra": {
       "router": {},
