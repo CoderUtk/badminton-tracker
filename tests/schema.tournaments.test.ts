@@ -1,4 +1,4 @@
-import { TOURNAMENT_DDL, TOURNAMENT_ALTER_DDL, TOURNAMENT_COURTS_DDL } from "../src/db/schema";
+import { TOURNAMENT_DDL, TOURNAMENT_ALTER_DDL, TOURNAMENT_COURTS_DDL, CLUBS_PERSONAL_DDL } from "../src/db/schema";
 test("tournament DDL declares the three tables", () => {
   expect(TOURNAMENT_DDL).toMatch(/CREATE TABLE IF NOT EXISTS tournaments/);
   expect(TOURNAMENT_DDL).toMatch(/CREATE TABLE IF NOT EXISTS tournament_entrants/);
@@ -43,4 +43,8 @@ test("no column is declared in both the CREATE TABLE and the ALTER list", () => 
   )) {
     expect(created.get(table) ?? []).not.toContain(column);
   }
+});
+
+test("the personal flag ships as its own migration", () => {
+  expect(CLUBS_PERSONAL_DDL).toMatch(/ALTER TABLE clubs_cache ADD COLUMN personal/);
 });

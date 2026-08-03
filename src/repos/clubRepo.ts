@@ -7,6 +7,7 @@ export interface Club {
   name: string;
   invite_code: string | null;
   role: string | null;
+  personal: boolean;
 }
 
 export interface ClubPlayer {
@@ -50,7 +51,7 @@ export async function refreshClubs(): Promise<void> {
     const db = await getDb();
     if (!db) return;
     const [clubs, members, players] = await Promise.all([
-      supabase.from("clubs").select("id, name, invite_code"),
+      supabase.from("clubs").select("id, name, invite_code, personal"),
       supabase.from("club_members").select("club_id, role, profile_id"),
       supabase.from("club_players").select("id, club_id, profile_id, name"),
     ]);
@@ -66,8 +67,8 @@ export async function refreshClubs(): Promise<void> {
       await db.runAsync("delete from club_players_cache");
       for (const c of clubs.data ?? []) {
         await db.runAsync(
-          "insert into clubs_cache (id, name, invite_code, role) values (?, ?, ?, ?)",
-          c.id, c.name, c.invite_code, roleByClub.get(c.id) ?? "member"
+          "insert into clubs_cache (id, name, invite_code, role, personal) values (?, ?, ?, ?, ?)",
+          c.id, c.name, c.invite_code, roleByClub.get(c.id) ?? "member", c.personal ? 1 : 0
         );
       }
       for (const p of players.data ?? []) {
@@ -85,7 +86,19 @@ export async function refreshClubs(): Promise<void> {
 export async function listClubs(): Promise<Club[]> {
   const db = await getDb();
   if (!db) return [];
-  return db.getAllAsync<Club>("select * from clubs_cache order by name");
+  const rows = await db.getAllAsync<Omit<Club, "personal"> & { personal: 0 | 1 }>(
+    "select * from clubs_cache order by name"
+  );
+  return rows.map((r) => ({ ...r, personal: !!r.personal }));
+}
+
+/**
+ * Clubs the user actually joined or created, excluding their hidden personal
+ * club. Use this for anything the user sees; listClubs still returns
+ * everything, because listAllTournaments must query personal clubs too.
+ */
+export async function listRealClubs(): Promise<Club[]> {
+  return (await listClubs()).filter((c) => !c.personal);
 }
 
 export async function getClub(clubId: string): Promise<Club | null> {

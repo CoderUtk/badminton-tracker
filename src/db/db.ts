@@ -1,6 +1,6 @@
 import { Platform } from "react-native";
 import type { SQLiteDatabase } from "expo-sqlite";
-import { TOURNAMENT_DDL, TOURNAMENT_ALTER_DDL, TOURNAMENT_COURTS_DDL } from "./schema";
+import { TOURNAMENT_DDL, TOURNAMENT_ALTER_DDL, TOURNAMENT_COURTS_DDL, CLUBS_PERSONAL_DDL } from "./schema";
 import { SETTINGS_DDL } from "./settings";
 import { captureError } from "../lib/observability";
 
@@ -55,6 +55,7 @@ const MIGRATIONS = [
   SETTINGS_DDL,
   TOURNAMENT_ALTER_DDL,
   TOURNAMENT_COURTS_DDL,
+  CLUBS_PERSONAL_DDL,
 ];
 
 let dbPromise: Promise<SQLiteDatabase> | null = null;

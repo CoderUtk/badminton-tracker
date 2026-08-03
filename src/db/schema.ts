@@ -46,3 +46,10 @@ ALTER TABLE bracket_matches ADD COLUMN scored_by TEXT;
 export const TOURNAMENT_COURTS_DDL = `
 ALTER TABLE tournaments ADD COLUMN courts INTEGER NOT NULL DEFAULT 4;
 `;
+
+// Personal-club flag. A SEPARATE migration entry appended to the list in
+// db.ts — editing an applied migration does not re-run it, so existing
+// installs would never get the column.
+export const CLUBS_PERSONAL_DDL = `
+ALTER TABLE clubs_cache ADD COLUMN personal INTEGER NOT NULL DEFAULT 0;
+`;

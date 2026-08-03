@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Club, createClub, joinClub, listClubs, refreshClubs } from "../../src/repos/clubRepo";
+import { Club, createClub, joinClub, listRealClubs, refreshClubs } from "../../src/repos/clubRepo";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSession } from "../../src/stores/session";
 import { getMyProfile } from "../../src/repos/profileRepo";
@@ -26,8 +26,8 @@ export default function Home() {
   const greetName = displayName || emailPrefix || "Player";
 
   const reload = useCallback(() => {
-    listClubs().then(setClubs);
-    void refreshClubs().then(() => listClubs().then(setClubs));
+    listRealClubs().then(setClubs);
+    void refreshClubs().then(() => listRealClubs().then(setClubs));
     void getMyProfile().then((p) => setDisplayName(p?.displayName ?? null));
   }, []);
   useFocusEffect(reload);
