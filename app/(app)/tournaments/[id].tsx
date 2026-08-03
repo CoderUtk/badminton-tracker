@@ -104,7 +104,10 @@ export default function TournamentBracket() {
           headerRight: isAdmin
             ? () => (
                 <MenuButton
-                  actions={[{ label: "Delete tournament", destructive: true, onPress: () => setConfirmingDelete(true) }]}
+                  actions={[
+                    { label: "Edit tournament", onPress: () => router.push(`/tournaments/edit/${id}`) },
+                    { label: "Delete tournament", destructive: true, onPress: () => setConfirmingDelete(true) },
+                  ]}
                 />
               )
             : undefined,

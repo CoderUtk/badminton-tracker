@@ -38,3 +38,11 @@ ALTER TABLE tournament_entrants ADD COLUMN club_player_id_2 TEXT;
 ALTER TABLE bracket_matches ADD COLUMN court TEXT;
 ALTER TABLE bracket_matches ADD COLUMN scored_by TEXT;
 `;
+
+// Court count per tournament. A SEPARATE migration entry, appended to the list
+// in db.ts — never folded into the constants above. Editing an already-applied
+// migration does not re-run it (user_version has moved past), so existing
+// installs would never get the column.
+export const TOURNAMENT_COURTS_DDL = `
+ALTER TABLE tournaments ADD COLUMN courts INTEGER NOT NULL DEFAULT 4;
+`;

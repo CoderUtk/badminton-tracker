@@ -1,4 +1,4 @@
-import { TOURNAMENT_DDL, TOURNAMENT_ALTER_DDL } from "../src/db/schema";
+import { TOURNAMENT_DDL, TOURNAMENT_ALTER_DDL, TOURNAMENT_COURTS_DDL } from "../src/db/schema";
 test("tournament DDL declares the three tables", () => {
   expect(TOURNAMENT_DDL).toMatch(/CREATE TABLE IF NOT EXISTS tournaments/);
   expect(TOURNAMENT_DDL).toMatch(/CREATE TABLE IF NOT EXISTS tournament_entrants/);
@@ -13,6 +13,14 @@ test("tournament ALTER adds match_type, bestof, finals_bestof, club_player_id_2"
 test("tournament ALTER adds the live-ops court and scorer columns", () => {
   expect(TOURNAMENT_ALTER_DDL).toMatch(/ALTER TABLE bracket_matches ADD COLUMN court TEXT/);
   expect(TOURNAMENT_ALTER_DDL).toMatch(/ALTER TABLE bracket_matches ADD COLUMN scored_by TEXT/);
+});
+
+test("courts is added by its own migration, not the base DDL", () => {
+  expect(TOURNAMENT_COURTS_DDL).toMatch(/ALTER TABLE tournaments ADD COLUMN courts INTEGER NOT NULL DEFAULT 4/);
+  // Same trap as court/scored_by below: declaring it in the CREATE TABLE too
+  // makes the ALTER hit "duplicate column name" on every fresh install.
+  expect(TOURNAMENT_DDL).not.toMatch(/courts/);
+  expect(TOURNAMENT_ALTER_DDL).not.toMatch(/courts/);
 });
 
 // Regression: court/scored_by were once declared in BOTH the CREATE TABLE and

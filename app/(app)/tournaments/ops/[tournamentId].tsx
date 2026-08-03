@@ -14,12 +14,14 @@ export default function TournamentOps() {
   const [entrants, setEntrants] = useState<Entrant[]>([]);
   const [bracket, setBracket] = useState<BracketMatch[]>([]);
   const [loading, setLoading] = useState(true);
+  const [courts, setCourts] = useState(4);
   const { session } = useSession();
 
   const reload = useCallback(async () => {
     if (!tournamentId) return;
     try {
-      const { entrants: e, bracket: b } = await getTournament(tournamentId);
+      const { tournament, entrants: e, bracket: b } = await getTournament(tournamentId);
+      setCourts(tournament.courts);
       setEntrants(e);
       setBracket(b);
     } catch (e) {
@@ -35,7 +37,7 @@ export default function TournamentOps() {
     return entrants.find((e) => e.id === id)?.name || "Unknown";
   };
 
-  const onAssignCourt = async (match: BracketMatch, court: string) => {
+  const onAssignCourt = async (match: BracketMatch, court: string | null) => {
     try {
       await assignBracketMatchCourt(match.id, court);
       void reload();
@@ -75,10 +77,16 @@ export default function TournamentOps() {
             </View>
             <View style={s.actions}>
               <Text style={s.label}>Court: {item.court || "None"}</Text>
-              {/* Very simple court assignment UI for demo/ops purposes */}
+              {/* Court buttons come from the tournament's court count, set at
+                  creation and editable afterwards. Tapping the assigned court
+                  clears it — assignBracketMatchCourt takes null for that. */}
               <View style={s.courts}>
-                {["1", "2", "3", "4"].map((c) => (
-                  <PressableScale key={c} style={[s.courtBtn, item.court === c && s.courtActive]} onPress={() => onAssignCourt(item, c)}>
+                {Array.from({ length: courts }, (_, i) => String(i + 1)).map((c) => (
+                  <PressableScale
+                    key={c}
+                    style={[s.courtBtn, item.court === c && s.courtActive]}
+                    onPress={() => onAssignCourt(item, item.court === c ? null : c)}
+                  >
                     <Text style={[s.courtBtnText, item.court === c && s.courtActiveText]}>{c}</Text>
                   </PressableScale>
                 ))}

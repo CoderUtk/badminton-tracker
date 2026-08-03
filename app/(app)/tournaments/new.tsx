@@ -10,6 +10,7 @@ import { validateName } from "../../../src/lib/validate";
 
 const SIZES: BracketSize[] = [4, 8, 16, 32, 64];
 const BESTOFS = [1, 3, 5] as const;
+const COURTS = [1, 2, 3, 4, 6, 8] as const;
 
 export default function NewTournament() {
   const router = useRouter();
@@ -21,6 +22,7 @@ export default function NewTournament() {
   const [matchType, setMatchType] = useState<MatchType>("singles");
   const [bestOf, setBestOf] = useState<number>(3);
   const [finalsBestOf, setFinalsBestOf] = useState<number>(3);
+  const [courts, setCourts] = useState<number>(4);
   const [players, setPlayers] = useState<ClubPlayer[]>([]);
   const [picked, setPicked] = useState<string[]>([]); // club_player_id in selection order
   const [guestName, setGuestName] = useState("");
@@ -61,7 +63,7 @@ export default function NewTournament() {
               return { clubPlayerId: p1, clubPlayerId2: p2, name: `${nameOf(p1)} / ${nameOf(p2)}`, seed: i + 1 };
             })
           : picked.map((pid, i) => ({ clubPlayerId: pid, name: nameOf(pid), seed: i + 1 }));
-      const tid = await createTournament(clubId, name.trim(), size, matchType, bestOf, finalsBestOf, entrants);
+      const tid = await createTournament(clubId, name.trim(), size, matchType, bestOf, finalsBestOf, entrants, courts);
       router.replace(`/tournaments/${tid}`);
     } catch (e) {
       toast((e as Error).message || "Could not create tournament", "error");
@@ -133,6 +135,9 @@ export default function NewTournament() {
           <Segmented value={finalsBestOf} options={BESTOFS} onPick={(v) => setFinalsBestOf(v as number)} />
         </View>
       </View>
+
+      <Text style={s.h}>Courts</Text>
+      <Segmented value={courts} options={COURTS} onPick={(v) => setCourts(v as number)} />
 
       <Text style={s.h}>Pick entrants ({entrantCount}/{size} {label})</Text>
       <View style={s.guestRow}>

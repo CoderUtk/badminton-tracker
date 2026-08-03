@@ -15,6 +15,7 @@ export default function TournamentsLayout() {
       <Stack.Screen name="index" options={{ title: "Tournaments" }} />
       <Stack.Screen name="new" options={{ title: "New tournament", presentation: "modal" }} />
       <Stack.Screen name="[id]" options={{ title: "Bracket" }} />
+      <Stack.Screen name="edit/[id]" options={{ title: "Edit tournament" }} />
     </Stack>
   );
 }

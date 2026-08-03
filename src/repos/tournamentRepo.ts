@@ -13,7 +13,7 @@ export type { BracketRow } from "../tournament/rows";
 export type MatchType = "singles" | "doubles";
 export type TournamentRow = {
   id: string; clubId: string; name: string; size: number; status: string; createdAt: number;
-  matchType: MatchType; bestOf: number; finalsBestOf: number;
+  matchType: MatchType; bestOf: number; finalsBestOf: number; courts: number;
 };
 
 type EntrantRow = {
@@ -33,6 +33,7 @@ export async function createTournament(
   bestOf: number,
   finalsBestOf: number,
   entrants: { clubPlayerId: string; clubPlayerId2?: string | null; name: string; seed: number }[],
+  courts = 4,
 ): Promise<string> {
   if (!supabase) throw new Error("Sign in to create a tournament");
   const tid = Crypto.randomUUID();
@@ -43,7 +44,7 @@ export async function createTournament(
 
   const { error: tErr } = await supabase.from("tournaments").insert({
     id: tid, club_id: clubId, name, format: "single_elim", size, status: "draft",
-    match_type: matchType, bestof: bestOf, finals_bestof: finalsBestOf,
+    match_type: matchType, bestof: bestOf, finals_bestof: finalsBestOf, courts,
   });
   if (tErr) throw new Error(tErr.message);
 
@@ -122,7 +123,36 @@ const toTournamentRow = (r: Record<string, unknown>): TournamentRow => ({
   size: (r.size as number) ?? 0, status: (r.status as string) ?? "draft",
   createdAt: r.created_at ? new Date(r.created_at as string).getTime() : 0,
   matchType: ((r.match_type as MatchType) ?? "singles"), bestOf: (r.bestof as number) ?? 3, finalsBestOf: (r.finals_bestof as number) ?? 3,
+  // 4 matches both the column default and the court count the ops screen used
+  // to hardcode, so a row read before 0009 lands behaves as it always did.
+  courts: (r.courts as number) ?? 4,
 });
+
+/**
+ * Update a tournament's editable settings. Admins only (enforced by RLS in
+ * 0009). Format and draw size are deliberately absent: changing either would
+ * invalidate the bracket and its entrants.
+ *
+ * bestOf/finalsBestOf affect only matches started after the change, since
+ * startBracketMatch snapshots the config when it creates the match.
+ */
+export async function updateTournament(
+  id: string,
+  patch: { name: string; courts: number; bestOf: number; finalsBestOf: number },
+): Promise<void> {
+  if (!supabase) throw new Error("Sign in to edit a tournament");
+  const { data, error } = await supabase
+    .from("tournaments")
+    .update({
+      name: patch.name, courts: patch.courts,
+      bestof: patch.bestOf, finals_bestof: patch.finalsBestOf,
+    })
+    .eq("id", id)
+    .select();
+  if (error) throw new Error(error.message);
+  // A policy-blocked update returns success with zero rows.
+  if (!data || data.length === 0) throw new Error("Could not update tournament");
+}
 
 export async function getTournament(
   id: string,
