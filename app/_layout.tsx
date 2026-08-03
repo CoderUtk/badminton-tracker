@@ -1,6 +1,6 @@
 import "react-native-gesture-handler";
 import React, { useEffect, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { AppState, Pressable, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Stack, usePathname, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -108,8 +108,16 @@ function RootLayout() {
   });
   useEffect(() => startSyncListener(), []);
   // Pushes the 7-day inactivity-reminder clock forward on every app open;
-  // no-ops if the setting is off, permission isn't granted, or on web.
-  useEffect(() => { void scheduleInactivityReminder(); }, []);
+  // no-ops if the setting is off, permission isn't granted, or on web. A
+  // warm resume (AppState -> "active") counts as an "open" too, not just
+  // the cold-start mount above — otherwise a resident app never reschedules.
+  useEffect(() => {
+    void scheduleInactivityReminder();
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") void scheduleInactivityReminder();
+    });
+    return () => sub.remove();
+  }, []);
   useEffect(() => {
     // Hand off from the native splash to the animated one only once the gaming
     // fonts are ready, so no text flashes in a fallback face.

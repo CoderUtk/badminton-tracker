@@ -9,7 +9,7 @@ type Analytics = {
 const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
 const currentStreak = (form: ("W" | "L")[]) => {
   let n = 0;
-  for (let i = form.length - 1; i >= 0 && form[i] === "W"; i--) n++;
+  for (let i = 0; i < form.length && form[i] === "W"; i++) n++;
   return n;
 };
 
@@ -25,6 +25,6 @@ export function evaluateBadges(a: Analytics): EarnedBadge[] {
     { id: "streak_5", title: "On Fire", description: "Win 5 in a row", icon: "flag",
       earned: streak >= 5, progress: clamp01(streak / 5) },
     { id: "sharp", title: "Sharp", description: "Reach a 60% win rate (min 10 games)", icon: "scoreboard-outline",
-      earned: a.played >= 10 && a.winPct >= 60, progress: clamp01(a.winPct / 60) },
+      earned: a.played >= 10 && a.winPct >= 60, progress: clamp01(Math.min(a.played / 10, a.winPct / 60)) },
   ];
 }

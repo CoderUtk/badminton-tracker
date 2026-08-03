@@ -13,12 +13,12 @@ const SEVEN_DAYS_SECONDS = 7 * 24 * 60 * 60;
  * there) and never throws — a denied/undetermined permission just means
  * nothing gets scheduled.
  */
-export async function scheduleInactivityReminder(): Promise<void> {
-  if (Platform.OS === "web") return;
+export async function scheduleInactivityReminder(): Promise<boolean> {
+  if (Platform.OS === "web") return false;
 
   try {
     const on = (await getSetting(REMINDERS_KEY)) === "1";
-    if (!on) return;
+    if (!on) return false;
 
     let status = (await Notifications.getPermissionsAsync()).status;
     if (status !== "granted") {
@@ -27,7 +27,7 @@ export async function scheduleInactivityReminder(): Promise<void> {
       if (status === "undetermined") {
         status = (await Notifications.requestPermissionsAsync()).status;
       }
-      if (status !== "granted") return;
+      if (status !== "granted") return false;
     }
 
     // Always reschedule from now — cancel any pending reminder first so
@@ -43,8 +43,10 @@ export async function scheduleInactivityReminder(): Promise<void> {
         seconds: SEVEN_DAYS_SECONDS,
       },
     });
+    return true;
   } catch {
     // Never let a notification-scheduling failure crash the app.
+    return false;
   }
 }
 

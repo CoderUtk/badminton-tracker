@@ -19,3 +19,17 @@ test("five-win streak earns the streak badge", () => {
   const b = evaluateBadges({ ...base, played: 6, wins: 5, form: ["W", "W", "W", "W", "W"] } as any);
   expect(b.find((x) => x.id === "streak_5")!.earned).toBe(true);
 });
+
+test("streak counts from the most recent match (form is newest-first)", () => {
+  const lost = evaluateBadges({ ...base, played: 6, wins: 5, form: ["L", "W", "W", "W", "W", "W"] } as any);
+  expect(lost.find((x) => x.id === "streak_5")!.earned).toBe(false);
+  const hot = evaluateBadges({ ...base, played: 6, wins: 5, form: ["W", "W", "W", "W", "W", "L"] } as any);
+  expect(hot.find((x) => x.id === "streak_5")!.earned).toBe(true);
+});
+
+test("sharp badge progress respects the games-played gate, not just win rate", () => {
+  const b = evaluateBadges({ ...base, played: 2, wins: 2, winPct: 100, form: ["W", "W"] } as any);
+  const sharp = b.find((x) => x.id === "sharp")!;
+  expect(sharp.earned).toBe(false);
+  expect(sharp.progress).toBeCloseTo(0.2, 5); // gated by played/10, not winPct/60
+});

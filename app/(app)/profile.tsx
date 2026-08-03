@@ -23,6 +23,7 @@ export default function Profile() {
   const [displayName, setDisplayName] = useState<string>("");
   const [savedName, setSavedName] = useState<string>("");
   const [remindersOn, setRemindersOn] = useState(false);
+  const [remindersBusy, setRemindersBusy] = useState(false);
 
   useEffect(() => {
     void getMyProfile().then((p) => {
@@ -36,12 +37,26 @@ export default function Profile() {
     void getSetting(REMINDERS_KEY).then((v) => setRemindersOn(v === "1"));
   }, []);
 
-  const toggleReminders = () => {
+  const toggleReminders = async () => {
+    if (remindersBusy) return;
     const next = !remindersOn;
+    setRemindersBusy(true);
     setRemindersOn(next);
-    void setSetting(REMINDERS_KEY, next ? "1" : "0").then(() =>
-      next ? scheduleInactivityReminder() : cancelReminders(),
-    );
+    try {
+      await setSetting(REMINDERS_KEY, next ? "1" : "0");
+      if (next) {
+        const scheduled = await scheduleInactivityReminder();
+        if (!scheduled) {
+          setRemindersOn(false);
+          await setSetting(REMINDERS_KEY, "0");
+          toast("Enable notifications in Settings to get reminders", "error");
+        }
+      } else {
+        await cancelReminders();
+      }
+    } finally {
+      setRemindersBusy(false);
+    }
   };
 
   const nameError = validateName(displayName, "Display name");
@@ -181,10 +196,11 @@ export default function Profile() {
             <Text style={s.reminderSub}>A nudge on your device if you haven't played in a while.</Text>
           </View>
           <Pressable
-            style={[s.toggleChip, remindersOn && s.toggleChipOn]}
-            onPress={toggleReminders}
+            style={[s.toggleChip, remindersOn && s.toggleChipOn, remindersBusy && s.off]}
+            onPress={() => void toggleReminders()}
+            disabled={remindersBusy}
             accessibilityRole="switch"
-            accessibilityState={{ checked: remindersOn }}
+            accessibilityState={{ checked: remindersOn, busy: remindersBusy }}
           >
             <Text style={[s.toggleChipText, remindersOn && s.toggleChipTextOn]}>
               {remindersOn ? "ON" : "OFF"}
@@ -259,6 +275,7 @@ const s = StyleSheet.create({
   toggleChipOn: { backgroundColor: C.red, borderColor: C.red },
   toggleChipText: { color: C.text2, fontFamily: F.semibold, fontSize: 13 },
   toggleChipTextOn: { color: C.text },
+  off: { opacity: 0.45 },
   emptyCard: { backgroundColor: C.card, borderRadius: 14, padding: 22, alignItems: "center", gap: 10, borderWidth: 1, borderColor: C.line },
   emptyText: { color: C.text2, fontSize: 15, textAlign: "center" },
   startBtn: { flexDirection: "row", gap: 8, backgroundColor: C.red, borderRadius: 12, paddingHorizontal: 20, minHeight: 46, alignItems: "center", justifyContent: "center" },
