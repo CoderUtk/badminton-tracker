@@ -42,7 +42,7 @@ export default function Welcome() {
       // display name — honour it instead of always landing on home.
       const path = consumePendingLink();
       const target = path ? parseJoinTarget(path) : null;
-      router.replace(target ? `/join/club/${target.id}` : "/");
+      router.replace(target ? `/join/${target.kind}/${target.id}` : "/");
     } catch (e) {
       toast((e as Error).message || "Could not save your name", "error");
     } finally {

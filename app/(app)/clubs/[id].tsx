@@ -1,11 +1,10 @@
 import React, { useCallback, useState } from "react";
-import { FlatList, Pressable, Share, StyleSheet, Text, View } from "react-native";
-import * as Linking from "expo-linking";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { getClub, type Club } from "../../../src/repos/clubRepo";
 import { getClubStats, type PlayerStat, type SessionStats } from "../../../src/repos/sessionRepo";
 import { buildClubJoinPath } from "../../../src/lib/joinLink";
-import { toast } from "../../../src/lib/toast";
+import { shareJoinLink } from "../../../src/lib/shareJoin";
 import { C, F } from "../../../src/theme";
 
 function winPct(p: PlayerStat): string {
@@ -26,16 +25,6 @@ export default function ClubDetail() {
   useFocusEffect(useCallback(() => { void reload(); }, [reload]));
 
   const isAdmin = club?.role === "owner" || club?.role === "admin";
-
-  const shareLink = async () => {
-    if (!club) return;
-    try {
-      const url = Linking.createURL(buildClubJoinPath(club.id));
-      await Share.share({ message: `Join ${club.name} on CourtSide: ${url}` });
-    } catch (e) {
-      toast((e as Error).message || "Could not share the link", "error");
-    }
-  };
 
   if (!club) return <View style={s.center}><Text style={s.muted}>Club not found.</Text></View>;
 
@@ -59,7 +48,10 @@ export default function ClubDetail() {
             <Pressable style={s.cta} onPress={() => router.push({ pathname: "/new-match", params: { clubId: club.id } })}>
               <Text style={s.ctaText}>▶  Start a match</Text>
             </Pressable>
-            <Pressable style={s.secondary} onPress={shareLink}>
+            <Pressable
+              style={s.secondary}
+              onPress={() => shareJoinLink(buildClubJoinPath(club.id), `Join ${club.name} on CourtSide:`)}
+            >
               <Text style={s.secondaryText}>Share join link</Text>
             </Pressable>
             {isAdmin ? (

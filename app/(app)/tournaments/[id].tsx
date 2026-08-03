@@ -11,6 +11,8 @@ import type { BracketMatch, Entrant } from "../../../src/tournament/types";
 import BracketView from "../../../src/components/BracketView";
 import Icon from "../../../src/components/Icon";
 import Sheet from "../../../src/components/Sheet";
+import { buildTournamentJoinPath } from "../../../src/lib/joinLink";
+import { shareJoinLink } from "../../../src/lib/shareJoin";
 import { toast } from "../../../src/lib/toast";
 import { C, F } from "../../../src/theme";
 
@@ -78,6 +80,11 @@ export default function TournamentBracket() {
   const champName = champ ? entrants.find((e) => e.id === champ)?.name : null;
   const isAdmin = clubRole === "owner" || clubRole === "admin";
 
+  // Any member may share: joining still needs admin approval, so handing out
+  // the link grants nothing on its own.
+  const onShare = () =>
+    shareJoinLink(buildTournamentJoinPath(id!), `Join "${title}" on CourtSide:`);
+
   const onDeleteTournament = async () => {
     if (!id) return;
     setConfirmingDelete(false);
@@ -96,6 +103,13 @@ export default function TournamentBracket() {
         <Text style={{ color: C.red, fontFamily: F.semibold, marginBottom: 8 }}>🏆 Champion: {champName}</Text>
       ) : null}
       <BracketView bracket={bracket} entrants={entrants} onCellPress={onCellPress} />
+      <Pressable
+        style={{ flexDirection: "row", gap: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 12, minHeight: 52, alignItems: "center", justifyContent: "center", marginTop: 12 }}
+        onPress={onShare}
+      >
+        <Icon name="share-social-outline" color={C.text} size={18} />
+        <Text style={{ color: C.text, fontSize: 16, fontWeight: "700" }}>Share join link</Text>
+      </Pressable>
       {isAdmin && (
         <>
           <Pressable
