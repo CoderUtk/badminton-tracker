@@ -95,7 +95,7 @@ function RootLayout() {
   }, [fontsLoaded]);
 
   if (!fontsLoaded) return null;
-  return (
+  const tree = (
     <GestureHandlerRootView style={{ flex: 1 }}>
     <SessionProvider>
       <StatusBar style="light" />
@@ -124,9 +124,14 @@ function RootLayout() {
     <Toaster />
     </GestureHandlerRootView>
   );
+
+  // Sentry.ErrorBoundary is the piece that actually catches render crashes
+  // with component stacks — Sentry.wrap (not used here) only composes
+  // TouchEventBoundary/Profiler/FeedbackWidgetProvider in the installed SDK
+  // version, not an error boundary. Only wrap when Sentry is actually
+  // enabled — when disabled, render the tree with no wrapper at all, exactly
+  // as before this file used Sentry.
+  return sentryEnabled() ? <Sentry.ErrorBoundary>{tree}</Sentry.ErrorBoundary> : tree;
 }
 
-// Sentry.wrap adds an error boundary (with component stacks) around the root
-// component. Only wrap when Sentry is actually enabled — never let an
-// uninitialized SDK sit between React and the app.
-export default sentryEnabled() ? Sentry.wrap(RootLayout) : RootLayout;
+export default RootLayout;
