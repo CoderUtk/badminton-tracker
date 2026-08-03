@@ -53,15 +53,18 @@ begin
   if jsonb_array_length(p_bracket) <> v_draw - 1 then
     raise exception 'Bracket does not match the draw size';
   end if;
+  -- Every non-null entrant id in the payload — entrant_a, entrant_b, and
+  -- winner_entrant (legitimately set on byes buildBracket already resolved)
+  -- — must belong to this tournament. One pass over the unnested id column
+  -- covers all three instead of repeating the same exists() per column.
   if exists (
-    select 1 from jsonb_array_elements(p_bracket) e
-    where (e->>'entrant_a') is not null
-      and (e->>'entrant_a')::uuid not in (
-        select id from tournament_entrants where tournament_id = p_tournament_id)
-  ) or exists (
-    select 1 from jsonb_array_elements(p_bracket) e
-    where (e->>'entrant_b') is not null
-      and (e->>'entrant_b')::uuid not in (
+    select 1
+    from jsonb_array_elements(p_bracket) e
+    cross join lateral (values
+      (e->>'entrant_a'), (e->>'entrant_b'), (e->>'winner_entrant')
+    ) as ids(entrant_id)
+    where ids.entrant_id is not null
+      and ids.entrant_id::uuid not in (
         select id from tournament_entrants where tournament_id = p_tournament_id)
   ) then
     raise exception 'Bracket references entrants from another tournament';
