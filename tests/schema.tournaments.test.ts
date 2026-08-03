@@ -10,3 +10,29 @@ test("tournament ALTER adds match_type, bestof, finals_bestof, club_player_id_2"
   expect(TOURNAMENT_ALTER_DDL).toMatch(/finals_bestof/);
   expect(TOURNAMENT_ALTER_DDL).toMatch(/club_player_id_2/);
 });
+test("tournament ALTER adds the live-ops court and scorer columns", () => {
+  expect(TOURNAMENT_ALTER_DDL).toMatch(/ALTER TABLE bracket_matches ADD COLUMN court TEXT/);
+  expect(TOURNAMENT_ALTER_DDL).toMatch(/ALTER TABLE bracket_matches ADD COLUMN scored_by TEXT/);
+});
+
+// Regression: court/scored_by were once declared in BOTH the CREATE TABLE and
+// the ALTER list. On a fresh install the ALTER then hit "duplicate column name",
+// which aborts the migration transaction and fails the whole database open —
+// the app started with no local storage at all. Existing installs were fine,
+// so it only reproduced on a clean device.
+test("no column is declared in both the CREATE TABLE and the ALTER list", () => {
+  const created = new Map<string, string[]>();
+  for (const [, table, body] of TOURNAMENT_DDL.matchAll(
+    /CREATE TABLE IF NOT EXISTS (\w+) \(([^)]*)\)/g,
+  )) {
+    created.set(
+      table,
+      body.split(",").map((c) => c.trim().split(/\s+/)[0]).filter(Boolean),
+    );
+  }
+  for (const [, table, column] of TOURNAMENT_ALTER_DDL.matchAll(
+    /ALTER TABLE (\w+) ADD COLUMN (\w+)/g,
+  )) {
+    expect(created.get(table) ?? []).not.toContain(column);
+  }
+});
