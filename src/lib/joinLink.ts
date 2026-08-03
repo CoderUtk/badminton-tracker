@@ -3,17 +3,20 @@ export function buildClubJoinPath(clubId: string): string {
   return `join/club/${clubId}`;
 }
 
+export function buildTournamentJoinPath(tournamentId: string): string {
+  return `join/tournament/${tournamentId}`;
+}
+
 /**
  * Extract a join target from a deep link. Accepts a full URL with any scheme
  * or a bare path, so the same helper serves Linking callbacks and router
- * segments. Only clubs are supported — tournaments are local-only until
- * tournament cloud sync exists.
+ * segments.
  *
  * Parsing strategy: For http/https, strip the authority (host:port) unless it
  * starts with "join" (treated as a subdomain path). For custom schemes, strip
- * scheme + ://. Then look for the "join/club/{id}" pattern in the resulting path.
+ * scheme + ://. Then look for the "join/club/{id}" or "join/tournament/{id}" pattern.
  */
-export function parseJoinTarget(url: string): { kind: "club"; id: string } | null {
+export function parseJoinTarget(url: string): { kind: "club" | "tournament"; id: string } | null {
   if (!url) return null;
   const withoutQuery = url.split("?")[0].split("#")[0];
 
@@ -43,16 +46,16 @@ export function parseJoinTarget(url: string): { kind: "club"; id: string } | nul
 
   const parts = path.split("/").filter(Boolean);
 
-  // Look for first occurrence of "join" followed by "club"
+  // Look for first occurrence of "join" followed by "club" or "tournament"
   let at = parts.indexOf("join");
   while (at !== -1) {
     const kind = parts[at + 1];
     const id = parts[at + 2];
-    if (kind === "club" && id) {
+    if ((kind === "club" || kind === "tournament") && id) {
       // reject unresolved route placeholders like "[id]" and anything containing
       // brackets — a real target is always a concrete id, never a route param name.
       if (id.includes("[") || id.includes("]")) return null;
-      return { kind: "club", id };
+      return { kind, id };
     }
     at = parts.indexOf("join", at + 1);
   }
