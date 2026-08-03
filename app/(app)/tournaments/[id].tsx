@@ -26,6 +26,7 @@ export default function TournamentBracket() {
   const [pending, setPending] = useState<BracketMatch | null>(null); // cell awaiting start confirm
   const [clubRole, setClubRole] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const reload = useCallback(() => {
     if (!id) return;
@@ -101,16 +102,9 @@ export default function TournamentBracket() {
     <View style={{ flex: 1, backgroundColor: C.bg, padding: 12 }}>
       <Stack.Screen
         options={{
-          headerRight: isAdmin
-            ? () => (
-                <MenuButton
-                  actions={[
-                    { label: "Edit tournament", onPress: () => router.push(`/tournaments/edit/${id}`) },
-                    { label: "Delete tournament", destructive: true, onPress: () => setConfirmingDelete(true) },
-                  ]}
-                />
-              )
-            : undefined,
+          // Trigger only. The menu Sheet is mounted in the body below: a Sheet
+          // rendered here would position against the header and be clipped.
+          headerRight: isAdmin ? () => <MenuButton onPress={() => setMenuOpen(true)} /> : undefined,
         }}
       />
       {title ? <Text style={{ color: C.text, fontFamily: F.bold, fontSize: 18, marginBottom: 4 }}>{title}</Text> : null}
@@ -152,6 +146,16 @@ export default function TournamentBracket() {
           { label: "Cancel", onPress: () => setPending(null) },
         ]}
         onClose={() => setPending(null)}
+      />
+      <Sheet
+        visible={menuOpen}
+        title="Actions"
+        actions={[
+          { label: "Edit tournament", onPress: () => { setMenuOpen(false); router.push(`/tournaments/edit/${id}`); } },
+          { label: "Delete tournament", destructive: true, onPress: () => { setMenuOpen(false); setConfirmingDelete(true); } },
+          { label: "Cancel", onPress: () => setMenuOpen(false) },
+        ]}
+        onClose={() => setMenuOpen(false)}
       />
       <Sheet
         visible={confirmingDelete}

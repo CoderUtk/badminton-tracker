@@ -21,6 +21,7 @@ export default function ClubDetail() {
   const [club, setClub] = useState<Club | null>(null);
   const [stats, setStats] = useState<SessionStats | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const reload = useCallback(async () => {
     if (!id) return;
@@ -55,9 +56,8 @@ export default function ClubDetail() {
           headerRight: isOwner
             ? () => (
                 <View style={{ flexDirection: "row", alignItems: "center" }}>
-                  <MenuButton
-                    actions={[{ label: "Delete club", destructive: true, onPress: () => setConfirmingDelete(true) }]}
-                  />
+                  {/* Trigger only — the menu Sheet is mounted in the body. */}
+                  <MenuButton onPress={() => setMenuOpen(true)} />
                   <View style={{ paddingRight: 16 }}><LogoMark size={26} /></View>
                 </View>
               )
@@ -121,6 +121,15 @@ export default function ClubDetail() {
         </View>
       )}
     />
+      <Sheet
+        visible={menuOpen}
+        title="Actions"
+        actions={[
+          { label: "Delete club", destructive: true, onPress: () => { setMenuOpen(false); setConfirmingDelete(true); } },
+          { label: "Cancel", onPress: () => setMenuOpen(false) },
+        ]}
+        onClose={() => setMenuOpen(false)}
+      />
       <Sheet
         visible={confirmingDelete}
         title="Delete club?"

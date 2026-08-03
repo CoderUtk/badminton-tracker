@@ -1,42 +1,24 @@
-import React, { useState } from "react";
-import { Pressable, Text, View } from "react-native";
-import Sheet, { type SheetAction } from "./Sheet";
+import React from "react";
+import { Pressable, Text } from "react-native";
 import { C, F } from "../theme";
 
 /**
- * Header "⋮" that opens a Sheet of actions. Presentational only — callers own
- * the behaviour, including any confirmation step. Destructive actions render
- * red via Sheet's own `destructive` flag.
+ * Header "⋮" trigger. Deliberately renders ONLY the button: the menu itself
+ * must be mounted in the screen body, never here.
  *
- * The menu surface is Sheet rather than a bespoke popover so dismissal,
- * backdrop, and drag-to-close behave exactly like every other sheet in the app.
+ * A Sheet rendered inside headerRight positions against the header, not the
+ * screen — its absolutely-positioned panel lands inside a ~56px box and is
+ * clipped away, so the menu appears to do nothing when tapped.
  */
-export default function MenuButton({ actions }: { actions: SheetAction[] }) {
-  const [open, setOpen] = useState(false);
+export default function MenuButton({ onPress }: { onPress: () => void }) {
   return (
-    <View>
-      <Pressable
-        onPress={() => setOpen(true)}
-        accessibilityLabel="More actions"
-        hitSlop={12}
-        style={{ paddingHorizontal: 12, paddingVertical: 4 }}
-      >
-        <Text style={{ color: C.text, fontFamily: F.bold, fontSize: 22 }}>⋮</Text>
-      </Pressable>
-      <Sheet
-        visible={open}
-        title="Actions"
-        actions={[
-          // Close before running: the action usually opens a confirm sheet, and
-          // two stacked sheets fight over the backdrop.
-          ...actions.map((a) => ({
-            ...a,
-            onPress: () => { setOpen(false); a.onPress(); },
-          })),
-          { label: "Cancel", onPress: () => setOpen(false) },
-        ]}
-        onClose={() => setOpen(false)}
-      />
-    </View>
+    <Pressable
+      onPress={onPress}
+      accessibilityLabel="More actions"
+      hitSlop={12}
+      style={{ paddingHorizontal: 12, paddingVertical: 4 }}
+    >
+      <Text style={{ color: C.text, fontFamily: F.bold, fontSize: 22 }}>⋮</Text>
+    </Pressable>
   );
 }
