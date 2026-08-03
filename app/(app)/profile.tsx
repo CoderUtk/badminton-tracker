@@ -9,6 +9,8 @@ import { toast } from "../../src/lib/toast";
 import { getPlayerAnalytics, type PlayerAnalytics } from "../../src/repos/statsRepo";
 import Icon from "../../src/components/Icon";
 import FormScreen from "../../src/components/FormScreen";
+import BadgeGrid from "../../src/components/BadgeGrid";
+import { evaluateBadges } from "../../src/achievements/rules";
 import { C, F, glow } from "../../src/theme";
 
 export default function Profile() {
@@ -47,6 +49,7 @@ export default function Profile() {
   useEffect(load, [load]);
 
   const initial = me.slice(0, 1).toUpperCase();
+  const badges = a ? evaluateBadges(a) : [];
 
   return (
     <FormScreen contentContainerStyle={s.content}>
@@ -84,6 +87,14 @@ export default function Profile() {
         <Stat label="Lost" value={a?.losses ?? 0} />
         <Stat label="Win %" value={`${a?.winPct ?? 0}%`} accent />
       </View>
+
+      {/* Achievements */}
+      {a && (
+        <View style={s.card}>
+          <Text style={s.cardTitle}>Achievements</Text>
+          <BadgeGrid badges={badges} />
+        </View>
+      )}
 
       {a && a.played === 0 ? (
         <View style={s.emptyCard}>
