@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Club, createClub, joinClub, listClubs, refreshClubs } from "../../src/repos/clubRepo";
 import { LinearGradient } from "expo-linear-gradient";
@@ -54,9 +54,11 @@ export default function Home() {
   };
 
   return (
-    // A FlatList must not be nested in a ScrollView, so this screen keeps its
-    // View root and only lifts it above the keyboard.
-    <KeyboardAvoidingView style={s.root} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    // The club/invite forms live in the list footer rather than below it: one
+    // scrollable surface lets RN scroll the focused input into view, which with
+    // android.softwareKeyboardLayoutMode "resize" keeps it above the keyboard.
+    // A KeyboardAvoidingView here was a no-op — behavior is undefined on Android.
+    <View style={s.root}>
       <View style={s.greetRow}>
         <View style={{ flex: 1 }}>
           <Text style={s.greetEyebrow}>WELCOME BACK</Text>
@@ -71,17 +73,12 @@ export default function Home() {
         </LinearGradient>
       </Pressable>
 
-      <View style={s.row}>
-        <Pressable style={({ pressed }) => [s.navPill, pressed && press]} onPress={() => router.push("/watch")}>
-          <Icon name="play" color={C.accent} size={18} />
-          <Text style={s.navPillText}>Watch live matches</Text>
-        </Pressable>
-      </View>
-
       <Text style={s.h}>Your clubs</Text>
       <FlatList
         data={clubs}
         keyExtractor={(c) => c.id}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingBottom: 24 }}
         ListEmptyComponent={
           <Text style={s.empty}>No clubs yet. Create one below or join with an invite code.</Text>
         }
@@ -100,31 +97,32 @@ export default function Home() {
             <Icon name="chevron-forward" color={C.text2} size={20} />
           </Pressable>
         )}
+        ListFooterComponent={
+          <View style={s.forms}>
+            <View style={s.row}>
+              <TextInput
+                style={s.input} placeholder="New club name" placeholderTextColor={C.text2}
+                value={name} onChangeText={setName} onBlur={() => setNameTouched(true)}
+              />
+              <Pressable style={({ pressed }) => [s.btn, pressed && press, !!nameError && s.btnOff]} disabled={!!nameError} onPress={onCreate}>
+                <Icon name="add" color={C.text} size={18} />
+                <Text style={s.btnText}>Create</Text>
+              </Pressable>
+            </View>
+            {nameTouched && nameError ? <Text style={s.err}>{nameError}</Text> : null}
+            <View style={s.row}>
+              <TextInput
+                style={s.input} placeholder="Invite code" placeholderTextColor={C.text2}
+                autoCapitalize="characters" value={inviteCode} onChangeText={setInviteCode}
+              />
+              <Pressable style={({ pressed }) => [s.btn, pressed && press, !inviteCode.trim() && s.btnOff]} disabled={!inviteCode.trim()} onPress={onJoin}>
+                <Text style={s.btnText}>Join</Text>
+              </Pressable>
+            </View>
+          </View>
+        }
       />
-
-      <View style={s.forms}>
-        <View style={s.row}>
-          <TextInput
-            style={s.input} placeholder="New club name" placeholderTextColor={C.text2}
-            value={name} onChangeText={setName} onBlur={() => setNameTouched(true)}
-          />
-          <Pressable style={({ pressed }) => [s.btn, pressed && press, !!nameError && s.btnOff]} disabled={!!nameError} onPress={onCreate}>
-            <Icon name="add" color={C.text} size={18} />
-            <Text style={s.btnText}>Create</Text>
-          </Pressable>
-        </View>
-        {nameTouched && nameError ? <Text style={s.err}>{nameError}</Text> : null}
-        <View style={s.row}>
-          <TextInput
-            style={s.input} placeholder="Invite code" placeholderTextColor={C.text2}
-            autoCapitalize="characters" value={inviteCode} onChangeText={setInviteCode}
-          />
-          <Pressable style={({ pressed }) => [s.btn, pressed && press, !inviteCode.trim() && s.btnOff]} disabled={!inviteCode.trim()} onPress={onJoin}>
-            <Text style={s.btnText}>Join</Text>
-          </Pressable>
-        </View>
-      </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -136,8 +134,6 @@ const s = StyleSheet.create({
   ctaWrap: { borderRadius: 16, ...glow(C.red, 18, 0.5) },
   cta: { flexDirection: "row", gap: 10, borderRadius: 16, minHeight: 62, alignItems: "center", justifyContent: "center" },
   ctaText: { color: C.text, fontSize: 19, fontFamily: F.display, letterSpacing: 1 },
-  navPill: { flex: 1, flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center", backgroundColor: C.card, borderRadius: 12, borderWidth: 1, borderColor: C.line, paddingVertical: 12 },
-  navPillText: { color: C.text, fontSize: 15, fontFamily: F.semibold },
   h: { color: C.text, fontSize: 17, fontFamily: F.bold, letterSpacing: 0.4, marginTop: 6 },
   empty: { color: C.text2, fontSize: 15, paddingVertical: 12 },
   club: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: C.card, borderRadius: 12, padding: 14, marginBottom: 8 },
