@@ -1,12 +1,14 @@
 import { useCallback, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
-  deleteTournament, finishBracketMatch, getTournament, startBracketMatch,
+  deleteTournament, finishBracketMatch, getTournament, startBracketMatch, startTournament,
+  type MatchType,
 } from "../../../src/repos/tournamentRepo";
 import { getMatch } from "../../../src/repos/matchRepo";
 import { getClub } from "../../../src/repos/clubRepo";
 import { bracketStatus } from "../../../src/tournament/bracket";
+import { drawSizeFor, startBlocker } from "../../../src/tournament/draw";
 import type { BracketMatch, Entrant } from "../../../src/tournament/types";
 import BracketView from "../../../src/components/BracketView";
 import Icon from "../../../src/components/Icon";
@@ -23,6 +25,8 @@ export default function TournamentBracket() {
   const [entrants, setEntrants] = useState<Entrant[]>([]);
   const [bracket, setBracket] = useState<BracketMatch[]>([]);
   const [title, setTitle] = useState("");
+  const [status, setStatus] = useState("draft");
+  const [matchType, setMatchType] = useState<MatchType>("singles");
   const [pending, setPending] = useState<BracketMatch | null>(null); // cell awaiting start confirm
   const [clubRole, setClubRole] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -47,6 +51,8 @@ export default function TournamentBracket() {
         setTitle(tournament.name);
         setEntrants(ents);
         setBracket(bracket);
+        setStatus(tournament.status);
+        setMatchType(tournament.matchType);
         const club = await getClub(tournament.clubId);
         setClubRole(club?.role ?? null);
       } catch (e) {
@@ -81,6 +87,19 @@ export default function TournamentBracket() {
   const champ = bracketStatus(bracket).champion;
   const champName = champ ? entrants.find((e) => e.id === champ)?.name : null;
   const isAdmin = clubRole === "owner" || clubRole === "admin";
+  const isDraft = status === "draft";
+  const players = entrants.length * (matchType === "doubles" ? 2 : 1);
+  const blocker = startBlocker(players, matchType);
+
+  const onStart = async () => {
+    if (!id) return;
+    try {
+      await startTournament(id);
+      reload();
+    } catch (e) {
+      toast((e as Error).message || "Could not start the tournament", "error");
+    }
+  };
 
   // Any member may share: joining still needs admin approval, so handing out
   // the link grants nothing on its own.
@@ -111,7 +130,30 @@ export default function TournamentBracket() {
       {champName ? (
         <Text style={{ color: C.red, fontFamily: F.semibold, marginBottom: 8 }}>🏆 Champion: {champName}</Text>
       ) : null}
-      <BracketView bracket={bracket} entrants={entrants} onCellPress={onCellPress} />
+      {isDraft ? (
+        <View>
+          {entrants.map((e) => (
+            <Text key={e.id} style={s.entrant}>{e.name}</Text>
+          ))}
+          <Text style={s.drawInfo}>
+            {entrants.length} entrants → {drawSizeFor(entrants.length)} draw
+          </Text>
+          {isAdmin && (
+            <>
+              <Pressable
+                style={[s.start, !!blocker && s.off]}
+                disabled={!!blocker}
+                onPress={onStart}
+              >
+                <Text style={s.startText}>Start tournament</Text>
+              </Pressable>
+              {blocker ? <Text style={s.err}>{blocker}</Text> : null}
+            </>
+          )}
+        </View>
+      ) : (
+        <BracketView bracket={bracket} entrants={entrants} onCellPress={onCellPress} />
+      )}
       <Pressable
         style={{ flexDirection: "row", gap: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 12, minHeight: 52, alignItems: "center", justifyContent: "center", marginTop: 12 }}
         onPress={onShare}
@@ -170,3 +212,12 @@ export default function TournamentBracket() {
     </View>
   );
 }
+
+const s = StyleSheet.create({
+  entrant: { color: C.text, fontFamily: F.body, fontSize: 15, paddingVertical: 6 },
+  drawInfo: { color: C.text2, fontFamily: F.body, fontSize: 13, marginTop: 8, marginBottom: 4 },
+  start: { backgroundColor: C.red, borderRadius: 12, paddingVertical: 15, alignItems: "center", marginTop: 12 },
+  startText: { color: C.text, fontFamily: F.semibold, fontSize: 16 },
+  off: { opacity: 0.5 },
+  err: { color: C.red, fontSize: 12.5, fontFamily: F.body, marginTop: 6 },
+});

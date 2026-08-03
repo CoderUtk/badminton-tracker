@@ -2,9 +2,11 @@ import * as Crypto from "expo-crypto";
 import { getDb } from "../db/db";
 import { supabase } from "../lib/supabase";
 import type { BracketMatch, Entrant } from "../tournament/types";
-import { rowToBracketMatch, type BracketRow } from "../tournament/rows";
+import { rowToBracketMatch, bracketMatchToRow, type BracketRow } from "../tournament/rows";
 import { pickBestOf } from "../tournament/format";
 import { buildTournamentConfig } from "../tournament/matchConfig";
+import { buildBracket } from "../tournament/bracket";
+import { drawSizeFor } from "../tournament/draw";
 import { createMatch } from "./matchRepo";
 import { listClubs } from "./clubRepo";
 
@@ -57,6 +59,23 @@ export async function createTournament(
   if (eErr) throw new Error(eErr.message);
 
   return tid;
+}
+
+/**
+ * Build the bracket for a draft and start it. buildBracket is the same tested
+ * function used before this split; it already resolves byes, so an entrant
+ * count short of the draw auto-advances.
+ */
+export async function startTournament(id: string): Promise<void> {
+  if (!supabase) throw new Error("Sign in to start a tournament");
+  const { entrants } = await getTournament(id);
+  const size = drawSizeFor(entrants.length);
+  const bracket = buildBracket(entrants, size, id, () => Crypto.randomUUID());
+  const { error } = await supabase.rpc("start_tournament", {
+    p_tournament_id: id,
+    p_bracket: bracket.map((m) => bracketMatchToRow(m)),
+  });
+  if (error) throw new Error(error.message);
 }
 
 async function loadEntrantNames(playerIds: string[]): Promise<Map<string, string>> {
