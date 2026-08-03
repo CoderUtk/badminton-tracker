@@ -97,13 +97,22 @@ export default function TournamentBracket() {
       ) : null}
       <BracketView bracket={bracket} entrants={entrants} onCellPress={onCellPress} />
       {isAdmin && (
-        <Pressable
-          style={{ flexDirection: "row", gap: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 12, minHeight: 52, alignItems: "center", justifyContent: "center", marginTop: 12 }}
-          onPress={() => setConfirmingDelete(true)}
-        >
-          <Icon name="trash-outline" color={C.red} size={18} />
-          <Text style={{ color: C.red, fontSize: 16, fontWeight: "700" }}>Delete tournament</Text>
-        </Pressable>
+        <>
+          <Pressable
+            style={{ flexDirection: "row", gap: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 12, minHeight: 52, alignItems: "center", justifyContent: "center", marginTop: 12 }}
+            onPress={() => router.push(`/tournaments/requests/${id}`)}
+          >
+            <Icon name="person-add" color={C.text} size={18} />
+            <Text style={{ color: C.text, fontSize: 16, fontWeight: "700" }}>Pending requests</Text>
+          </Pressable>
+          <Pressable
+            style={{ flexDirection: "row", gap: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 12, minHeight: 52, alignItems: "center", justifyContent: "center", marginTop: 12 }}
+            onPress={() => setConfirmingDelete(true)}
+          >
+            <Icon name="trash-outline" color={C.red} size={18} />
+            <Text style={{ color: C.red, fontSize: 16, fontWeight: "700" }}>Delete tournament</Text>
+          </Pressable>
+        </>
       )}
       <Sheet
         visible={!!pending}
