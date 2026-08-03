@@ -81,15 +81,15 @@ created here belongs to the creator's personal club.
 bracket**. `createTournament` stops calling `buildBracket` and stops inserting
 `bracket_matches`. It also stops taking a `size`.
 
-**Starting** is `start_tournament(p_tournament_id uuid)`, a `security definer`
-RPC with a pinned `search_path`, which in one transaction:
+**Starting** is `start_tournament(p_tournament_id uuid, p_bracket jsonb)`, a
+`security definer` RPC with a pinned `search_path`, which in one transaction:
 
 1. asserts the caller is a club admin for the tournament's club, raising
    otherwise;
 2. asserts `status = 'draft'`, so a second call cannot rebuild a live bracket
    and destroy played results;
 3. counts entrants and asserts the minimum (below), raising with the reason;
-4. computes the draw size, builds the bracket rows, and inserts them;
+4. validates `p_bracket` against the entrant count and inserts its rows;
 5. sets `size` and flips `status` to `'live'`.
 
 Atomicity matters: a half-started tournament with some bracket rows and a
@@ -101,12 +101,20 @@ already resolves byes correctly — a slot with only one entrant sets
 counts auto-advance with no change. That behaviour is already covered by
 `tests/bracket.test.ts`.
 
-Because the SQL RPC must build the same bracket the TypeScript does, the seeding
-order is reimplemented in SQL rather than shared. This duplication is the main
-cost of doing the transition atomically, and the two must agree; the alternative
-(build in TS, insert from the client) cannot be atomic and leaves the half-built
-state above reachable. The SQL implementation is verified against the same
-fixtures `tests/bracket.test.ts` uses.
+**The bracket is built in TypeScript and passed to the RPC as `jsonb`**, not
+rebuilt in SQL. `start_tournament(p_tournament_id uuid, p_bracket jsonb)` inserts
+the supplied rows, so the seeding logic exists once, in the already-tested
+`buildBracket`, rather than in two languages that must stay byte-identical.
+Duplicated logic that silently diverges is the failure mode this project has hit
+repeatedly.
+
+Atomicity is unaffected: the RPC is still one transaction, and every guard that
+matters stays in SQL. Because the payload is client-supplied, the RPC validates
+it rather than trusting it — row count equals the draw size, every round and
+index is in range with no duplicates, and every non-null entrant id belongs to
+this tournament. Seeding *order* is not security-sensitive (it is a draw), so a
+client that shuffles it harms only itself; the guards that protect other
+people's data are unchanged.
 
 **`done`** is out of scope. Nothing sets it today and nothing in B1 needs it;
 the list screen already renders it if it ever appears.
