@@ -31,6 +31,13 @@ begin
   if v_status <> 'draft' then
     raise exception 'This tournament has already started';
   end if;
+  -- Legacy drafts created before the two-phase split already carry a full
+  -- bracket. Starting one again would insert a second, overlapping set of
+  -- rows (no unique constraint on tournament_id/round/idx) and corrupt
+  -- finish_bracket_match's advance update.
+  if exists (select 1 from bracket_matches where tournament_id = p_tournament_id) then
+    raise exception 'This tournament already has a bracket';
+  end if;
 
   select count(*) into v_entrants from tournament_entrants
   where tournament_id = p_tournament_id;

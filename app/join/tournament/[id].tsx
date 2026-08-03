@@ -3,6 +3,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { getTournamentPreview, requestJoinTournament, type TournamentPreview, type RequestOutcome } from "../../../src/repos/tournamentStaffRepo";
+import { drawSizeFor } from "../../../src/tournament/draw";
 import { toast } from "../../../src/lib/toast";
 import FormScreen from "../../../src/components/FormScreen";
 import Logo from "../../../src/components/Logo";
@@ -67,7 +68,9 @@ export default function JoinTournament() {
         <Text style={s.eyebrow}>TOURNAMENT INVITATION</Text>
         <Text style={s.title}>{tournament.name}</Text>
         <Text style={s.sub}>
-          {tournament.entrantCount} / {tournament.maxEntrants} entrants
+          {tournament.maxEntrants > 0
+            ? `${tournament.entrantCount} / ${tournament.maxEntrants} entrants`
+            : `${tournament.entrantCount} entrants → ${drawSizeFor(tournament.entrantCount)} draw`}
         </Text>
       </View>
 

@@ -25,7 +25,7 @@ export default function TournamentBracket() {
   const [entrants, setEntrants] = useState<Entrant[]>([]);
   const [bracket, setBracket] = useState<BracketMatch[]>([]);
   const [title, setTitle] = useState("");
-  const [status, setStatus] = useState("draft");
+  const [status, setStatus] = useState("");
   const [matchType, setMatchType] = useState<MatchType>("singles");
   const [pending, setPending] = useState<BracketMatch | null>(null); // cell awaiting start confirm
   const [clubRole, setClubRole] = useState<string | null>(null);
@@ -87,7 +87,10 @@ export default function TournamentBracket() {
   const champ = bracketStatus(bracket).champion;
   const champName = champ ? entrants.find((e) => e.id === champ)?.name : null;
   const isAdmin = clubRole === "owner" || clubRole === "admin";
-  const isDraft = status === "draft";
+  // A legacy draft created before the two-phase split can already hold a
+  // full bracket (status flipped to "live" only on the first finished
+  // match). Such a tournament must render its bracket, not the Start flow.
+  const isDraft = status === "draft" && bracket.length === 0;
   const players = entrants.length * (matchType === "doubles" ? 2 : 1);
   const blocker = startBlocker(players, matchType);
 

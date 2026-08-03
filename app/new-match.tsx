@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { defaultConfig, MatchConfig, replay } from "../src/engine";
 import { createMatch } from "../src/repos/matchRepo";
-import { Club, listClubs, listPlayers } from "../src/repos/clubRepo";
+import { Club, listRealClubs, listPlayers } from "../src/repos/clubRepo";
 import Court from "../src/components/Court";
 import Icon from "../src/components/Icon";
 import FormScreen from "../src/components/FormScreen";
@@ -21,7 +21,7 @@ export default function NewMatch() {
   const [firstServerIdx, setFirstServerIdx] = useState(0); // index into name fields
 
   useEffect(() => {
-    listClubs().then((cs) => {
+    listRealClubs().then((cs) => {
       setClubs(cs);
       if (cs.length === 1) setClubId(cs[0].id);
     });

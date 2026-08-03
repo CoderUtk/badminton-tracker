@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { toast } from "../src/lib/toast";
 import { useRouter } from "expo-router";
-import { listClubs, type Club } from "../src/repos/clubRepo";
+import { listRealClubs, type Club } from "../src/repos/clubRepo";
 import { createSession } from "../src/repos/sessionRepo";
 import DatePicker, { startOfDay } from "../src/components/DatePicker";
 import FormScreen from "../src/components/FormScreen";
@@ -20,7 +20,7 @@ export default function NewSession() {
   const [day, setDay] = useState<Date>(() => startOfDay(new Date()));
 
   useEffect(() => {
-    void listClubs().then((items) => {
+    void listRealClubs().then((items) => {
       setClubs(items);
       setClubId(items[0]?.id ?? null);
     });

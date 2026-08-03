@@ -3,7 +3,7 @@ import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, 
 import { useRouter } from "expo-router";
 import { createTournament, type MatchType } from "../../../src/repos/tournamentRepo";
 import { addGuestPlayer, listClubs, listPlayers, type ClubPlayer } from "../../../src/repos/clubRepo";
-import { drawSizeFor } from "../../../src/tournament/draw";
+import { drawSizeFor, startBlocker } from "../../../src/tournament/draw";
 import { C, F, press } from "../../../src/theme";
 import { toast } from "../../../src/lib/toast";
 import { validateName } from "../../../src/lib/validate";
@@ -45,9 +45,10 @@ export default function NewTournament() {
 
   const entrantCount = Math.floor(picked.length / perEntrant);
   const nameError = validateName(name, "Tournament name");
+  const entrantsBlocker = startBlocker(picked.length, matchType);
   const canCreate = useMemo(
-    () => nameError === null && picked.length > 0 && picked.length % perEntrant === 0,
-    [nameError, picked.length, perEntrant],
+    () => nameError === null && picked.length > 0 && picked.length % perEntrant === 0 && entrantsBlocker === null,
+    [nameError, picked.length, perEntrant, entrantsBlocker],
   );
 
   const onCreate = async () => {
@@ -169,6 +170,7 @@ export default function NewTournament() {
           );
         }}
       />
+      {picked.length > 0 && entrantsBlocker ? <Text style={s.err}>{entrantsBlocker}</Text> : null}
       <Pressable style={({ pressed }) => [s.create, pressed && press, !canCreate && s.off]} disabled={!canCreate} onPress={onCreate}>
         <Text style={s.createText}>Create bracket</Text>
       </Pressable>
