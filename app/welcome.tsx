@@ -29,7 +29,7 @@ export default function Welcome() {
     void getMyProfile().then((p) => { if (p?.displayName) setName(p.displayName); });
   }, []);
 
-  const error = validateName(name, "Display name");
+  const error = validateName(name, "Display name", { requireLetter: true });
 
   const onContinue = async () => {
     if (error) { setTouched(true); toast(error, "error"); return; }
