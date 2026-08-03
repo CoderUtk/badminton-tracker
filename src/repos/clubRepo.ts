@@ -104,7 +104,10 @@ export async function listRealClubs(): Promise<Club[]> {
 export async function getClub(clubId: string): Promise<Club | null> {
   const db = await getDb();
   if (!db) return null;
-  return (await db.getFirstAsync<Club>("select * from clubs_cache where id = ?", clubId)) ?? null;
+  const row = await db.getFirstAsync<Omit<Club, "personal"> & { personal: 0 | 1 }>(
+    "select * from clubs_cache where id = ?", clubId
+  );
+  return row ? { ...row, personal: !!row.personal } : null;
 }
 
 /**
