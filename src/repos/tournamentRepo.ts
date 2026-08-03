@@ -7,6 +7,7 @@ import { bracketMatchToRow, rowToBracketMatch, type BracketRow } from "../tourna
 import { pickBestOf } from "../tournament/format";
 import { buildTournamentConfig } from "../tournament/matchConfig";
 import { createMatch } from "./matchRepo";
+import { listClubs } from "./clubRepo";
 
 export { bracketMatchToRow, rowToBracketMatch, changedRows } from "../tournament/rows";
 export type { BracketRow } from "../tournament/rows";
@@ -158,7 +159,10 @@ export async function getTournament(
   id: string,
 ): Promise<{ tournament: TournamentRow; entrants: Entrant[]; bracket: BracketMatch[] }> {
   if (!supabase) return { tournament: toTournamentRow({}), entrants: [], bracket: [] };
-  const { data: row } = await supabase.from("tournaments").select("*").eq("id", id).maybeSingle();
+  const { data: row, error } = await supabase.from("tournaments").select("*").eq("id", id).maybeSingle();
+  // Without this the screen renders a blank tournament on any read failure,
+  // which looks like a deleted tournament rather than an error.
+  if (error) throw new Error(error.message);
   return {
     tournament: toTournamentRow((row as Record<string, unknown>) ?? {}),
     entrants: await loadEntrants(id),
@@ -168,12 +172,43 @@ export async function getTournament(
 
 export async function listTournaments(clubId: string): Promise<TournamentRow[]> {
   if (!supabase) return [];
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("tournaments")
     .select("*")
     .eq("club_id", clubId)
     .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
   return (data ?? []).map((row) => toTournamentRow(row as Record<string, unknown>));
+}
+
+export type TournamentListRow = TournamentRow & { clubName: string };
+
+/**
+ * Every tournament across all of the user's clubs, newest first.
+ *
+ * The Cups tab is top-level with no club in its route, so it cannot be
+ * club-scoped. It previously used clubs[0], hiding every other club's
+ * tournaments — and with an empty clubs_cache the id was "", making
+ * .eq("club_id", "") a uuid type error that the old code swallowed into an
+ * empty list.
+ */
+export async function listAllTournaments(): Promise<TournamentListRow[]> {
+  if (!supabase) return [];
+  const clubs = await listClubs();
+  // The one legitimate empty case. It must not reach the query: an empty `in`
+  // list is pointless and an empty string is a type error.
+  if (clubs.length === 0) return [];
+  const nameOf = new Map(clubs.map((c) => [c.id, c.name]));
+  const { data, error } = await supabase
+    .from("tournaments")
+    .select("*")
+    .in("club_id", clubs.map((c) => c.id))
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => {
+    const t = toTournamentRow(row as Record<string, unknown>);
+    return { ...t, clubName: nameOf.get(t.clubId) ?? "" };
+  });
 }
 
 /** Create a real match for a bracket cell (singles or doubles), link it, return matchId. */

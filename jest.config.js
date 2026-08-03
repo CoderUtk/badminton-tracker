@@ -7,5 +7,8 @@ module.exports = {
   // node test env; tests only need the env-gated logic around it.
   moduleNameMapper: {
     "^@sentry/react-native$": "<rootDir>/tests/__mocks__/sentry-react-native.ts",
+    // Same reason: expo-crypto is ESM-only, and tournamentRepo imports it at
+    // module scope, so any test touching that module needs it stubbed.
+    "^expo-crypto$": "<rootDir>/tests/__mocks__/expo-crypto.ts",
   },
 };
