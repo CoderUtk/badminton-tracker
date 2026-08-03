@@ -42,38 +42,44 @@ export async function addGuestPlayer(clubId: string, name: string): Promise<void
 }
 
 /** Pull clubs + players from Supabase into the local cache. No-op offline. */
+let refreshing = false;
 export async function refreshClubs(): Promise<void> {
-  if (!supabase) return;
-  const db = await getDb();
-  if (!db) return;
-  const [clubs, members, players] = await Promise.all([
-    supabase.from("clubs").select("id, name, invite_code"),
-    supabase.from("club_members").select("club_id, role, profile_id"),
-    supabase.from("club_players").select("id, club_id, profile_id, name"),
-  ]);
-  if (clubs.error || players.error) return; // stay on cache
-  const uid = (await supabase.auth.getUser()).data.user?.id;
-  const roleByClub = new Map(
-    (members.data ?? [])
-      .filter((m) => m.profile_id === uid)
-      .map((m) => [m.club_id, m.role])
-  );
-  await db.withTransactionAsync(async () => {
-    await db.runAsync("delete from clubs_cache");
-    await db.runAsync("delete from club_players_cache");
-    for (const c of clubs.data ?? []) {
-      await db.runAsync(
-        "insert into clubs_cache (id, name, invite_code, role) values (?, ?, ?, ?)",
-        c.id, c.name, c.invite_code, roleByClub.get(c.id) ?? "member"
-      );
-    }
-    for (const p of players.data ?? []) {
-      await db.runAsync(
-        "insert into club_players_cache (id, club_id, profile_id, name) values (?, ?, ?, ?)",
-        p.id, p.club_id, p.profile_id, p.name
-      );
-    }
-  });
+  if (!supabase || refreshing) return;
+  refreshing = true;
+  try {
+    const db = await getDb();
+    if (!db) return;
+    const [clubs, members, players] = await Promise.all([
+      supabase.from("clubs").select("id, name, invite_code"),
+      supabase.from("club_members").select("club_id, role, profile_id"),
+      supabase.from("club_players").select("id, club_id, profile_id, name"),
+    ]);
+    if (clubs.error || players.error) return; // stay on cache
+    const uid = (await supabase.auth.getUser()).data.user?.id;
+    const roleByClub = new Map(
+      (members.data ?? [])
+        .filter((m) => m.profile_id === uid)
+        .map((m) => [m.club_id, m.role])
+    );
+    await db.withTransactionAsync(async () => {
+      await db.runAsync("delete from clubs_cache");
+      await db.runAsync("delete from club_players_cache");
+      for (const c of clubs.data ?? []) {
+        await db.runAsync(
+          "insert into clubs_cache (id, name, invite_code, role) values (?, ?, ?, ?)",
+          c.id, c.name, c.invite_code, roleByClub.get(c.id) ?? "member"
+        );
+      }
+      for (const p of players.data ?? []) {
+        await db.runAsync(
+          "insert into club_players_cache (id, club_id, profile_id, name) values (?, ?, ?, ?)",
+          p.id, p.club_id, p.profile_id, p.name
+        );
+      }
+    });
+  } finally {
+    refreshing = false;
+  }
 }
 
 export async function listClubs(): Promise<Club[]> {

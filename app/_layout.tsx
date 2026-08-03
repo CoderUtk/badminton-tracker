@@ -13,6 +13,7 @@ import {
 } from "@expo-google-fonts/chakra-petch";
 import { SessionProvider, useSession } from "../src/stores/session";
 import { getMyProfile, subscribeProfile } from "../src/repos/profileRepo";
+import { getDb } from "../src/db/db";
 import { startSyncListener } from "../src/sync/runner";
 import { scheduleInactivityReminder } from "../src/lib/reminders";
 import AnimatedSplash from "../src/components/AnimatedSplash";
@@ -106,7 +107,13 @@ function RootLayout() {
     ChakraPetch_600SemiBold,
     ChakraPetch_700Bold,
   });
-  useEffect(() => startSyncListener(), []);
+  useEffect(() => {
+    // Wait for db to be ready before starting sync to avoid nested transactions
+    void (async () => {
+      await getDb(); // Ensure migrations complete first
+      startSyncListener();
+    })();
+  }, []);
   // Pushes the 7-day inactivity-reminder clock forward on every app open;
   // no-ops if the setting is off, permission isn't granted, or on web. A
   // warm resume (AppState -> "active") counts as an "open" too, not just
