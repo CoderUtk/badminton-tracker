@@ -1,9 +1,8 @@
 import * as Crypto from "expo-crypto";
 import { getDb } from "../db/db";
 import { supabase } from "../lib/supabase";
-import { buildBracket } from "../tournament/bracket";
-import type { BracketMatch, BracketSize, Entrant } from "../tournament/types";
-import { bracketMatchToRow, rowToBracketMatch, type BracketRow } from "../tournament/rows";
+import type { BracketMatch, Entrant } from "../tournament/types";
+import { rowToBracketMatch, type BracketRow } from "../tournament/rows";
 import { pickBestOf } from "../tournament/format";
 import { buildTournamentConfig } from "../tournament/matchConfig";
 import { createMatch } from "./matchRepo";
@@ -27,9 +26,7 @@ const entrantName = (r: EntrantRow) =>
 // --- async persistence ------------------------------------------------------
 
 export async function createTournament(
-  clubId: string,
   name: string,
-  size: BracketSize,
   matchType: MatchType,
   bestOf: number,
   finalsBestOf: number,
@@ -37,14 +34,16 @@ export async function createTournament(
   courts = 4,
 ): Promise<string> {
   if (!supabase) throw new Error("Sign in to create a tournament");
+  const club = (await listClubs()).find((c) => c.personal);
+  if (!club) throw new Error("No personal club — sign out and back in");
   const tid = Crypto.randomUUID();
   const ents: Entrant[] = entrants.map((e) => ({
     id: Crypto.randomUUID(), clubPlayerId: e.clubPlayerId, name: e.name, seed: e.seed,
   }));
-  const bracket = buildBracket(ents, size, tid, () => Crypto.randomUUID());
 
+  // The draw is not known yet — no bracket exists until the tournament starts.
   const { error: tErr } = await supabase.from("tournaments").insert({
-    id: tid, club_id: clubId, name, format: "single_elim", size, status: "draft",
+    id: tid, club_id: club.id, name, format: "single_elim", size: 0, status: "draft",
     match_type: matchType, bestof: bestOf, finals_bestof: finalsBestOf, courts,
   });
   if (tErr) throw new Error(tErr.message);
@@ -56,11 +55,6 @@ export async function createTournament(
     })),
   );
   if (eErr) throw new Error(eErr.message);
-
-  const { error: bErr } = await supabase.from("bracket_matches").insert(
-    bracket.map((m) => bracketMatchToRow(m)),
-  );
-  if (bErr) throw new Error(bErr.message);
 
   return tid;
 }
@@ -198,7 +192,9 @@ export async function listAllTournaments(): Promise<TournamentListRow[]> {
   // The one legitimate empty case. It must not reach the query: an empty `in`
   // list is pointless and an empty string is a type error.
   if (clubs.length === 0) return [];
-  const nameOf = new Map(clubs.map((c) => [c.id, c.name]));
+  // Personal clubs are hidden from the user, so a tournament in one shows no
+  // club name rather than leaking "Personal" onto the row.
+  const nameOf = new Map(clubs.map((c) => [c.id, c.personal ? "" : c.name]));
   const { data, error } = await supabase
     .from("tournaments")
     .select("*")

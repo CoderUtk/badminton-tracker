@@ -1,24 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { createTournament, type MatchType } from "../../../src/repos/tournamentRepo";
 import { addGuestPlayer, listClubs, listPlayers, type ClubPlayer } from "../../../src/repos/clubRepo";
-import type { BracketSize } from "../../../src/tournament/types";
+import { drawSizeFor } from "../../../src/tournament/draw";
 import { C, F, press } from "../../../src/theme";
 import { toast } from "../../../src/lib/toast";
 import { validateName } from "../../../src/lib/validate";
 
-const SIZES: BracketSize[] = [4, 8, 16, 32, 64];
 const BESTOFS = [1, 3, 5] as const;
 const COURTS = [1, 2, 3, 4, 6, 8] as const;
 
 export default function NewTournament() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ clubId?: string }>();
-  const [clubId, setClubId] = useState(params.clubId ?? "");
+  const [clubId, setClubId] = useState("");
   const [name, setName] = useState("");
   const [nameTouched, setNameTouched] = useState(false);
-  const [size, setSize] = useState<BracketSize>(8);
   const [matchType, setMatchType] = useState<MatchType>("singles");
   const [bestOf, setBestOf] = useState<number>(3);
   const [finalsBestOf, setFinalsBestOf] = useState<number>(3);
@@ -30,25 +27,27 @@ export default function NewTournament() {
 
   useEffect(() => {
     (async () => {
-      let id = clubId;
-      if (!id) { id = (await listClubs())[0]?.id ?? ""; setClubId(id); }
+      const id = (await listClubs()).find((c) => c.personal)?.id ?? "";
+      setClubId(id);
       if (id) setPlayers(await listPlayers(id));
     })();
-  }, [clubId]);
+  }, []);
 
   const perEntrant = matchType === "doubles" ? 2 : 1;
-  const cap = size * perEntrant; // max individual players selectable
+  // 64 is the largest BracketSize (startBlocker's ceiling), so this is
+  // 64 entrants max — 64 singles players or 64 doubles pairs (128 players).
+  const maxPicked = 64 * perEntrant;
 
   const toggle = (id: string) =>
-    setPicked((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : cur.length < cap ? [...cur, id] : cur));
+    setPicked((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : cur.length < maxPicked ? [...cur, id] : cur));
 
   const setMode = (m: MatchType) => { setMatchType(m); setPicked([]); };
 
   const entrantCount = Math.floor(picked.length / perEntrant);
   const nameError = validateName(name, "Tournament name");
   const canCreate = useMemo(
-    () => nameError === null && entrantCount >= 2 && entrantCount <= size && picked.length % perEntrant === 0,
-    [nameError, entrantCount, size, picked.length, perEntrant],
+    () => nameError === null && picked.length > 0 && picked.length % perEntrant === 0,
+    [nameError, picked.length, perEntrant],
   );
 
   const onCreate = async () => {
@@ -63,7 +62,7 @@ export default function NewTournament() {
               return { clubPlayerId: p1, clubPlayerId2: p2, name: `${nameOf(p1)} / ${nameOf(p2)}`, seed: i + 1 };
             })
           : picked.map((pid, i) => ({ clubPlayerId: pid, name: nameOf(pid), seed: i + 1 }));
-      const tid = await createTournament(clubId, name.trim(), size, matchType, bestOf, finalsBestOf, entrants, courts);
+      const tid = await createTournament(name.trim(), matchType, bestOf, finalsBestOf, entrants, courts);
       router.replace(`/tournaments/${tid}`);
     } catch (e) {
       toast((e as Error).message || "Could not create tournament", "error");
@@ -88,7 +87,7 @@ export default function NewTournament() {
       setPlayers(next);
       setGuestName("");
       const added = next.find((p) => p.name === trimmed && !picked.includes(p.id));
-      if (added) setPicked((cur) => (cur.length < cap ? [...cur, added.id] : cur));
+      if (added) setPicked((cur) => (cur.length < maxPicked ? [...cur, added.id] : cur));
       toast("Player added", "success");
     } catch (e) {
       toast((e as Error).message || "Could not add player", "error");
@@ -107,8 +106,6 @@ export default function NewTournament() {
     </View>
   );
 
-  const label = matchType === "doubles" ? "pairs" : "players";
-
   return (
     // A FlatList must not be nested in a ScrollView, so this screen keeps its
     // View root and only lifts it above the keyboard.
@@ -121,9 +118,6 @@ export default function NewTournament() {
 
       <Text style={s.h}>Format</Text>
       <Segmented value={matchType} options={["singles", "doubles"]} onPick={(v) => setMode(v as MatchType)} />
-
-      <Text style={s.h}>Draw size</Text>
-      <Segmented value={size} options={SIZES} onPick={(v) => setSize(v as BracketSize)} />
 
       <View style={s.gamesRow}>
         <View style={s.gamesCol}>
@@ -139,7 +133,7 @@ export default function NewTournament() {
       <Text style={s.h}>Courts</Text>
       <Segmented value={courts} options={COURTS} onPick={(v) => setCourts(v as number)} />
 
-      <Text style={s.h}>Pick entrants ({entrantCount}/{size} {label})</Text>
+      <Text style={s.h}>Pick entrants ({entrantCount} → {drawSizeFor(entrantCount)} draw)</Text>
       <View style={s.guestRow}>
         <TextInput
           style={[s.input, { flex: 1 }]}
