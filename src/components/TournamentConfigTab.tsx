@@ -89,7 +89,12 @@ export default function TournamentConfigTab({
     </View>
   );
 
-  if (!isAdmin) {
+  // The courts stepper and best-of segments only mean anything pre-start —
+  // courts is read once by start_tournament to seed round-1, and editing it
+  // live changes a number nothing reads. Once live, everyone (including
+  // admins) gets the same read-only summary; admin editing moves to the
+  // Scorers tab's share link and Live Ops for anything that still matters.
+  if (!isAdmin || !isDraft) {
     return (
       <View style={s.root}>
         <Text style={s.h}>{tournament.name}</Text>
