@@ -29,7 +29,7 @@
 
 **Interfaces:**
 - Consumes: `listRealClubs()` from `src/repos/clubRepo.ts` (already exists, returns `Club[]` with `id`/`role`); `supabase` from `src/lib/supabase.ts`.
-- Produces: `refreshSessions(): Promise<void>` (new export); `ClubSession` gains a `created_by: string` field; `createSession`, `updateSessionStatus`, `deleteSession`, `setAttendance` keep their existing signatures but now write through Supabase.
+- Produces: `refreshSessions(): Promise<void>` (new export); `ClubSession` gains a `created_by: string | null` field (nullable — see `0016_profile_delete_cascade.sql`); `createSession`, `updateSessionStatus`, `deleteSession`, `setAttendance` keep their existing signatures but now write through Supabase.
 
 - [ ] **Step 1: Write the migration**
 
@@ -116,7 +116,11 @@ export interface ClubSession {
   courts: number;
   status: SessionStatus;
   created_at: number;
-  created_by: string;
+  // Nullable: a session whose creator's account was later deleted keeps the
+  // session (0016_profile_delete_cascade.sql sets this null rather than
+  // cascading), but no one is "the creator" anymore — isCreator checks in
+  // Task 2 naturally evaluate false, which is the correct, safe behavior.
+  created_by: string | null;
 }
 
 export interface Attendance extends ClubPlayer {
