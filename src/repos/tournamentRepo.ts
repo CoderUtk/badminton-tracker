@@ -41,6 +41,7 @@ export async function createTournament(
   const tid = Crypto.randomUUID();
   const ents: Entrant[] = entrants.map((e) => ({
     id: Crypto.randomUUID(), clubPlayerId: e.clubPlayerId, name: e.name, seed: e.seed,
+    partnerClubPlayerId: e.clubPlayerId2 ?? null,
   }));
 
   // The draw is not known yet — no bracket exists until the tournament starts.
@@ -99,6 +100,7 @@ async function loadEntrants(tournamentId: string): Promise<Entrant[]> {
     clubPlayerId: r.club_player_id,
     name: entrantName({ ...r, name1: names.get(r.club_player_id) ?? null, name2: r.club_player_id_2 ? names.get(r.club_player_id_2) ?? null : null }),
     seed: r.seed,
+    partnerClubPlayerId: r.club_player_id_2,
   }));
 }
 

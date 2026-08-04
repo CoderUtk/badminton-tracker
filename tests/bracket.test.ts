@@ -4,7 +4,9 @@ import type { Entrant } from "../src/tournament/types";
 let n = 0;
 const gen = () => `id${n++}`;
 const ents = (count: number): Entrant[] =>
-  Array.from({ length: count }, (_, i) => ({ id: `e${i + 1}`, clubPlayerId: `p${i + 1}`, name: `P${i + 1}`, seed: i + 1 }));
+  Array.from({ length: count }, (_, i) => ({
+    id: `e${i + 1}`, clubPlayerId: `p${i + 1}`, name: `P${i + 1}`, seed: i + 1, partnerClubPlayerId: null,
+  }));
 
 beforeEach(() => { n = 0; });
 

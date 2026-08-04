@@ -1,0 +1,149 @@
+import { useState } from "react";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { updateTournament, type TournamentRow } from "../repos/tournamentRepo";
+import { buildTournamentJoinPath, buildTournamentScorerJoinPath } from "../lib/joinLink";
+import { shareJoinLink } from "../lib/shareJoin";
+import { validateName } from "../lib/validate";
+import { toast } from "../lib/toast";
+import Icon from "./Icon";
+import { C, F, press } from "../theme";
+
+const BESTOFS = [1, 3, 5] as const;
+const COURTS = [1, 2, 3, 4, 6, 8] as const;
+
+/**
+ * Config tab: name, courts (stepper lands in Task 5 — a segmented control
+ * today), both share links, and Start. Non-admins get a read-only summary and
+ * the player link only — sharing the scorer link is an admin action.
+ */
+export default function TournamentConfigTab({
+  tournament, isAdmin, isDraft, blocker, onStart, onChanged,
+}: {
+  tournament: TournamentRow;
+  isAdmin: boolean;
+  isDraft: boolean;
+  blocker: string | null;
+  onStart: () => void;
+  onChanged: () => void;
+}) {
+  const [name, setName] = useState(tournament.name);
+  const [touched, setTouched] = useState(false);
+  const [courts, setCourts] = useState(tournament.courts);
+  const [bestOf, setBestOf] = useState(tournament.bestOf);
+  const [finalsBestOf, setFinalsBestOf] = useState(tournament.finalsBestOf);
+  const [busy, setBusy] = useState(false);
+
+  const nameError = validateName(name, "Tournament name");
+  const dirty =
+    name.trim() !== tournament.name || courts !== tournament.courts ||
+    bestOf !== tournament.bestOf || finalsBestOf !== tournament.finalsBestOf;
+
+  const onSave = async () => {
+    if (nameError) { setTouched(true); toast(nameError, "error"); return; }
+    setBusy(true);
+    try {
+      await updateTournament(tournament.id, { name: name.trim(), courts, bestOf, finalsBestOf });
+      toast("Tournament updated", "success");
+      onChanged();
+    } catch (e) {
+      toast((e as Error).message || "Could not update tournament", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onSharePlayer = () =>
+    shareJoinLink(buildTournamentJoinPath(tournament.id), `Join "${tournament.name}" on CourtSide:`);
+  const onShareScorer = () =>
+    shareJoinLink(buildTournamentScorerJoinPath(tournament.id), `Score "${tournament.name}" on CourtSide:`);
+
+  const Segmented = ({ value, options, onPick }: { value: number; options: readonly number[]; onPick: (v: number) => void }) => (
+    <View style={s.segRow}>
+      {options.map((o) => (
+        <Pressable key={o} onPress={() => onPick(o)} style={({ pressed }) => [s.segBtn, pressed && press, value === o && s.segOn]}>
+          <Text style={[s.segText, value === o && s.segTextOn]}>{o}</Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+
+  if (!isAdmin) {
+    return (
+      <View style={s.root}>
+        <Text style={s.h}>{tournament.name}</Text>
+        <Text style={s.summary}>
+          {tournament.courts} courts · best of {tournament.bestOf} ({tournament.finalsBestOf} semis onward)
+        </Text>
+        <Pressable style={s.share} onPress={onSharePlayer}>
+          <Icon name="share-social-outline" color={C.text} size={18} />
+          <Text style={s.shareText}>Share join link</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  return (
+    <View style={s.root}>
+      <Text style={s.label}>Name</Text>
+      <TextInput
+        style={s.input} placeholder="Tournament name" placeholderTextColor={C.text2}
+        value={name} onChangeText={setName} onBlur={() => setTouched(true)}
+      />
+      {touched && nameError ? <Text style={s.err}>{nameError}</Text> : null}
+
+      <Text style={s.label}>Courts</Text>
+      <Segmented value={courts} options={COURTS} onPick={setCourts} />
+
+      <Text style={s.label}>Games / match</Text>
+      <Segmented value={bestOf} options={BESTOFS} onPick={setBestOf} />
+
+      <Text style={s.label}>Semis onward</Text>
+      <Segmented value={finalsBestOf} options={BESTOFS} onPick={setFinalsBestOf} />
+
+      {dirty ? (
+        <Pressable style={[s.save, (!!nameError || busy) && s.off]} disabled={!!nameError || busy} onPress={onSave}>
+          <Text style={s.saveText}>Save changes</Text>
+        </Pressable>
+      ) : null}
+
+      <Pressable style={s.share} onPress={onSharePlayer}>
+        <Icon name="share-social-outline" color={C.text} size={18} />
+        <Text style={s.shareText}>Share join link</Text>
+      </Pressable>
+      <Pressable style={s.share} onPress={onShareScorer}>
+        <Icon name="share-social-outline" color={C.text} size={18} />
+        <Text style={s.shareText}>Share scorer link</Text>
+      </Pressable>
+
+      {isDraft ? (
+        <>
+          <Pressable style={[s.start, !!blocker && s.off]} disabled={!!blocker} onPress={onStart}>
+            <Text style={s.startText}>Start tournament</Text>
+          </Pressable>
+          {blocker ? <Text style={s.err}>{blocker}</Text> : null}
+        </>
+      ) : null}
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
+  root: { gap: 10, paddingVertical: 12 },
+  h: { color: C.text, fontFamily: F.bold, fontSize: 18 },
+  summary: { color: C.text2, fontFamily: F.body, fontSize: 14 },
+  label: { color: C.text, fontFamily: F.bold, fontSize: 14, marginTop: 6 },
+  input: { backgroundColor: C.card, color: C.text, borderRadius: 12, borderWidth: 1, borderColor: C.line, padding: 12, fontSize: 16 },
+  segRow: { flexDirection: "row", gap: 8 },
+  segBtn: { flex: 1, alignItems: "center", paddingVertical: 11, backgroundColor: C.card, borderRadius: 10, borderWidth: 1, borderColor: C.line },
+  segOn: { borderColor: C.red, backgroundColor: "rgba(255,59,48,0.12)" },
+  segText: { color: C.text2, fontFamily: F.semibold, fontSize: 15 },
+  segTextOn: { color: C.text },
+  err: { color: C.red, fontSize: 12.5, fontFamily: F.body },
+  save: { backgroundColor: C.red, borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: 4 },
+  saveText: { color: C.text, fontFamily: F.semibold, fontSize: 16 },
+  share: { flexDirection: "row", gap: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 12, minHeight: 52, alignItems: "center", justifyContent: "center", marginTop: 4 },
+  shareText: { color: C.text, fontSize: 16, fontWeight: "700" },
+  start: { backgroundColor: C.red, borderRadius: 12, paddingVertical: 15, alignItems: "center", marginTop: 12 },
+  startText: { color: C.text, fontFamily: F.semibold, fontSize: 16 },
+  off: { opacity: 0.5 },
+});

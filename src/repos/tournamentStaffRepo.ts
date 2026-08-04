@@ -15,6 +15,7 @@ export type TournamentStaff = {
   tournamentId: string;
   profileId: string;
   role: "admin" | "scorer";
+  displayName: string;
 };
 
 export type StaffRole = "admin" | "scorer";
@@ -99,13 +100,21 @@ export async function getTournamentStaff(tournamentId: string): Promise<Tourname
   if (!supabase) return [];
   const { data, error } = await supabase
     .from("tournament_staff")
-    .select("id, tournament_id, profile_id, role")
+    .select("id, tournament_id, profile_id, role, profiles(display_name)")
     .eq("tournament_id", tournamentId);
   if (error) throw new Error(error.message);
-  return (data ?? []).map((r) => ({
-    id: r.id,
-    tournamentId: r.tournament_id,
-    profileId: r.profile_id,
-    role: r.role as "admin" | "scorer",
-  }));
+  return (data ?? []).map((r) => {
+    const row = r as unknown as {
+      id: string; tournament_id: string; profile_id: string; role: "admin" | "scorer";
+      profiles: { display_name: string | null } | { display_name: string | null }[] | null;
+    };
+    const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+    return {
+      id: row.id,
+      tournamentId: row.tournament_id,
+      profileId: row.profile_id,
+      role: row.role,
+      displayName: profile?.display_name || "Player",
+    };
+  });
 }

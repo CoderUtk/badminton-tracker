@@ -3,32 +3,40 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
   deleteTournament, finishBracketMatch, getTournament, startBracketMatch, startTournament,
-  type MatchType,
+  type MatchType, type TournamentRow,
 } from "../../../src/repos/tournamentRepo";
 import { getMatch } from "../../../src/repos/matchRepo";
 import { getClub } from "../../../src/repos/clubRepo";
+import {
+  getTournamentStaff, listPendingTournamentRequests, myStaffRole,
+  type TournamentJoinRequest, type TournamentStaff,
+} from "../../../src/repos/tournamentStaffRepo";
 import { bracketStatus } from "../../../src/tournament/bracket";
-import { drawSizeFor, startBlocker } from "../../../src/tournament/draw";
+import { startBlocker } from "../../../src/tournament/draw";
 import type { BracketMatch, Entrant } from "../../../src/tournament/types";
 import BracketView from "../../../src/components/BracketView";
-import Icon from "../../../src/components/Icon";
 import Sheet from "../../../src/components/Sheet";
 import MenuButton from "../../../src/components/MenuButton";
-import { buildTournamentJoinPath } from "../../../src/lib/joinLink";
-import { shareJoinLink } from "../../../src/lib/shareJoin";
+import TournamentConfigTab from "../../../src/components/TournamentConfigTab";
+import TournamentPlayersTab from "../../../src/components/TournamentPlayersTab";
+import TournamentScorersTab from "../../../src/components/TournamentScorersTab";
 import { toast } from "../../../src/lib/toast";
-import { C, F } from "../../../src/theme";
+import { C, F, press } from "../../../src/theme";
+
+type Tab = "config" | "players" | "scorers";
 
 export default function TournamentBracket() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const [tab, setTab] = useState<Tab>("config");
+  const [tournament, setTournament] = useState<TournamentRow | null>(null);
   const [entrants, setEntrants] = useState<Entrant[]>([]);
   const [bracket, setBracket] = useState<BracketMatch[]>([]);
-  const [title, setTitle] = useState("");
-  const [status, setStatus] = useState("");
-  const [matchType, setMatchType] = useState<MatchType>("singles");
+  const [staff, setStaff] = useState<TournamentStaff[]>([]);
+  const [requests, setRequests] = useState<TournamentJoinRequest[]>([]);
   const [pending, setPending] = useState<BracketMatch | null>(null); // cell awaiting start confirm
   const [clubRole, setClubRole] = useState<string | null>(null);
+  const [isTournamentAdmin, setIsTournamentAdmin] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -47,14 +55,21 @@ export default function TournamentBracket() {
             }
           }
         }
-        const { tournament, entrants: ents, bracket } = await getTournament(id);
-        setTitle(tournament.name);
+        const { tournament: t, entrants: ents, bracket: b } = await getTournament(id);
+        setTournament(t);
         setEntrants(ents);
-        setBracket(bracket);
-        setStatus(tournament.status);
-        setMatchType(tournament.matchType);
-        const club = await getClub(tournament.clubId);
+        setBracket(b);
+        const club = await getClub(t.clubId);
         setClubRole(club?.role ?? null);
+        const staffRole = await myStaffRole(id);
+        setIsTournamentAdmin(staffRole === "admin");
+        const isAdmin = club?.role === "owner" || club?.role === "admin" || staffRole === "admin";
+        const [staffList, reqs] = await Promise.all([
+          getTournamentStaff(id),
+          isAdmin ? listPendingTournamentRequests(id) : Promise.resolve([]),
+        ]);
+        setStaff(staffList);
+        setRequests(reqs);
       } catch (e) {
         toast((e as Error).message || "Could not load the tournament", "error");
       }
@@ -86,13 +101,13 @@ export default function TournamentBracket() {
 
   const champ = bracketStatus(bracket).champion;
   const champName = champ ? entrants.find((e) => e.id === champ)?.name : null;
-  const isAdmin = clubRole === "owner" || clubRole === "admin";
+  const isAdmin = clubRole === "owner" || clubRole === "admin" || isTournamentAdmin;
   // A legacy draft created before the two-phase split can already hold a
   // full bracket (status flipped to "live" only on the first finished
   // match). Such a tournament must render its bracket, not the Start flow.
-  const isDraft = status === "draft" && bracket.length === 0;
-  const players = entrants.length * (matchType === "doubles" ? 2 : 1);
-  const blocker = startBlocker(players, matchType);
+  const isDraft = tournament?.status === "draft" && bracket.length === 0;
+  const players = entrants.length * ((tournament?.matchType ?? "singles" as MatchType) === "doubles" ? 2 : 1);
+  const blocker = startBlocker(players, tournament?.matchType ?? "singles");
 
   const onStart = async () => {
     if (!id) return;
@@ -103,11 +118,6 @@ export default function TournamentBracket() {
       toast((e as Error).message || "Could not start the tournament", "error");
     }
   };
-
-  // Any member may share: joining still needs admin approval, so handing out
-  // the link grants nothing on its own.
-  const onShare = () =>
-    shareJoinLink(buildTournamentJoinPath(id!), `Join "${title}" on CourtSide:`);
 
   const onDeleteTournament = async () => {
     if (!id) return;
@@ -120,6 +130,8 @@ export default function TournamentBracket() {
     }
   };
 
+  if (!tournament) return <View style={{ flex: 1, backgroundColor: C.bg }} />;
+
   return (
     <View style={{ flex: 1, backgroundColor: C.bg, padding: 12 }}>
       <Stack.Screen
@@ -129,59 +141,63 @@ export default function TournamentBracket() {
           headerRight: isAdmin ? () => <MenuButton onPress={() => setMenuOpen(true)} /> : undefined,
         }}
       />
-      {title ? <Text style={{ color: C.text, fontFamily: F.bold, fontSize: 18, marginBottom: 4 }}>{title}</Text> : null}
+      <Text style={{ color: C.text, fontFamily: F.bold, fontSize: 18, marginBottom: 4 }}>{tournament.name}</Text>
       {champName ? (
         <Text style={{ color: C.red, fontFamily: F.semibold, marginBottom: 8 }}>🏆 Champion: {champName}</Text>
       ) : null}
-      {isDraft ? (
-        <View>
-          {entrants.map((e) => (
-            <Text key={e.id} style={s.entrant}>{e.name}</Text>
-          ))}
-          <Text style={s.drawInfo}>
-            {entrants.length} entrants → {drawSizeFor(entrants.length)} draw
-          </Text>
-          {isAdmin && (
-            <>
-              <Pressable
-                style={[s.start, !!blocker && s.off]}
-                disabled={!!blocker}
-                onPress={onStart}
-              >
-                <Text style={s.startText}>Start tournament</Text>
-              </Pressable>
-              {blocker ? <Text style={s.err}>{blocker}</Text> : null}
-            </>
-          )}
-        </View>
-      ) : (
+
+      {!isDraft ? (
         <BracketView bracket={bracket} entrants={entrants} onCellPress={onCellPress} />
-      )}
-      <Pressable
-        style={{ flexDirection: "row", gap: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 12, minHeight: 52, alignItems: "center", justifyContent: "center", marginTop: 12 }}
-        onPress={onShare}
-      >
-        <Icon name="share-social-outline" color={C.text} size={18} />
-        <Text style={{ color: C.text, fontSize: 16, fontWeight: "700" }}>Share join link</Text>
-      </Pressable>
-      {isAdmin && (
-        <>
-          <Pressable
-            style={{ flexDirection: "row", gap: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 12, minHeight: 52, alignItems: "center", justifyContent: "center", marginTop: 12 }}
-            onPress={() => router.push(`/tournaments/requests/${id}`)}
-          >
-            <Icon name="person-add" color={C.text} size={18} />
-            <Text style={{ color: C.text, fontSize: 16, fontWeight: "700" }}>Pending requests</Text>
+      ) : null}
+
+      <View style={s.tabRow}>
+        {(["config", "players", "scorers"] as Tab[]).map((t) => (
+          <Pressable key={t} onPress={() => setTab(t)} style={({ pressed }) => [s.tabBtn, pressed && press, tab === t && s.tabOn]}>
+            <Text style={[s.tabText, tab === t && s.tabTextOn]}>{t[0].toUpperCase() + t.slice(1)}</Text>
           </Pressable>
-          <Pressable
-            style={{ flexDirection: "row", gap: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 12, minHeight: 52, alignItems: "center", justifyContent: "center", marginTop: 12 }}
-            onPress={() => router.push(`/tournaments/ops/${id}`)}
-          >
-            <Icon name="cog" color={C.text} size={18} />
-            <Text style={{ color: C.text, fontSize: 16, fontWeight: "700" }}>Live Ops Dashboard</Text>
-          </Pressable>
-        </>
+        ))}
+      </View>
+
+      {tab === "config" ? (
+        <TournamentConfigTab
+          tournament={tournament}
+          isAdmin={isAdmin}
+          isDraft={!!isDraft}
+          blocker={blocker}
+          onStart={onStart}
+          onChanged={reload}
+        />
+      ) : tab === "players" ? (
+        <TournamentPlayersTab
+          tournamentId={tournament.id}
+          clubId={tournament.clubId}
+          entrants={entrants}
+          matchType={tournament.matchType}
+          isAdmin={isAdmin}
+          isDraft={!!isDraft}
+          requests={requests}
+          onChanged={reload}
+        />
+      ) : (
+        <TournamentScorersTab
+          tournamentId={tournament.id}
+          tournamentName={tournament.name}
+          isAdmin={isAdmin}
+          staff={staff}
+          requests={requests}
+          onChanged={reload}
+        />
       )}
+
+      {isAdmin ? (
+        <Pressable
+          style={{ flexDirection: "row", gap: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 12, minHeight: 52, alignItems: "center", justifyContent: "center", marginTop: 12 }}
+          onPress={() => router.push(`/tournaments/ops/${id}`)}
+        >
+          <Text style={{ color: C.text, fontSize: 16, fontWeight: "700" }}>Live Ops Dashboard</Text>
+        </Pressable>
+      ) : null}
+
       <Sheet
         visible={!!pending}
         title="Start match"
@@ -196,7 +212,6 @@ export default function TournamentBracket() {
         visible={menuOpen}
         title="Actions"
         actions={[
-          { label: "Edit tournament", onPress: () => { setMenuOpen(false); router.push(`/tournaments/edit/${id}`); } },
           { label: "Delete tournament", destructive: true, onPress: () => { setMenuOpen(false); setConfirmingDelete(true); } },
           { label: "Cancel", onPress: () => setMenuOpen(false) },
         ]}
@@ -205,7 +220,7 @@ export default function TournamentBracket() {
       <Sheet
         visible={confirmingDelete}
         title="Delete tournament?"
-        message={`This permanently deletes "${title}". Matches already played stay in history.`}
+        message={`This permanently deletes "${tournament.name}". Matches already played stay in history.`}
         actions={[
           { label: "Delete", onPress: onDeleteTournament, destructive: true },
           { label: "Cancel", onPress: () => setConfirmingDelete(false) },
@@ -217,10 +232,9 @@ export default function TournamentBracket() {
 }
 
 const s = StyleSheet.create({
-  entrant: { color: C.text, fontFamily: F.body, fontSize: 15, paddingVertical: 6 },
-  drawInfo: { color: C.text2, fontFamily: F.body, fontSize: 13, marginTop: 8, marginBottom: 4 },
-  start: { backgroundColor: C.red, borderRadius: 12, paddingVertical: 15, alignItems: "center", marginTop: 12 },
-  startText: { color: C.text, fontFamily: F.semibold, fontSize: 16 },
-  off: { opacity: 0.5 },
-  err: { color: C.red, fontSize: 12.5, fontFamily: F.body, marginTop: 6 },
+  tabRow: { flexDirection: "row", gap: 8, marginTop: 8 },
+  tabBtn: { flex: 1, alignItems: "center", paddingVertical: 10, backgroundColor: C.card, borderRadius: 10, borderWidth: 1, borderColor: C.line },
+  tabOn: { borderColor: C.red, backgroundColor: "rgba(255,59,48,0.12)" },
+  tabText: { color: C.text2, fontFamily: F.semibold, fontSize: 14 },
+  tabTextOn: { color: C.text },
 });
