@@ -48,8 +48,10 @@ async function completeAuth(callbackUrl: string, redirectTo: string): Promise<bo
 
 export default function SignIn() {
   const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
-  const [codeSent, setCodeSent] = useState(false);
+  const [password, setPassword] = useState("");
+  // Password is the primary path (also the one Play Store review needs a
+  // reusable credential for); Google is the secondary option below it.
+  const [isSignUp, setIsSignUp] = useState(false);
   const [busy, setBusy] = useState(false);
   // True from the moment Google sign-in is kicked off (or a stray OAuth deep
   // link is caught) until completeAuth settles. Without this the screen sits
@@ -71,26 +73,24 @@ export default function SignIn() {
     return () => sub.remove();
   }, []);
 
-  const sendCode = async () => {
+  const passwordSignIn = async () => {
     if (!supabase) return;
     setBusy(true);
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: { shouldCreateUser: true },
-    });
-    setBusy(false);
-    if (error) toast(error.message || "Could not send code", "error");
-    else { setCodeSent(true); toast(`Code sent to ${email.trim()}`, "success"); }
-  };
-
-  const verifyCode = async () => {
-    if (!supabase) return;
-    setBusy(true);
-    const { error } = await supabase.auth.verifyOtp({
-      email: email.trim(), token: code.trim(), type: "email",
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     setBusy(false);
     if (error) toast(error.message || "Sign-in failed", "error");
+  };
+
+  const passwordSignUp = async () => {
+    if (!supabase) return;
+    setBusy(true);
+    const { data, error } = await supabase.auth.signUp({ email: email.trim(), password });
+    setBusy(false);
+    if (error) { toast(error.message || "Could not create account", "error"); return; }
+    // Confirm-email is on for this project, so a fresh signUp has no session
+    // yet — the trigger that creates the profile/personal club runs on
+    // confirmation, not on signUp itself.
+    if (!data.session) toast(`Check ${email.trim()} to confirm your account`, "success");
   };
 
   const googleSignIn = async () => {
@@ -128,6 +128,7 @@ export default function SignIn() {
   }
 
   const emailValid = /\S+@\S+\.\S+/.test(email.trim());
+  const canSubmit = emailValid && password.length > 0 && !busy;
 
   // Replaces the idle form for the gap between the OAuth browser closing and
   // Gate navigating home — that gap is a real network round trip, and an
@@ -153,61 +154,46 @@ export default function SignIn() {
 
         {/* Auth card */}
         <View style={s.card}>
-          {!codeSent ? (
-            <>
-              <Text style={s.label}>Email</Text>
-              <TextInput
-                style={s.input}
-                placeholder="you@example.com"
-                placeholderTextColor={C.text3}
-                autoCapitalize="none"
-                autoComplete="email"
-                keyboardType="email-address"
-                value={email}
-                onChangeText={setEmail}
-                onSubmitEditing={() => emailValid && !busy && sendCode()}
-                returnKeyType="go"
-              />
-              <PressableScale
-                style={[s.ctaWrap, (!emailValid || busy) && s.off]}
-                disabled={!emailValid || busy}
-                onPress={sendCode}
-              >
-                <LinearGradient colors={GRAD.redCTA} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.cta}>
-                  <Text style={s.ctaText}>{busy ? "SENDING…" : "SEND SIGN-IN CODE"}</Text>
-                </LinearGradient>
-              </PressableScale>
-              <Text style={s.hint}>No password. We email you a 6-digit code.</Text>
-            </>
-          ) : (
-            <>
-              <Text style={s.label}>6-digit code</Text>
-              <Text style={s.sentTo} numberOfLines={1}>sent to {email.trim()}</Text>
-              <TextInput
-                style={[s.input, s.codeInput]}
-                placeholder="123456"
-                placeholderTextColor={C.text3}
-                keyboardType="number-pad"
-                maxLength={6}
-                autoFocus
-                value={code}
-                onChangeText={setCode}
-                onSubmitEditing={() => code.trim().length === 6 && !busy && verifyCode()}
-              />
-              <PressableScale
-                style={[s.ctaWrap, (code.trim().length < 6 || busy) && s.off]}
-                disabled={code.trim().length < 6 || busy}
-                onPress={verifyCode}
-              >
-                <LinearGradient colors={GRAD.redCTA} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.cta}>
-                  <Text style={s.ctaText}>{busy ? "VERIFYING…" : "VERIFY & SIGN IN"}</Text>
-                </LinearGradient>
-              </PressableScale>
-              <Pressable onPress={() => { setCodeSent(false); setCode(""); }} hitSlop={8}>
-                <Text style={s.link}>Use a different email</Text>
-              </Pressable>
-            </>
-          )}
+          <Text style={s.label}>Email</Text>
+          <TextInput
+            style={s.input}
+            placeholder="you@example.com"
+            placeholderTextColor={C.text3}
+            autoCapitalize="none"
+            autoComplete="email"
+            keyboardType="email-address"
+            value={email}
+            onChangeText={setEmail}
+            returnKeyType="next"
+          />
+          <Text style={s.label}>Password</Text>
+          <TextInput
+            style={s.input}
+            placeholder={isSignUp ? "At least 6 characters" : "Password"}
+            placeholderTextColor={C.text3}
+            secureTextEntry
+            autoCapitalize="none"
+            value={password}
+            onChangeText={setPassword}
+            onSubmitEditing={() => canSubmit && (isSignUp ? passwordSignUp() : passwordSignIn())}
+            returnKeyType="go"
+          />
+          <PressableScale
+            style={[s.ctaWrap, !canSubmit && s.off]}
+            disabled={!canSubmit}
+            onPress={isSignUp ? passwordSignUp : passwordSignIn}
+          >
+            <LinearGradient colors={GRAD.redCTA} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.cta}>
+              <Text style={s.ctaText}>
+                {busy ? "PLEASE WAIT…" : isSignUp ? "CREATE ACCOUNT" : "SIGN IN"}
+              </Text>
+            </LinearGradient>
+          </PressableScale>
+          <Pressable onPress={() => setIsSignUp((v) => !v)} hitSlop={8}>
+            <Text style={s.link}>
+              {isSignUp ? "Already have an account? Sign in" : "New here? Create an account"}
+            </Text>
+          </Pressable>
 
           <View style={s.dividerRow}>
             <View style={s.rule} />
@@ -243,21 +229,15 @@ const s = StyleSheet.create({
     padding: 20, gap: 10,
   },
   label: { color: C.text, fontFamily: F.semibold, fontSize: 13, letterSpacing: 0.4 },
-  sentTo: { color: C.text2, fontFamily: F.body, fontSize: 13, marginTop: -6 },
   input: {
     backgroundColor: C.bgElev, color: C.text, borderRadius: 12, borderWidth: 1,
     borderColor: C.line, paddingHorizontal: 14, paddingVertical: 14, fontSize: 17, fontFamily: F.body,
-  },
-  codeInput: {
-    fontFamily: F.display, fontSize: 26, letterSpacing: 8, textAlign: "center",
-    fontVariant: ["tabular-nums"],
   },
 
   ctaWrap: { borderRadius: 14, marginTop: 4, ...glow(C.red, 16, 0.45) },
   cta: { borderRadius: 14, minHeight: 54, alignItems: "center", justifyContent: "center" },
   ctaText: { color: C.text, fontFamily: F.display, fontSize: 15, letterSpacing: 1.2 },
   off: { opacity: 0.45 },
-  hint: { color: C.text3, fontFamily: F.body, fontSize: 12.5, textAlign: "center", marginTop: 2 },
   link: { color: C.accent, fontFamily: F.medium, textAlign: "center", fontSize: 14, paddingVertical: 6 },
 
   dividerRow: { flexDirection: "row", alignItems: "center", gap: 12, marginVertical: 4 },
