@@ -1,4 +1,3 @@
-import { View } from "react-native";
 import { Stack } from "expo-router";
 import HeaderLogoLeft from "../../../src/components/HeaderLogoLeft";
 import { C } from "../../../src/theme";

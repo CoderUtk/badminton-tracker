@@ -86,3 +86,8 @@ graphify-out/
 keystore.txt
 *.keystore
 *.jks
+
+# Personal scratch notes (kept locally, not project docs)
+bugs.txt
+features.txt
+ui_changes.txt

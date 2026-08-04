@@ -31,7 +31,9 @@ export default function Sessions() {
 
   return (
     <View style={s.root}>
-      {hasRealClubs ? (
+      {/* null while the first check is in flight — render neither branch
+          rather than flashing "join a club" at someone who has one. */}
+      {hasRealClubs === null ? null : hasRealClubs ? (
         <Pressable style={s.cta} onPress={() => router.push("/new-session")}>
           <Icon name="add" color={C.text} size={20} />
           <Text style={s.ctaText}>Plan a session</Text>

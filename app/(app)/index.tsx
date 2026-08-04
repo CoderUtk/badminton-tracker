@@ -39,6 +39,7 @@ export default function Home() {
       await createClub(name.trim());
       setName("");
       setNameTouched(false);
+      setShowInlineCreate(false); // collapse the form once the club exists
       reload();
     } catch (e) {
       toast((e as Error).message || "Could not create club", "error");
