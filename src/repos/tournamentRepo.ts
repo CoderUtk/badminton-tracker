@@ -8,7 +8,7 @@ import { buildTournamentConfig } from "../tournament/matchConfig";
 import { buildBracket } from "../tournament/bracket";
 import { drawSizeFor } from "../tournament/draw";
 import { createMatch } from "./matchRepo";
-import { listClubs } from "./clubRepo";
+import { listClubs, addGuestPlayer, listPlayers } from "./clubRepo";
 
 export { bracketMatchToRow, rowToBracketMatch, changedRows } from "../tournament/rows";
 export type { BracketRow } from "../tournament/rows";
@@ -141,6 +141,55 @@ const toTournamentRow = (r: Record<string, unknown>): TournamentRow => ({
   // to hardcode, so a row read before 0009 lands behaves as it always did.
   courts: (r.courts as number) ?? 4,
 });
+
+/** Remove an entrant from a draft. Refused once a bracket exists. */
+export async function removeEntrant(entrantId: string): Promise<void> {
+  if (!supabase) throw new Error("Sign in to edit entrants");
+  const { data, error } = await supabase
+    .from("tournament_entrants").delete().eq("id", entrantId).select();
+  if (error) throw new Error(error.message);
+  if (!data || data.length === 0) throw new Error("Could not remove that player");
+}
+
+/** Set or clear an entrant's doubles partner. */
+export async function pairEntrants(
+  entrantId: string, partnerClubPlayerId: string | null,
+): Promise<void> {
+  if (!supabase) throw new Error("Sign in to edit entrants");
+  const { data, error } = await supabase
+    .from("tournament_entrants")
+    .update({ club_player_id_2: partnerClubPlayerId })
+    .eq("id", entrantId).select();
+  if (error) throw new Error(error.message);
+  if (!data || data.length === 0) throw new Error("Could not update that pair");
+}
+
+/**
+ * Add a non-registered player to the club and enter them in the tournament.
+ * addGuestPlayer returns void, so the new row is found by name in the refreshed
+ * roster — the same approach the create screen already uses.
+ */
+export async function addGuestEntrant(
+  tournamentId: string, clubId: string, name: string,
+): Promise<void> {
+  if (!supabase) throw new Error("Sign in to add players");
+  const trimmed = name.trim();
+  await addGuestPlayer(clubId, trimmed);
+  const added = (await listPlayers(clubId)).find((p) => p.name === trimmed);
+  if (!added) throw new Error("Could not add that player");
+
+  const { data: seeds } = await supabase
+    .from("tournament_entrants").select("seed")
+    .eq("tournament_id", tournamentId).order("seed", { ascending: false }).limit(1);
+  const nextSeed = ((seeds?.[0]?.seed as number) ?? 0) + 1;
+
+  const { data, error } = await supabase
+    .from("tournament_entrants")
+    .insert({ tournament_id: tournamentId, club_player_id: added.id, seed: nextSeed })
+    .select();
+  if (error) throw new Error(error.message);
+  if (!data || data.length === 0) throw new Error("Could not add that player");
+}
 
 /**
  * Update a tournament's editable settings. Admins only (enforced by RLS in
