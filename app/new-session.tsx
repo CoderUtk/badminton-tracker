@@ -5,11 +5,12 @@ import { useRouter } from "expo-router";
 import { listRealClubs, type Club } from "../src/repos/clubRepo";
 import { createSession } from "../src/repos/sessionRepo";
 import DatePicker, { startOfDay } from "../src/components/DatePicker";
+import TimePicker from "../src/components/TimePicker";
 import FormScreen from "../src/components/FormScreen";
 import { C } from "../src/theme";
 
-/** Default club-night slot: 6:00 PM on the chosen day. */
-const SLOT_HOUR = 18;
+/** Default club-night slot: 6:00 PM on the chosen day, as minutes-since-midnight. */
+const DEFAULT_TIME_MINUTES = 18 * 60;
 
 export default function NewSession() {
   const router = useRouter();
@@ -18,6 +19,7 @@ export default function NewSession() {
   const [location, setLocation] = useState("Badminton hall");
   const [courts, setCourts] = useState(2);
   const [day, setDay] = useState<Date>(() => startOfDay(new Date()));
+  const [timeMinutes, setTimeMinutes] = useState(DEFAULT_TIME_MINUTES);
 
   useEffect(() => {
     void listRealClubs().then((items) => {
@@ -32,7 +34,9 @@ export default function NewSession() {
 
   const save = async () => {
     if (!clubId) { toast("Create or select a club before planning a session.", "info"); return; }
-    const startsAt = new Date(day.getFullYear(), day.getMonth(), day.getDate(), SLOT_HOUR).getTime();
+    const hour = Math.floor(timeMinutes / 60);
+    const minute = timeMinutes % 60;
+    const startsAt = new Date(day.getFullYear(), day.getMonth(), day.getDate(), hour, minute).getTime();
     const id = await createSession({ clubId, startsAt, location, courts });
     router.replace(`/(app)/sessions/${id}`);
   };
@@ -61,8 +65,10 @@ export default function NewSession() {
       </View>
       <DatePicker value={day} onChange={setDay} />
       <Text style={s.hint}>
-        {day.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })} · from 6:00 PM
+        {day.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}
       </Text>
+      <Text style={s.label}>Time</Text>
+      <TimePicker value={timeMinutes} onChange={setTimeMinutes} />
       <Text style={s.label}>Courts</Text>
       <View style={s.chips}>
         {[1, 2, 3, 4].map((n) => (
