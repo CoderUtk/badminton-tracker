@@ -29,3 +29,8 @@ export function startBlocker(players: number, matchType: MatchType): string | nu
   if (players / perEntrant > 64) return "A tournament holds at most 64 entrants";
   return null;
 }
+
+/** Court label for the Nth round-one match, cycling 1..courts. */
+export function courtForIndex(index: number, courts: number): string {
+  return String((index % Math.max(1, courts)) + 1);
+}

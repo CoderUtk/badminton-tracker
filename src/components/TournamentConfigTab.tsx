@@ -9,12 +9,13 @@ import Icon from "./Icon";
 import { C, F, press } from "../theme";
 
 const BESTOFS = [1, 3, 5] as const;
-const COURTS = [1, 2, 3, 4, 6, 8] as const;
+const MIN_COURTS = 1;
+const MAX_COURTS = 10;
 
 /**
- * Config tab: name, courts (stepper lands in Task 5 — a segmented control
- * today), both share links, and Start. Non-admins get a read-only summary and
- * the player link only — sharing the scorer link is an admin action.
+ * Config tab: name, a courts stepper, both share links, and Start. Non-admins
+ * get a read-only summary and the player link only — sharing the scorer link
+ * is an admin action.
  */
 export default function TournamentConfigTab({
   tournament, isAdmin, isDraft, blocker, onStart, onChanged,
@@ -57,6 +58,27 @@ export default function TournamentConfigTab({
   const onShareScorer = () =>
     shareJoinLink(buildTournamentScorerJoinPath(tournament.id), `Score "${tournament.name}" on CourtSide:`);
 
+  // Values above MAX_COURTS are refused, not clamped silently.
+  const Stepper = ({ value, onChange }: { value: number; onChange: (v: number) => void }) => (
+    <View style={s.stepRow}>
+      <Pressable
+        onPress={() => onChange(Math.max(MIN_COURTS, value - 1))}
+        disabled={value <= MIN_COURTS}
+        style={({ pressed }) => [s.stepBtn, pressed && press, value <= MIN_COURTS && s.off]}
+      >
+        <Text style={s.stepBtnText}>−</Text>
+      </Pressable>
+      <Text style={s.stepValue}>{value}</Text>
+      <Pressable
+        onPress={() => onChange(Math.min(MAX_COURTS, value + 1))}
+        disabled={value >= MAX_COURTS}
+        style={({ pressed }) => [s.stepBtn, pressed && press, value >= MAX_COURTS && s.off]}
+      >
+        <Text style={s.stepBtnText}>+</Text>
+      </Pressable>
+    </View>
+  );
+
   const Segmented = ({ value, options, onPick }: { value: number; options: readonly number[]; onPick: (v: number) => void }) => (
     <View style={s.segRow}>
       {options.map((o) => (
@@ -92,7 +114,7 @@ export default function TournamentConfigTab({
       {touched && nameError ? <Text style={s.err}>{nameError}</Text> : null}
 
       <Text style={s.label}>Courts</Text>
-      <Segmented value={courts} options={COURTS} onPick={setCourts} />
+      <Stepper value={courts} onChange={setCourts} />
 
       <Text style={s.label}>Games / match</Text>
       <Segmented value={bestOf} options={BESTOFS} onPick={setBestOf} />
@@ -138,6 +160,10 @@ const s = StyleSheet.create({
   segOn: { borderColor: C.red, backgroundColor: "rgba(255,59,48,0.12)" },
   segText: { color: C.text2, fontFamily: F.semibold, fontSize: 15 },
   segTextOn: { color: C.text },
+  stepRow: { flexDirection: "row", alignItems: "center", gap: 16 },
+  stepBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, alignItems: "center", justifyContent: "center" },
+  stepBtnText: { color: C.text, fontFamily: F.bold, fontSize: 20 },
+  stepValue: { color: C.text, fontFamily: F.bold, fontSize: 18, minWidth: 24, textAlign: "center" },
   err: { color: C.red, fontSize: 12.5, fontFamily: F.body },
   save: { backgroundColor: C.red, borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: 4 },
   saveText: { color: C.text, fontFamily: F.semibold, fontSize: 16 },

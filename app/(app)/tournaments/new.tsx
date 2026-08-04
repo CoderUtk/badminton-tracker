@@ -9,7 +9,8 @@ import { toast } from "../../../src/lib/toast";
 import { validateName } from "../../../src/lib/validate";
 
 const BESTOFS = [1, 3, 5] as const;
-const COURTS = [1, 2, 3, 4, 6, 8] as const;
+const MIN_COURTS = 1;
+const MAX_COURTS = 10;
 
 export default function NewTournament() {
   const router = useRouter();
@@ -97,6 +98,27 @@ export default function NewTournament() {
     }
   };
 
+  // Values above MAX_COURTS are refused, not clamped silently.
+  const CourtsStepper = () => (
+    <View style={s.stepRow}>
+      <Pressable
+        onPress={() => setCourts((c) => Math.max(MIN_COURTS, c - 1))}
+        disabled={courts <= MIN_COURTS}
+        style={({ pressed }) => [s.stepBtn, pressed && press, courts <= MIN_COURTS && s.off]}
+      >
+        <Text style={s.stepBtnText}>−</Text>
+      </Pressable>
+      <Text style={s.stepValue}>{courts}</Text>
+      <Pressable
+        onPress={() => setCourts((c) => Math.min(MAX_COURTS, c + 1))}
+        disabled={courts >= MAX_COURTS}
+        style={({ pressed }) => [s.stepBtn, pressed && press, courts >= MAX_COURTS && s.off]}
+      >
+        <Text style={s.stepBtnText}>+</Text>
+      </Pressable>
+    </View>
+  );
+
   const Segmented = ({ value, options, onPick }: { value: number | string; options: readonly (number | string)[]; onPick: (v: never) => void }) => (
     <View style={s.segRow}>
       {options.map((o) => (
@@ -132,7 +154,7 @@ export default function NewTournament() {
       </View>
 
       <Text style={s.h}>Courts</Text>
-      <Segmented value={courts} options={COURTS} onPick={(v) => setCourts(v as number)} />
+      <CourtsStepper />
 
       <Text style={s.h}>Pick entrants ({entrantCount} → {drawSizeFor(entrantCount)} draw)</Text>
       <View style={s.guestRow}>
@@ -187,6 +209,10 @@ const s = StyleSheet.create({
   segOn: { borderColor: C.red, backgroundColor: "rgba(255,59,48,0.12)" },
   segText: { color: C.text2, fontFamily: F.semibold, fontSize: 15, textTransform: "capitalize" },
   segTextOn: { color: C.text },
+  stepRow: { flexDirection: "row", alignItems: "center", gap: 16 },
+  stepBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, alignItems: "center", justifyContent: "center" },
+  stepBtnText: { color: C.text, fontFamily: F.bold, fontSize: 20 },
+  stepValue: { color: C.text, fontFamily: F.bold, fontSize: 18, minWidth: 24, textAlign: "center" },
   gamesRow: { flexDirection: "row", gap: 12 },
   gamesCol: { flex: 1, gap: 6 },
   empty: { color: C.text2, textAlign: "center", marginTop: 24 },

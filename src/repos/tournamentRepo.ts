@@ -6,7 +6,7 @@ import { rowToBracketMatch, bracketMatchToRow, type BracketRow } from "../tourna
 import { pickBestOf } from "../tournament/format";
 import { buildTournamentConfig } from "../tournament/matchConfig";
 import { buildBracket } from "../tournament/bracket";
-import { drawSizeFor } from "../tournament/draw";
+import { drawSizeFor, courtForIndex } from "../tournament/draw";
 import { createMatch } from "./matchRepo";
 import { listClubs, addGuestPlayer, listPlayers } from "./clubRepo";
 
@@ -69,12 +69,17 @@ export async function createTournament(
  */
 export async function startTournament(id: string): Promise<void> {
   if (!supabase) throw new Error("Sign in to start a tournament");
-  const { entrants } = await getTournament(id);
+  const { tournament, entrants } = await getTournament(id);
   const size = drawSizeFor(entrants.length);
   const bracket = buildBracket(entrants, size, id, () => Crypto.randomUUID());
+  // Later rounds stay courtless and are assigned from Live Ops once their
+  // feeders resolve.
+  const withCourts = bracket.map((m) =>
+    m.round === 1 ? { ...m, court: courtForIndex(m.index, tournament.courts) } : m,
+  );
   const { error } = await supabase.rpc("start_tournament", {
     p_tournament_id: id,
-    p_bracket: bracket.map((m) => bracketMatchToRow(m)),
+    p_bracket: withCourts.map((m) => bracketMatchToRow(m)),
   });
   if (error) throw new Error(error.message);
 }
@@ -366,10 +371,12 @@ export async function finishBracketMatch(bracketMatchId: string, winnerEntrant: 
   if (error) throw new Error(error.message);
 }
 
-/** Assign a court to a match before or while it runs. Null clears it. */
+/** Assign a court before a match starts. Refused once the match is live — the RPC enforces it. */
 export async function assignBracketMatchCourt(bracketMatchId: string, court: string | null): Promise<void> {
   if (!supabase) throw new Error("Sign in to assign a court");
-  const { error } = await supabase.from("bracket_matches").update({ court }).eq("id", bracketMatchId);
+  const { error } = await supabase.rpc("assign_bracket_court", {
+    p_bracket_match_id: bracketMatchId, p_court: court,
+  });
   if (error) throw new Error(error.message);
 }
 

@@ -1,4 +1,4 @@
-import { drawSizeFor, startBlocker } from "../src/tournament/draw";
+import { drawSizeFor, startBlocker, courtForIndex } from "../src/tournament/draw";
 
 test("exact powers of two pass through unchanged", () => {
   expect(drawSizeFor(4)).toBe(4);
@@ -40,4 +40,9 @@ test("rejects more entrants than the largest draw", () => {
   expect(startBlocker(65, "singles")).toBe("A tournament holds at most 64 entrants");
   expect(startBlocker(130, "doubles")).toBe("A tournament holds at most 64 entrants");
   expect(startBlocker(128, "doubles")).toBeNull();
+});
+
+test("round-one matches cycle through the available courts", () => {
+  expect([0, 1, 2, 3, 4].map((i) => courtForIndex(i, 3))).toEqual(["1", "2", "3", "1", "2"]);
+  expect([0, 1, 2].map((i) => courtForIndex(i, 1))).toEqual(["1", "1", "1"]);
 });
