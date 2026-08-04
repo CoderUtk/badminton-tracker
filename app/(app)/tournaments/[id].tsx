@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
   deleteTournament, finishBracketMatch, getTournament, startBracketMatch, startTournament,
@@ -27,6 +27,7 @@ type Tab = "config" | "players" | "scorers";
 
 export default function TournamentBracket() {
   const router = useRouter();
+  const { height: windowHeight } = useWindowDimensions();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [tab, setTab] = useState<Tab>("config");
   const [tournament, setTournament] = useState<TournamentRow | null>(null);
@@ -106,6 +107,12 @@ export default function TournamentBracket() {
   // full bracket (status flipped to "live" only on the first finished
   // match). Such a tournament must render its bracket, not the Start flow.
   const isDraft = tournament?.status === "draft" && bracket.length === 0;
+  // BracketView is internally scrollable (horizontal + vertical) and has no
+  // intrinsic height of its own. Left to flex sizing alongside the tab row
+  // and tab panel below it, Android can collapse it to near-zero height and
+  // paint the bracket's absolutely-positioned cells behind whatever tab
+  // content renders after it. An explicit height stops that fight.
+  const bracketHeight = Math.max(260, Math.round(windowHeight * 0.42));
   const players = entrants.length * ((tournament?.matchType ?? "singles" as MatchType) === "doubles" ? 2 : 1);
   const blocker = startBlocker(players, tournament?.matchType ?? "singles");
 
@@ -147,56 +154,60 @@ export default function TournamentBracket() {
       ) : null}
 
       {!isDraft ? (
-        <BracketView bracket={bracket} entrants={entrants} onCellPress={onCellPress} />
+        <View style={{ height: bracketHeight, marginBottom: 8 }}>
+          <BracketView bracket={bracket} entrants={entrants} onCellPress={onCellPress} />
+        </View>
       ) : null}
 
-      <View style={s.tabRow}>
-        {(["config", "players", "scorers"] as Tab[]).map((t) => (
-          <Pressable key={t} onPress={() => setTab(t)} style={({ pressed }) => [s.tabBtn, pressed && press, tab === t && s.tabOn]}>
-            <Text style={[s.tabText, tab === t && s.tabTextOn]}>{t[0].toUpperCase() + t.slice(1)}</Text>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
+        <View style={s.tabRow}>
+          {(["config", "players", "scorers"] as Tab[]).map((t) => (
+            <Pressable key={t} onPress={() => setTab(t)} style={({ pressed }) => [s.tabBtn, pressed && press, tab === t && s.tabOn]}>
+              <Text style={[s.tabText, tab === t && s.tabTextOn]}>{t[0].toUpperCase() + t.slice(1)}</Text>
+            </Pressable>
+          ))}
+        </View>
+
+        {tab === "config" ? (
+          <TournamentConfigTab
+            tournament={tournament}
+            isAdmin={isAdmin}
+            isDraft={!!isDraft}
+            blocker={blocker}
+            onStart={onStart}
+            onChanged={reload}
+          />
+        ) : tab === "players" ? (
+          <TournamentPlayersTab
+            tournamentId={tournament.id}
+            clubId={tournament.clubId}
+            entrants={entrants}
+            matchType={tournament.matchType}
+            isAdmin={isAdmin}
+            isDraft={!!isDraft}
+            requests={requests}
+            onChanged={reload}
+          />
+        ) : (
+          <TournamentScorersTab
+            tournamentId={tournament.id}
+            tournamentName={tournament.name}
+            isAdmin={isAdmin}
+            staff={staff}
+            requests={requests}
+            onChanged={reload}
+          />
+        )}
+
+        {isAdmin ? (
+          <Pressable
+            style={{ flexDirection: "row", gap: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 12, minHeight: 52, alignItems: "center", justifyContent: "center", marginTop: 12 }}
+            onPress={() => router.push(`/tournaments/ops/${id}`)}
+          >
+            <Text style={{ color: C.text, fontSize: 16, fontWeight: "700" }}>Live Ops Dashboard</Text>
           </Pressable>
-        ))}
-      </View>
-
-      {tab === "config" ? (
-        <TournamentConfigTab
-          tournament={tournament}
-          isAdmin={isAdmin}
-          isDraft={!!isDraft}
-          blocker={blocker}
-          onStart={onStart}
-          onChanged={reload}
-        />
-      ) : tab === "players" ? (
-        <TournamentPlayersTab
-          tournamentId={tournament.id}
-          clubId={tournament.clubId}
-          entrants={entrants}
-          matchType={tournament.matchType}
-          isAdmin={isAdmin}
-          isDraft={!!isDraft}
-          requests={requests}
-          onChanged={reload}
-        />
-      ) : (
-        <TournamentScorersTab
-          tournamentId={tournament.id}
-          tournamentName={tournament.name}
-          isAdmin={isAdmin}
-          staff={staff}
-          requests={requests}
-          onChanged={reload}
-        />
-      )}
-
-      {isAdmin ? (
-        <Pressable
-          style={{ flexDirection: "row", gap: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 12, minHeight: 52, alignItems: "center", justifyContent: "center", marginTop: 12 }}
-          onPress={() => router.push(`/tournaments/ops/${id}`)}
-        >
-          <Text style={{ color: C.text, fontSize: 16, fontWeight: "700" }}>Live Ops Dashboard</Text>
-        </Pressable>
-      ) : null}
+        ) : null}
+      </ScrollView>
 
       <Sheet
         visible={!!pending}
