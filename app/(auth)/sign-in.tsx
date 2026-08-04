@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
@@ -51,13 +51,20 @@ export default function SignIn() {
   const [code, setCode] = useState("");
   const [codeSent, setCodeSent] = useState(false);
   const [busy, setBusy] = useState(false);
+  // True from the moment Google sign-in is kicked off (or a stray OAuth deep
+  // link is caught) until completeAuth settles. Without this the screen sits
+  // idle and fully interactive for the few seconds completeAuth needs to
+  // reach Supabase, which reads as "back on the login page" rather than "in
+  // progress" — this is what a signed-in-but-not-yet-navigated gap looks like.
+  const [completingAuth, setCompletingAuth] = useState(false);
 
   // Android often resumes the app via the deep link instead of resolving the
   // auth-session promise with a URL, so complete sign-in from the link too.
   useEffect(() => {
     const onUrl = ({ url }: { url: string }) => {
       if (!url.includes("access_token") && !url.includes("code=") && !url.includes("error")) return;
-      void completeAuth(url, Linking.createURL("auth"));
+      setCompletingAuth(true);
+      void completeAuth(url, Linking.createURL("auth")).finally(() => setCompletingAuth(false));
     };
     const sub = Linking.addEventListener("url", onUrl);
     void Linking.getInitialURL().then((url) => { if (url) onUrl({ url }); });
@@ -99,8 +106,12 @@ export default function SignIn() {
     }
     const res = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
     // On Android the deep link can reopen the app before this resolves, in which
-    // case the result carries no URL — the listener below completes sign-in.
-    if (res.type === "success") await completeAuth(res.url, redirectTo);
+    // case the result carries no URL — the listener above completes sign-in
+    // instead, and sets its own completingAuth state.
+    if (res.type === "success") {
+      setCompletingAuth(true);
+      await completeAuth(res.url, redirectTo).finally(() => setCompletingAuth(false));
+    }
   };
 
   // Online-only build: without keys the app cannot authenticate at all.
@@ -117,6 +128,19 @@ export default function SignIn() {
   }
 
   const emailValid = /\S+@\S+\.\S+/.test(email.trim());
+
+  // Replaces the idle form for the gap between the OAuth browser closing and
+  // Gate navigating home — that gap is a real network round trip, and an
+  // interactive login form sitting there reads as "signed out again".
+  if (completingAuth) {
+    return (
+      <View style={[s.root, s.center]}>
+        <Logo size={44} />
+        <ActivityIndicator color={C.accent} style={{ marginTop: 8 }} />
+        <Text style={s.sub}>Signing you in…</Text>
+      </View>
+    );
+  }
 
   return (
     <FormScreen contentContainerStyle={s.scroll}>
