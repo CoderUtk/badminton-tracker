@@ -7,6 +7,12 @@ export function buildTournamentJoinPath(tournamentId: string): string {
   return `join/tournament/${tournamentId}`;
 }
 
+export function buildTournamentScorerJoinPath(tournamentId: string): string {
+  return `join/tournament/${tournamentId}/scorer`;
+}
+
+export type JoinRole = "player" | "scorer";
+
 /**
  * Extract a join target from a deep link. Accepts a full URL with any scheme
  * or a bare path, so the same helper serves Linking callbacks and router
@@ -16,7 +22,9 @@ export function buildTournamentJoinPath(tournamentId: string): string {
  * starts with "join" (treated as a subdomain path). For custom schemes, strip
  * scheme + ://. Then look for the "join/club/{id}" or "join/tournament/{id}" pattern.
  */
-export function parseJoinTarget(url: string): { kind: "club" | "tournament"; id: string } | null {
+export function parseJoinTarget(
+  url: string,
+): { kind: "club" | "tournament"; id: string; role: JoinRole } | null {
   if (!url) return null;
   const withoutQuery = url.split("?")[0].split("#")[0];
 
@@ -55,7 +63,8 @@ export function parseJoinTarget(url: string): { kind: "club" | "tournament"; id:
       // reject unresolved route placeholders like "[id]" and anything containing
       // brackets — a real target is always a concrete id, never a route param name.
       if (id.includes("[") || id.includes("]")) return null;
-      return { kind, id };
+      const role: JoinRole = parts[at + 3] === "scorer" ? "scorer" : "player";
+      return { kind, id, role };
     }
     at = parts.indexOf("join", at + 1);
   }

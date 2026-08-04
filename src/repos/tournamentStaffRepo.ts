@@ -8,6 +8,7 @@ export type TournamentJoinRequest = {
   profileId: string;
   displayName: string;
   createdAt: string;
+  role: "player" | "scorer";
 };
 export type TournamentStaff = {
   id: string;
@@ -42,9 +43,15 @@ export async function getTournamentPreview(tournamentId: string): Promise<Tourna
   return { id: row.id, name: row.name, maxEntrants: row.max_entrants ?? 0, entrantCount: row.entrant_count ?? 0 };
 }
 
-export async function requestJoinTournament(tournamentId: string): Promise<RequestOutcome> {
+export async function requestJoinTournament(
+  tournamentId: string,
+  role: "player" | "scorer" = "player",
+): Promise<RequestOutcome> {
   if (!supabase) throw new Error("Sign in to request access");
-  const { data, error } = await supabase.rpc("request_tournament_join", { p_tournament_id: tournamentId });
+  const { data, error } = await supabase.rpc("request_tournament_join", {
+    p_tournament_id: tournamentId,
+    p_role: role,
+  });
   if (error) throw new Error(error.message);
   return data as RequestOutcome;
 }
@@ -53,14 +60,14 @@ export async function listPendingTournamentRequests(tournamentId: string): Promi
   if (!supabase) return [];
   const { data, error } = await supabase
     .from("tournament_join_requests")
-    .select("id, tournament_id, profile_id, created_at, profiles(display_name)")
+    .select("id, tournament_id, profile_id, created_at, role, profiles(display_name)")
     .eq("tournament_id", tournamentId)
     .eq("status", "pending")
     .order("created_at", { ascending: true });
   if (error) throw new Error(error.message);
   return (data ?? []).map((r) => {
     const row = r as unknown as {
-      id: string; tournament_id: string; profile_id: string; created_at: string;
+      id: string; tournament_id: string; profile_id: string; created_at: string; role: "player" | "scorer";
       profiles: { display_name: string | null } | { display_name: string | null }[] | null;
     };
     const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
@@ -70,11 +77,12 @@ export async function listPendingTournamentRequests(tournamentId: string): Promi
       profileId: row.profile_id,
       displayName: profile?.display_name || "Player",
       createdAt: row.created_at,
+      role: row.role,
     };
   });
 }
 
-export async function approveTournamentRequest(requestId: string, clubPlayerId: string): Promise<void> {
+export async function approveTournamentRequest(requestId: string, clubPlayerId: string | null = null): Promise<void> {
   if (!supabase) throw new Error("Sign in to manage requests");
   const { error } = await supabase.rpc("approve_tournament_join", { p_request_id: requestId, p_club_player_id: clubPlayerId });
   if (error) throw new Error(error.message);

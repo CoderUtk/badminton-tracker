@@ -10,7 +10,7 @@ import Logo from "../../../src/components/Logo";
 import PressableScale from "../../../src/components/PressableScale";
 import { C, F, GRAD, glow } from "../../../src/theme";
 
-export default function JoinTournament() {
+export default function JoinTournament({ role = "player" }: { role?: "player" | "scorer" }) {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [tournament, setTournament] = useState<TournamentPreview | null>(null);
@@ -30,7 +30,7 @@ export default function JoinTournament() {
     if (!id) return;
     setBusy(true);
     try {
-      const result = await requestJoinTournament(id);
+      const result = await requestJoinTournament(id, role);
       setOutcome(result);
       if (result === "member") {
         toast("You are already an entrant", "info");
@@ -65,7 +65,7 @@ export default function JoinTournament() {
     <FormScreen contentContainerStyle={s.scroll}>
       <View style={s.hero}>
         <Logo size={52} />
-        <Text style={s.eyebrow}>TOURNAMENT INVITATION</Text>
+        <Text style={s.eyebrow}>{role === "scorer" ? "SCORER INVITATION" : "TOURNAMENT INVITATION"}</Text>
         <Text style={s.title}>{tournament.name}</Text>
         <Text style={s.sub}>
           {tournament.maxEntrants > 0
@@ -87,10 +87,14 @@ export default function JoinTournament() {
           </>
         ) : (
           <>
-            <Text style={s.sub}>Ask a tournament admin to let you in. They approve every request.</Text>
+            <Text style={s.sub}>
+              {role === "scorer"
+                ? "Ask a tournament admin to let you score matches. They approve every request."
+                : "Ask a tournament admin to let you in. They approve every request."}
+            </Text>
             <PressableScale style={[s.ctaWrap, busy && s.off]} disabled={busy} onPress={onRequest}>
               <LinearGradient colors={GRAD.redCTA} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.cta}>
-                <Text style={s.ctaText}>{busy ? "SENDING…" : "REQUEST TO JOIN"}</Text>
+                <Text style={s.ctaText}>{busy ? "SENDING…" : role === "scorer" ? "REQUEST TO SCORE" : "REQUEST TO JOIN"}</Text>
               </LinearGradient>
             </PressableScale>
           </>
