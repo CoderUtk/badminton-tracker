@@ -16,6 +16,23 @@ export type TournamentStaff = {
   role: "admin" | "scorer";
 };
 
+export type StaffRole = "admin" | "scorer";
+
+/** The signed-in user's staff role for this tournament, or null if not staff. */
+export async function myStaffRole(tournamentId: string): Promise<StaffRole | null> {
+  if (!supabase) return null;
+  const uid = (await supabase.auth.getUser()).data.user?.id;
+  if (!uid) return null;
+  const { data, error } = await supabase
+    .from("tournament_staff")
+    .select("role")
+    .eq("tournament_id", tournamentId)
+    .eq("profile_id", uid)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data?.role as StaffRole) ?? null;
+}
+
 export async function getTournamentPreview(tournamentId: string): Promise<TournamentPreview | null> {
   if (!supabase) return null;
   const { data, error } = await supabase.rpc("tournament_preview", { p_tournament_id: tournamentId });
