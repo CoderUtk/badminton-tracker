@@ -10,6 +10,7 @@ import { validateName } from "../../src/lib/validate";
 import Icon from "../../src/components/Icon";
 import Logo from "../../src/components/Logo";
 import AnimatedList from "../../src/components/AnimatedList";
+import BusyButton from "../../src/components/BusyButton";
 import { C, F, GRAD, glow, press } from "../../src/theme";
 
 export default function Home() {
@@ -21,6 +22,8 @@ export default function Home() {
   const [nameTouched, setNameTouched] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [showInlineCreate, setShowInlineCreate] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [joining, setJoining] = useState(false);
 
   const nameError = validateName(name, "Club name");
 
@@ -36,6 +39,7 @@ export default function Home() {
 
   const onCreate = async () => {
     if (nameError) { toast(nameError, "error"); return; }
+    setCreating(true);
     try {
       await createClub(name.trim());
       setName("");
@@ -44,15 +48,20 @@ export default function Home() {
       reload();
     } catch (e) {
       toast((e as Error).message || "Could not create club", "error");
+    } finally {
+      setCreating(false);
     }
   };
   const onJoin = async () => {
+    setJoining(true);
     try {
       await joinClub(inviteCode);
       setInviteCode("");
       reload();
     } catch (e) {
       toast((e as Error).message || "Could not join club", "error");
+    } finally {
+      setJoining(false);
     }
   };
 
@@ -96,10 +105,10 @@ export default function Home() {
               style={s.input} placeholder="New club name" placeholderTextColor={C.text2}
               value={name} onChangeText={setName} onBlur={() => setNameTouched(true)}
             />
-            <Pressable style={({ pressed }) => [s.btn, pressed && press, !!nameError && s.btnOff]} disabled={!!nameError} onPress={onCreate}>
+            <BusyButton busy={creating} disabled={!!nameError} style={[s.btn, !!nameError && s.btnOff]} onPress={onCreate}>
               <Icon name="add" color={C.text} size={18} />
               <Text style={s.btnText}>Create</Text>
-            </Pressable>
+            </BusyButton>
           </View>
           {nameTouched && nameError ? <Text style={s.err}>{nameError}</Text> : null}
         </View>
@@ -151,9 +160,9 @@ export default function Home() {
                 style={s.input} placeholder="Invite code" placeholderTextColor={C.text2}
                 autoCapitalize="characters" value={inviteCode} onChangeText={setInviteCode}
               />
-              <Pressable style={({ pressed }) => [s.btn, pressed && press, !inviteCode.trim() && s.btnOff]} disabled={!inviteCode.trim()} onPress={onJoin}>
+              <BusyButton busy={joining} disabled={!inviteCode.trim()} style={[s.btn, !inviteCode.trim() && s.btnOff]} onPress={onJoin}>
                 <Text style={s.btnText}>Join</Text>
-              </Pressable>
+              </BusyButton>
             </View>
           </View>
         }
