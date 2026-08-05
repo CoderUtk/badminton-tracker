@@ -9,6 +9,7 @@ import GoogleMark from "../../src/components/GoogleMark";
 import Logo from "../../src/components/Logo";
 import FormScreen from "../../src/components/FormScreen";
 import PressableScale from "../../src/components/PressableScale";
+import BusyButton from "../../src/components/BusyButton";
 import { C, F, GRAD, glow } from "../../src/theme";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -178,17 +179,16 @@ export default function SignIn() {
             onSubmitEditing={() => canSubmit && (isSignUp ? passwordSignUp() : passwordSignIn())}
             returnKeyType="go"
           />
-          <PressableScale
-            style={[s.ctaWrap, !canSubmit && s.off]}
+          <BusyButton
+            busy={busy}
             disabled={!canSubmit}
+            style={s.ctaWrap}
             onPress={isSignUp ? passwordSignUp : passwordSignIn}
           >
             <LinearGradient colors={GRAD.redCTA} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.cta}>
-              <Text style={s.ctaText}>
-                {busy ? "PLEASE WAIT…" : isSignUp ? "CREATE ACCOUNT" : "SIGN IN"}
-              </Text>
+              <Text style={s.ctaText}>{isSignUp ? "CREATE ACCOUNT" : "SIGN IN"}</Text>
             </LinearGradient>
-          </PressableScale>
+          </BusyButton>
           <Pressable onPress={() => setIsSignUp((v) => !v)} hitSlop={8}>
             <Text style={s.link}>
               {isSignUp ? "Already have an account? Sign in" : "New here? Create an account"}
