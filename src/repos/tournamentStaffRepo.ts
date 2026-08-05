@@ -44,6 +44,37 @@ export async function getTournamentPreview(tournamentId: string): Promise<Tourna
   return { id: row.id, name: row.name, maxEntrants: row.max_entrants ?? 0, entrantCount: row.entrant_count ?? 0 };
 }
 
+export type SpectatorBracketCell = {
+  round: number; idx: number; matchId: string | null;
+  entrantA: string | null; entrantB: string | null; winnerEntrant: string | null;
+  entrantAName: string | null; entrantBName: string | null;
+};
+export type SpectatorView = { name: string; status: string; cells: SpectatorBracketCell[] };
+
+/** Read-only bracket for the spectator join link. No membership required. */
+export async function getTournamentSpectatorView(tournamentId: string): Promise<SpectatorView | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase.rpc("tournament_spectator_view", { p_tournament_id: tournamentId });
+  if (error) throw new Error(error.message);
+  const rows = (data as {
+    name: string; status: string; round: number | null; idx: number | null; match_id: string | null;
+    entrant_a: string | null; entrant_b: string | null; winner_entrant: string | null;
+    entrant_a_name: string | null; entrant_b_name: string | null;
+  }[] | null) ?? [];
+  if (rows.length === 0) return null;
+  return {
+    name: rows[0].name,
+    status: rows[0].status,
+    // A tournament with no bracket yet still returns one row (left join),
+    // with round/idx null — that's "not started", not "not found".
+    cells: rows[0].round == null ? [] : rows.map((r) => ({
+      round: r.round as number, idx: r.idx as number, matchId: r.match_id,
+      entrantA: r.entrant_a, entrantB: r.entrant_b, winnerEntrant: r.winner_entrant,
+      entrantAName: r.entrant_a_name, entrantBName: r.entrant_b_name,
+    })),
+  };
+}
+
 export async function requestJoinTournament(
   tournamentId: string,
   role: "player" | "scorer" = "player",
