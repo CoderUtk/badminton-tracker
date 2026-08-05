@@ -10,10 +10,13 @@ import FormScreen from "../src/components/FormScreen";
 import PressableScale from "../src/components/PressableScale";
 import BusyButton from "../src/components/BusyButton";
 import { toast } from "../src/lib/toast";
+import { useSession } from "../src/stores/session";
+import { recordGuestMatch } from "../src/lib/guestMatches";
 import { C } from "../src/theme";
 
 export default function NewMatch() {
   const router = useRouter();
+  const { session } = useSession();
   const params = useLocalSearchParams<{ clubId?: string; sessionId?: string; teamA?: string; teamB?: string }>();
   const [doubles, setDoubles] = useState(true);
   const [clubs, setClubs] = useState<Club[]>([]);
@@ -112,6 +115,7 @@ export default function NewMatch() {
       const config = buildConfig();
       const side = (t: "A" | "B") => config.teams[t].map((p) => ({ club_player_id: null, name: p.name }));
       const id = await createMatch(config, side("A"), side("B"), clubId, params.sessionId ?? null);
+      if (session?.user.is_anonymous) await recordGuestMatch(id);
       router.replace(`/score/${id}`);
     } catch (e) {
       toast((e as Error).message || "Could not start the match", "error");
