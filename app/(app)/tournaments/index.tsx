@@ -8,7 +8,7 @@ import { C, F, press, glow } from "../../../src/theme";
 
 const STATUS_COLOR: Record<string, string> = {
   draft: C.accent,
-  live: C.red,
+  live: C.green,
   done: C.text3,
 };
 
@@ -49,7 +49,7 @@ export default function TournamentsList() {
               style={({ pressed }) => [
                 s.card,
                 { borderLeftColor: color, borderLeftWidth: 4 },
-                item.status === "live" && glow(C.red, 10, 0.35),
+                item.status === "live" && glow(C.green, 10, 0.35),
                 pressed && press,
               ]}
               onPress={() => router.push(`/tournaments/${item.id}`)}
