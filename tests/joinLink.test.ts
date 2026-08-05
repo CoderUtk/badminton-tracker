@@ -84,6 +84,16 @@ test("parses the spectator role segment", () => {
     .toEqual({ kind: "tournament", id: "t-1", role: "spectator" });
 });
 
+test("a bare tournament UUID with no join/ prefix resolves to a tournament target", () => {
+  expect(parseJoinTarget("3fa85f64-5717-4562-b3fc-2c963f66afa6"))
+    .toEqual({ kind: "tournament", id: "3fa85f64-5717-4562-b3fc-2c963f66afa6", role: "player" });
+});
+
+test("a bare non-UUID word is not a join target", () => {
+  expect(parseJoinTarget("smash-cup-2026")).toBeNull();
+  expect(parseJoinTarget("hello")).toBeNull();
+});
+
 test("joinRouteFor builds the in-app route for each role", () => {
   expect(joinRouteFor({ kind: "tournament", id: "t-1", role: "player" })).toBe("/join/tournament/t-1");
   expect(joinRouteFor({ kind: "tournament", id: "t-1", role: "scorer" })).toBe("/join/tournament/t-1/scorer");
