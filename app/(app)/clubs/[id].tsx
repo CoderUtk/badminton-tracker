@@ -9,6 +9,7 @@ import { toast } from "../../../src/lib/toast";
 import Sheet from "../../../src/components/Sheet";
 import MenuButton from "../../../src/components/MenuButton";
 import HeaderLogoLeft from "../../../src/components/HeaderLogoLeft";
+import ShareIcon from "../../../src/components/ShareIcon";
 import { C, F } from "../../../src/theme";
 
 function winPct(p: PlayerStat): string {
@@ -68,8 +69,16 @@ export default function ClubDetail() {
       ListHeaderComponent={
         <>
           <View style={s.hero}>
+            <Pressable
+              style={s.shareBtn}
+              accessibilityLabel="Share join link"
+              hitSlop={10}
+              onPress={() => shareJoinLink(buildClubJoinPath(club.id), `🏸 ${club.name} wants you on the roster — join on CourtSide:`)}
+            >
+              <ShareIcon size={16} color={C.text} />
+            </Pressable>
             <Text style={s.eyebrow}>CLUB</Text>
-            <Text style={s.title}>{club.name}</Text>
+            <Text style={[s.title, s.titleWithBtn]}>{club.name}</Text>
             {club.invite_code ? <Text style={s.code}>Invite code · {club.invite_code}</Text> : null}
             <View style={s.statRow}>
               <View style={s.statBox}><Text style={s.statNum}>{stats?.matchCount ?? 0}</Text><Text style={s.statLbl}>matches</Text></View>
@@ -78,12 +87,6 @@ export default function ClubDetail() {
             </View>
             <Pressable style={s.cta} onPress={() => router.push({ pathname: "/new-match", params: { clubId: club.id } })}>
               <Text style={s.ctaText}>▶  Start a match</Text>
-            </Pressable>
-            <Pressable
-              style={s.secondary}
-              onPress={() => shareJoinLink(buildClubJoinPath(club.id), `🏸 ${club.name} wants you on the roster — join on CourtSide:`)}
-            >
-              <Text style={s.secondaryText}>Share join link</Text>
             </Pressable>
             <Pressable style={s.secondary} onPress={() => router.push(`/(app)/clubs/${club.id}/live`)}>
               <Text style={s.secondaryText}>Live now</Text>
@@ -145,9 +148,15 @@ const s = StyleSheet.create({
   content: { padding: 16, paddingBottom: 34, gap: 6 },
   center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: C.bg },
   muted: { color: C.text2 },
-  hero: { backgroundColor: C.card, borderRadius: 18, padding: 18, gap: 6, borderWidth: 1, borderColor: C.line },
+  hero: { backgroundColor: C.card, borderRadius: 18, padding: 18, gap: 6, borderWidth: 1, borderColor: C.line, position: "relative" },
+  shareBtn: {
+    position: "absolute", top: 14, right: 14, zIndex: 1,
+    width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center",
+    backgroundColor: C.cardHi, borderWidth: 1, borderColor: C.line,
+  },
   eyebrow: { color: C.red, fontSize: 12, fontWeight: "900", letterSpacing: 0.8 },
   title: { color: C.text, fontSize: 24, fontFamily: F.display, letterSpacing: 0.5 },
+  titleWithBtn: { paddingRight: 44 },
   code: { color: C.text2, fontSize: 13, fontFamily: F.body },
   statRow: { flexDirection: "row", gap: 8, marginTop: 6 },
   statBox: { flex: 1, backgroundColor: C.cardHi, borderRadius: 12, paddingVertical: 14, alignItems: "center" },

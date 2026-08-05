@@ -11,6 +11,7 @@ import {
 import { getClub } from "../../../src/repos/clubRepo";
 import Icon from "../../../src/components/Icon";
 import Sheet from "../../../src/components/Sheet";
+import SegmentedControl from "../../../src/components/SegmentedControl";
 import { C } from "../../../src/theme";
 import { toast } from "../../../src/lib/toast";
 import { useSession } from "../../../src/stores/session";
@@ -32,6 +33,9 @@ export default function SessionDetail() {
   const [genMode, setGenMode] = useState<MatchMode>("doubles");
   const [clubRole, setClubRole] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [manualMode, setManualMode] = useState(false);
+  const [manualPicks, setManualPicks] = useState<Attendance[]>([]);
+  const [manualCourts, setManualCourts] = useState<{ teamA: Attendance[]; teamB: Attendance[] }[]>([]);
 
   const reload = useCallback(async () => {
     if (!id) return;
@@ -66,17 +70,46 @@ export default function SessionDetail() {
   // Fall back to singles automatically when there aren't enough for doubles.
   const effectiveMode: MatchMode = canDoubles ? genMode : "singles";
 
+  const manualUsedIds = new Set(manualCourts.flatMap((c) => [...c.teamA, ...c.teamB]).map((p) => p.id));
+
+  const pickManualPlayer = (p: Attendance) => {
+    if (manualUsedIds.has(p.id)) return;
+    if (manualPicks.some((x) => x.id === p.id)) {
+      setManualPicks(manualPicks.filter((x) => x.id !== p.id));
+      return;
+    }
+    if (manualPicks.length >= 4) return;
+    setManualPicks([...manualPicks, p]);
+  };
+  const addManualCourt = () => {
+    if (manualPicks.length !== 4) return;
+    setManualCourts([...manualCourts, { teamA: manualPicks.slice(0, 2), teamB: manualPicks.slice(2, 4) }]);
+    setManualPicks([]);
+  };
+  const removeManualCourt = (i: number) => setManualCourts(manualCourts.filter((_, idx) => idx !== i));
+
   const buildRound = () => {
     if (!session) return;
-    const need = effectiveMode === "singles" ? 2 : 4;
-    if (checkedIn.length < need) {
+    const remainingPlayers = checkedIn.filter((p) => !manualUsedIds.has(p.id));
+    const remainingCourts = Math.max(0, session.courts - manualCourts.length);
+    const autoResult = remainingCourts > 0
+      ? generateMatchups(remainingPlayers, remainingCourts, matchups, round, effectiveMode)
+      : { matches: [] };
+    const manualMatches: GeneratedMatch[] = manualCourts.map((c, i) => ({
+      court: i + 1, mode: "doubles", teamA: c.teamA, teamB: c.teamB,
+    }));
+    const autoMatches: GeneratedMatch[] = autoResult.matches.map((m, i) => ({ ...m, court: manualCourts.length + i + 1 }));
+    const combined = [...manualMatches, ...autoMatches];
+    if (combined.length === 0) {
+      const need = effectiveMode === "singles" ? 2 : 4;
       toast(`Check in at least ${need} players to build a ${effectiveMode} court.`, "info");
       return;
     }
-    const result = generateMatchups(checkedIn, session.courts, matchups, round, effectiveMode);
-    setMatchups(result.matches);
+    setMatchups(combined);
     setRound((value) => value + 1);
     setTab("games");
+    setManualCourts([]);
+    setManualPicks([]);
   };
   const launch = (match: GeneratedMatch) => {
     if (!session) return;
@@ -128,8 +161,13 @@ export default function SessionDetail() {
         ListHeaderComponent={
         <>
           <View style={s.hero}>
+            {isCreator && (
+              <Pressable style={s.deleteIconBtn} accessibilityLabel="Delete session" hitSlop={10} onPress={() => setConfirmingDelete(true)}>
+                <Icon name="trash-outline" color={C.red} size={17} />
+              </Pressable>
+            )}
             <Text style={s.eyebrow}>{session.status.toUpperCase()} · {session.courts} {session.courts === 1 ? "COURT" : "COURTS"}</Text>
-            <Text style={s.title}>{session.location || "Badminton session"}</Text>
+            <Text style={[s.title, isCreator && s.titleWithBtn]}>{session.location || "Badminton session"}</Text>
             <Text style={s.date}>{new Date(session.starts_at).toLocaleString([], { weekday: "long", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</Text>
             {!done && (
               <View style={s.actions}>
@@ -138,9 +176,6 @@ export default function SessionDetail() {
                     <Icon name="play" color={C.text} size={17} /><Text style={s.actionText}>Start</Text>
                   </Pressable>
                 )}
-                <Pressable style={[s.action, s.actionGhost]} onPress={buildRound}>
-                  <Icon name="shuffle-variant" color={C.text} size={17} /><Text style={s.actionText}>Generate</Text>
-                </Pressable>
                 <Pressable style={[s.action, s.actionFinish]} onPress={finishSession}>
                   <Icon name="flag" color={C.red} size={17} /><Text style={[s.actionText, { color: C.red }]}>Finish</Text>
                 </Pressable>
@@ -196,26 +231,90 @@ export default function SessionDetail() {
           {tab === "games" && (
             <View style={{ gap: 8 }}>
               {!done && (
+                <View style={s.seg}>
+                  <Pressable style={[s.segBtn, !manualMode && s.segOn]} onPress={() => setManualMode(false)}>
+                    <Text style={[s.segText, !manualMode && s.segTextOn]}>Auto</Text>
+                  </Pressable>
+                  <Pressable
+                    disabled={!canDoubles}
+                    style={[s.segBtn, manualMode && s.segOn, !canDoubles && s.modeDisabled]}
+                    onPress={() => setManualMode(true)}
+                  >
+                    <Text style={[s.segText, manualMode && s.segTextOn]}>Manual pair</Text>
+                  </Pressable>
+                </View>
+              )}
+              {!done && manualMode && (
+                <View style={s.manualBox}>
+                  <Text style={s.hint}>Tap two players for Team A, two for Team B.</Text>
+                  <View style={s.manualTeamRow}>
+                    {[0, 1].map((i) => (
+                      <View key={i} style={[s.manualSlot, manualPicks[i] && s.manualSlotOn]}>
+                        <Text style={[s.manualSlotText, manualPicks[i] && s.manualSlotTextOn]}>{manualPicks[i]?.name ?? "Team A"}</Text>
+                      </View>
+                    ))}
+                  </View>
+                  <Text style={s.vs}>vs</Text>
+                  <View style={s.manualTeamRow}>
+                    {[2, 3].map((i) => (
+                      <View key={i} style={[s.manualSlot, manualPicks[i] && s.manualSlotOn]}>
+                        <Text style={[s.manualSlotText, manualPicks[i] && s.manualSlotTextOn]}>{manualPicks[i]?.name ?? "Team B"}</Text>
+                      </View>
+                    ))}
+                  </View>
+                  <Pressable
+                    style={[s.addCourtBtn, manualPicks.length !== 4 && s.modeDisabled]}
+                    disabled={manualPicks.length !== 4}
+                    onPress={addManualCourt}
+                  >
+                    <Text style={s.addCourtText}>Add to round</Text>
+                  </Pressable>
+                  {manualCourts.length > 0 && (
+                    <View style={{ gap: 6 }}>
+                      {manualCourts.map((c, i) => (
+                        <Pressable key={i} style={s.manualCourtRow} onPress={() => removeManualCourt(i)}>
+                          <Text style={s.manualCourtText} numberOfLines={1}>
+                            Court {i + 1}: {c.teamA.map((p) => p.name).join(" & ")} vs {c.teamB.map((p) => p.name).join(" & ")}
+                          </Text>
+                          <Icon name="close" color={C.text2} size={16} />
+                        </Pressable>
+                      ))}
+                    </View>
+                  )}
+                  <Text style={s.boardHead}>Checked in</Text>
+                  <View style={s.chips}>
+                    {checkedIn.map((p) => {
+                      const used = manualUsedIds.has(p.id);
+                      const picked = manualPicks.some((x) => x.id === p.id);
+                      return (
+                        <Pressable
+                          key={p.id}
+                          disabled={used}
+                          style={[s.playerChip, picked && s.playerChipOn, used && s.modeDisabled]}
+                          onPress={() => pickManualPlayer(p)}
+                        >
+                          <Text style={[s.playerChipText, picked && s.playerChipTextOn]}>{p.name}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              )}
+              {!done && (
                 <View style={s.modeRow}>
-                  {(["doubles", "singles"] as MatchMode[]).map((mode) => {
-                    const disabled = mode === "doubles" && !canDoubles;
-                    const on = effectiveMode === mode;
-                    return (
-                      <Pressable
-                        key={mode}
-                        disabled={disabled}
-                        style={[s.modeBtn, on && s.modeOn, disabled && s.modeDisabled]}
-                        onPress={() => setGenMode(mode)}
-                      >
-                        <Text style={[s.modeText, on && s.modeTextOn]}>
-                          {mode === "doubles" ? "Doubles" : "Singles"}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
+                  <View style={{ flex: 1 }}>
+                    <SegmentedControl
+                      options={[
+                        { label: "Doubles", value: "doubles" as MatchMode, disabled: !canDoubles },
+                        { label: "Singles", value: "singles" as MatchMode },
+                      ]}
+                      value={effectiveMode}
+                      onChange={setGenMode}
+                    />
+                  </View>
                   <Pressable style={s.genBtn} onPress={buildRound}>
                     <Icon name="shuffle-variant" color={C.text} size={16} />
-                    <Text style={s.genText}>Generate</Text>
+                    <Text style={s.genText}>{manualCourts.length > 0 ? "Generate rest" : "Generate"}</Text>
                   </Pressable>
                 </View>
               )}
@@ -262,14 +361,6 @@ export default function SessionDetail() {
           )}
         </>
       }
-      ListFooterComponent={
-        isCreator ? (
-          <Pressable style={s.deleteBtn} onPress={() => setConfirmingDelete(true)}>
-            <Icon name="trash-outline" color={C.red} size={18} />
-            <Text style={s.deleteText}>Delete session</Text>
-          </Pressable>
-        ) : null
-      }
       renderItem={({ item }) => (
         <View style={s.playerRow}>
           <View style={[s.avatar, item.status === "in" && s.avatarIn]}><Text style={s.avatarText}>{item.name.slice(0, 1).toUpperCase()}</Text></View>
@@ -303,8 +394,13 @@ export default function SessionDetail() {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg }, content: { padding: 16, paddingBottom: 34, gap: 8 },
   center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: C.bg }, muted: { color: C.text2, paddingVertical: 8 },
-  hero: { backgroundColor: C.card, borderRadius: 18, padding: 18, gap: 5, borderWidth: 1, borderColor: C.line },
-  eyebrow: { color: C.red, fontSize: 12, fontWeight: "900", letterSpacing: 0.8 }, title: { color: C.text, fontSize: 23, fontWeight: "900" }, date: { color: C.text2, fontSize: 14 },
+  hero: { backgroundColor: C.card, borderRadius: 18, padding: 18, gap: 5, borderWidth: 1, borderColor: C.line, position: "relative" },
+  deleteIconBtn: {
+    position: "absolute", top: 14, right: 14, zIndex: 1,
+    width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center",
+    backgroundColor: C.cardHi, borderWidth: 1, borderColor: C.line,
+  },
+  eyebrow: { color: C.red, fontSize: 12, fontWeight: "900", letterSpacing: 0.8 }, title: { color: C.text, fontSize: 23, fontWeight: "900" }, titleWithBtn: { paddingRight: 44 }, date: { color: C.text2, fontSize: 14 },
   actions: { flexDirection: "row", gap: 8, marginTop: 12 },
   action: { flex: 1, flexDirection: "row", gap: 6, minHeight: 44, borderRadius: 11, alignItems: "center", justifyContent: "center" },
   actionPrimary: { backgroundColor: C.red },
@@ -327,16 +423,26 @@ const s = StyleSheet.create({
   segText: { color: C.text2, fontSize: 14, fontWeight: "700" }, segTextOn: { color: C.text },
   sectionTitle: { color: C.text, fontSize: 18, fontWeight: "900" },
   modeRow: { flexDirection: "row", gap: 8, alignItems: "center" },
-  modeBtn: { paddingHorizontal: 14, minHeight: 40, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: C.card, borderWidth: 1, borderColor: C.line },
-  modeOn: { backgroundColor: C.red, borderColor: C.red },
   modeDisabled: { opacity: 0.4 },
-  modeText: { color: C.text2, fontWeight: "800", fontSize: 14 },
-  modeTextOn: { color: C.text },
   genBtn: { flex: 1, flexDirection: "row", gap: 6, minHeight: 40, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: C.cardHi, borderWidth: 1, borderColor: C.line },
   genText: { color: C.text, fontWeight: "800", fontSize: 14 },
+  hint: { color: C.text2, fontSize: 12, lineHeight: 17 },
+  manualBox: { backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.line, padding: 12, gap: 8 },
+  manualTeamRow: { flexDirection: "row", gap: 8 },
+  manualSlot: { flex: 1, minHeight: 40, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: C.cardHi, borderWidth: 1, borderColor: C.line, borderStyle: "dashed" },
+  manualSlotOn: { backgroundColor: C.red, borderColor: C.red, borderStyle: "solid" },
+  manualSlotText: { color: C.text2, fontSize: 13, fontWeight: "700" },
+  manualSlotTextOn: { color: C.text },
+  addCourtBtn: { minHeight: 42, borderRadius: 10, backgroundColor: C.redDeep, alignItems: "center", justifyContent: "center" },
+  addCourtText: { color: C.text, fontWeight: "800", fontSize: 14 },
+  manualCourtRow: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: C.cardHi, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
+  manualCourtText: { flex: 1, color: C.text, fontSize: 13, fontWeight: "600" },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  playerChip: { minHeight: 36, paddingHorizontal: 12, justifyContent: "center", alignItems: "center", borderRadius: 18, backgroundColor: C.cardHi, borderWidth: 1, borderColor: C.line },
+  playerChipOn: { backgroundColor: C.red, borderColor: C.red },
+  playerChipText: { color: C.text, fontWeight: "700", fontSize: 13 },
+  playerChipTextOn: { color: C.text },
   games: { gap: 8, marginVertical: 4 }, gameCard: { backgroundColor: "#211819", borderColor: "#5B2524", borderWidth: 1, padding: 14, borderRadius: 14, gap: 3 }, court: { color: C.red, fontSize: 11, fontWeight: "900", letterSpacing: 0.8 }, teams: { color: C.text, fontSize: 16, fontWeight: "800" }, vs: { color: C.text2, fontSize: 13 }, scoreButton: { alignSelf: "flex-start", flexDirection: "row", gap: 6, marginTop: 7, paddingVertical: 9, paddingHorizontal: 13, borderRadius: 9, backgroundColor: C.red, alignItems: "center" }, scoreText: { color: C.text, fontWeight: "900", fontSize: 13 },
   matchRow: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: C.card, borderRadius: 12, padding: 13, borderWidth: 1, borderColor: C.line }, matchTeams: { color: C.text, fontSize: 15, fontWeight: "700" }, matchMeta: { color: C.text2, fontSize: 13, marginTop: 2 }, matchLive: { color: C.green, fontWeight: "800", fontSize: 12 }, matchDone: { color: C.text2, fontWeight: "800" },
   playerRow: { minHeight: 66, paddingVertical: 9, flexDirection: "row", alignItems: "center", borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line, gap: 10 }, avatar: { height: 34, width: 34, borderRadius: 17, backgroundColor: C.cardHi, alignItems: "center", justifyContent: "center" }, avatarIn: { backgroundColor: C.red }, avatarText: { color: C.text, fontWeight: "900" }, playerName: { flex: 1, color: C.text, fontSize: 16, fontWeight: "700" }, attendanceActions: { flexDirection: "row", gap: 4 }, attendanceChip: { minWidth: 43, minHeight: 32, alignItems: "center", justifyContent: "center", borderRadius: 8, backgroundColor: C.card }, attendanceChipOn: { backgroundColor: C.red }, attendanceText: { color: C.text2, fontWeight: "700", fontSize: 12 }, attendanceTextOn: { color: C.text },
-  deleteBtn: { flexDirection: "row", gap: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 12, minHeight: 52, alignItems: "center", justifyContent: "center", marginTop: 16 },
-  deleteText: { color: C.red, fontSize: 16, fontWeight: "700" },
 });

@@ -9,10 +9,20 @@ import TimePicker from "../src/components/TimePicker";
 import BusyButton from "../src/components/BusyButton";
 import FormScreen from "../src/components/FormScreen";
 import Stepper from "../src/components/Stepper";
+import CalendarIcon from "../src/components/CalendarIcon";
 import { C } from "../src/theme";
 
 /** Default club-night slot: 6:00 PM on the chosen day, as minutes-since-midnight. */
 const DEFAULT_TIME_MINUTES = 18 * 60;
+
+/** "6:00 PM" from minutes-since-midnight. */
+function formatTime(minutes: number): string {
+  const hour24 = Math.floor(minutes / 60);
+  const minute = minutes % 60;
+  const period = hour24 < 12 ? "AM" : "PM";
+  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+  return `${hour12}:${minute.toString().padStart(2, "0")} ${period}`;
+}
 
 export default function NewSession() {
   const router = useRouter();
@@ -21,9 +31,12 @@ export default function NewSession() {
   const [location, setLocation] = useState("Badminton hall");
   const [courts, setCourts] = useState(1);
   const [day, setDay] = useState<Date>(() => startOfDay(new Date()));
-  const [showCalendar, setShowCalendar] = useState(false);
   const [timeMinutes, setTimeMinutes] = useState(DEFAULT_TIME_MINUTES);
   const [saving, setSaving] = useState(false);
+  // Mutually-exclusive accordions: at most one of club list / calendar / time picker open at a time.
+  const [openPanel, setOpenPanel] = useState<"club" | "calendar" | "time" | null>(null);
+  const togglePanel = (panel: "club" | "calendar" | "time") =>
+    setOpenPanel((v) => (v === panel ? null : panel));
 
   useEffect(() => {
     void listRealClubs().then((items) => {
@@ -61,46 +74,65 @@ export default function NewSession() {
       ) : (
         <>
           <Text style={s.label}>Club</Text>
-          <View style={s.chips}>
-            {clubs.map((club) => (
-              <Pressable key={club.id} style={[s.chip, club.id === clubId && s.chipOn]} onPress={() => setClubId(club.id)}>
-                <Text style={s.chipText}>{club.name}</Text>
-              </Pressable>
-            ))}
+          <Pressable style={s.dropdown} onPress={() => togglePanel("club")}>
+            <Text style={s.dropdownText}>{clubs.find((c) => c.id === clubId)?.name ?? "Select a club"}</Text>
+            <Text style={[s.dropdownChevron, openPanel === "club" && s.dropdownChevronOpen]}>⌄</Text>
+          </Pressable>
+          {openPanel === "club" && (
+            <View style={s.dropdownList}>
+              {clubs.map((club) => (
+                <Pressable
+                  key={club.id}
+                  style={[s.dropdownItem, club.id === clubId && s.dropdownItemOn]}
+                  onPress={() => { setClubId(club.id); setOpenPanel(null); }}
+                >
+                  <Text style={[s.dropdownItemText, club.id === clubId && s.dropdownItemTextOn]}>{club.name}</Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+          <View style={s.whereRow}>
+            <View style={s.whereInput}>
+              <Text style={s.label}>Where</Text>
+              <TextInput style={s.input} value={location} onChangeText={setLocation} placeholder="Venue" placeholderTextColor={C.text2} />
+            </View>
+            <View>
+              <Text style={s.label}>Courts</Text>
+              <Stepper value={courts} min={1} max={8} onChange={setCourts} />
+            </View>
           </View>
-          <Text style={s.label}>Where</Text>
-          <TextInput style={s.input} value={location} onChangeText={setLocation} placeholder="Venue" placeholderTextColor={C.text2} />
           <Text style={s.label}>When</Text>
           <View style={s.chips}>
             <Pressable
-              style={[s.chip, sameDay(day, today) && !showCalendar && s.chipOn]}
-              onPress={() => { setDay(today); setShowCalendar(false); }}
+              style={[s.chip, sameDay(day, today) && openPanel !== "calendar" && s.chipOn]}
+              onPress={() => { setDay(today); setOpenPanel(null); }}
             >
               <Text style={s.chipText}>Today</Text>
             </Pressable>
             <Pressable
-              style={[s.chip, sameDay(day, tomorrow) && !showCalendar && s.chipOn]}
-              onPress={() => { setDay(tomorrow); setShowCalendar(false); }}
+              style={[s.chip, sameDay(day, tomorrow) && openPanel !== "calendar" && s.chipOn]}
+              onPress={() => { setDay(tomorrow); setOpenPanel(null); }}
             >
               <Text style={s.chipText}>Tomorrow</Text>
             </Pressable>
             <Pressable
-              style={[s.chip, (showCalendar || (!sameDay(day, today) && !sameDay(day, tomorrow))) && s.chipOn]}
-              onPress={() => setShowCalendar((v) => !v)}
+              style={[s.chip, s.iconChip, (openPanel === "calendar" || (!sameDay(day, today) && !sameDay(day, tomorrow))) && s.chipOn]}
+              onPress={() => togglePanel("calendar")}
+              accessibilityLabel="Pick a date"
             >
-              <Text style={s.chipText}>Pick a date</Text>
+              <CalendarIcon size={16} color={C.text} />
+            </Pressable>
+            <Pressable style={[s.chip, openPanel === "time" && s.chipOn]} onPress={() => togglePanel("time")}>
+              <Text style={s.chipText}>{formatTime(timeMinutes)}</Text>
             </Pressable>
           </View>
-          {showCalendar && (
-            <DatePicker value={day} onChange={(d) => { setDay(d); setShowCalendar(false); }} />
+          {openPanel === "calendar" && (
+            <DatePicker value={day} onChange={(d) => { setDay(d); setOpenPanel(null); }} />
           )}
           <Text style={s.hint}>
             {day.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}
           </Text>
-          <Text style={s.label}>Time</Text>
-          <TimePicker value={timeMinutes} onChange={setTimeMinutes} />
-          <Text style={s.label}>Courts</Text>
-          <Stepper value={courts} min={1} max={8} onChange={setCourts} />
+          {openPanel === "time" && <TimePicker value={timeMinutes} onChange={setTimeMinutes} />}
           <BusyButton busy={saving} style={s.cta} onPress={save}>
             <Text style={s.ctaText}>Create session</Text>
           </BusyButton>
@@ -116,8 +148,20 @@ const s = StyleSheet.create({
   label: { color: C.text, fontSize: 16, fontWeight: "800", marginTop: 5 },
   input: { minHeight: 52, borderRadius: 12, borderWidth: 1, borderColor: C.line, backgroundColor: C.card, color: C.text, paddingHorizontal: 14, fontSize: 16 },
   hint: { color: C.text2, fontSize: 12, lineHeight: 17 },
+  dropdown: { minHeight: 52, borderRadius: 12, borderWidth: 1, borderColor: C.line, backgroundColor: C.card, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  dropdownText: { color: C.text, fontSize: 16, fontWeight: "700" },
+  dropdownChevron: { color: C.text2, fontSize: 16, fontWeight: "800" },
+  dropdownChevronOpen: { transform: [{ rotate: "180deg" }] },
+  dropdownList: { borderRadius: 12, borderWidth: 1, borderColor: C.line, backgroundColor: C.card, overflow: "hidden" },
+  dropdownItem: { minHeight: 46, paddingHorizontal: 14, justifyContent: "center", borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line },
+  dropdownItemOn: { backgroundColor: C.cardHi },
+  dropdownItemText: { color: C.text, fontSize: 15, fontWeight: "600" },
+  dropdownItemTextOn: { color: C.red, fontWeight: "800" },
+  whereRow: { flexDirection: "row", alignItems: "flex-end", gap: 10 },
+  whereInput: { flex: 1 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: { minWidth: 54, minHeight: 42, paddingHorizontal: 14, justifyContent: "center", alignItems: "center", borderRadius: 21, backgroundColor: C.card, borderWidth: 1, borderColor: C.line },
+  iconChip: { minWidth: 42, paddingHorizontal: 10 },
   chipOn: { backgroundColor: C.red, borderColor: C.red }, chipText: { color: C.text, fontWeight: "700" },
   cta: { minHeight: 56, marginTop: 18, borderRadius: 14, backgroundColor: C.red, alignItems: "center", justifyContent: "center" }, ctaText: { color: C.text, fontSize: 18, fontWeight: "900" },
 });
