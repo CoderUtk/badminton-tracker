@@ -28,11 +28,18 @@ const names = (side: { name: string }[]) => side.map((p) => p.name).join(" / ");
 const format = (m: MatchRecord) =>
   `${m.config.matchType === "singles" ? "Singles" : "Doubles"} · ${m.config.pointsToWin} pts${m.config.bestOf === 3 ? " · Bo3" : ""}`;
 
+type StatusFilter = "live" | "completed" | "forfeited";
+const FILTERS: { key: StatusFilter; label: string }[] = [
+  { key: "live", label: "Live" },
+  { key: "completed", label: "Completed" },
+  { key: "forfeited", label: "Forfeited" },
+];
+
 export default function Matches() {
   const router = useRouter();
   const [live, setLive] = useState<Row[]>([]);
   const [done, setDone] = useState<Row[]>([]);
-  const [filter, setFilter] = useState<string | null>(null);
+  const [filter, setFilter] = useState<StatusFilter | null>(null);
 
   const reload = useCallback(async () => {
     const list = await listMatches();
@@ -64,21 +71,13 @@ export default function Matches() {
     ]);
   };
 
-  // Distinct player names across all matches, for the opponent filter.
-  const players = useMemo(() => {
-    const set = new Set<string>();
-    for (const m of [...live, ...done]) {
-      for (const p of [...m.side_a, ...m.side_b]) set.add(p.name);
-    }
-    return [...set].sort((a, b) => a.localeCompare(b));
-  }, [live, done]);
+  const completed = useMemo(() => done.filter((m) => m.status === "completed"), [done]);
+  const forfeited = useMemo(() => done.filter((m) => m.status === "forfeited"), [done]);
 
-  const has = (m: Row) => !filter || [...m.side_a, ...m.side_b].some((p) => p.name === filter);
-  const fLive = live.filter(has);
-  const fDone = done.filter(has);
   const sections = [
-    ...(fLive.length ? [{ title: "Live now", data: fLive }] : []),
-    ...(fDone.length ? [{ title: "Completed", data: fDone }] : []),
+    ...(filter === null || filter === "live" ? (live.length ? [{ title: "Live now", data: live }] : []) : []),
+    ...(filter === null || filter === "completed" ? (completed.length ? [{ title: "Completed", data: completed }] : []) : []),
+    ...(filter === null || filter === "forfeited" ? (forfeited.length ? [{ title: "Forfeited", data: forfeited }] : []) : []),
   ];
 
   const TeamLine = ({ m, team }: { m: Row; team: TeamId }) => {
@@ -113,20 +112,18 @@ export default function Matches() {
 
   return (
     <View style={s.root}>
-      {players.length > 1 && (
-        <View style={s.filterBar}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterRow}>
-            <Pressable style={[s.fChip, !filter && s.fChipOn]} onPress={() => setFilter(null)}>
-              <Text style={[s.fChipText, !filter && s.fChipTextOn]}>All players</Text>
+      <View style={s.filterBar}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterRow}>
+          <Pressable style={[s.fChip, !filter && s.fChipOn]} onPress={() => setFilter(null)}>
+            <Text style={[s.fChipText, !filter && s.fChipTextOn]}>All</Text>
+          </Pressable>
+          {FILTERS.map((f) => (
+            <Pressable key={f.key} style={[s.fChip, filter === f.key && s.fChipOn]} onPress={() => setFilter(filter === f.key ? null : f.key)}>
+              <Text style={[s.fChipText, filter === f.key && s.fChipTextOn]}>{f.label}</Text>
             </Pressable>
-            {players.map((name) => (
-              <Pressable key={name} style={[s.fChip, filter === name && s.fChipOn]} onPress={() => setFilter(filter === name ? null : name)}>
-                <Text style={[s.fChipText, filter === name && s.fChipTextOn]}>{name}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-        </View>
-      )}
+          ))}
+        </ScrollView>
+      </View>
       <SectionList
         sections={sections}
         keyExtractor={(m) => m.id}
@@ -136,7 +133,7 @@ export default function Matches() {
           filter ? (
             <View style={s.emptyBox}>
               <Icon name="badminton" color={C.text2} size={40} />
-              <Text style={s.emptyTitle}>No matches for {filter}</Text>
+              <Text style={s.emptyTitle}>No {FILTERS.find((f) => f.key === filter)?.label.toLowerCase()} matches</Text>
               <Pressable style={s.emptyCta} onPress={() => setFilter(null)}>
                 <Text style={s.emptyCtaText}>Show all</Text>
               </Pressable>
