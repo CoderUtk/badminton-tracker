@@ -6,6 +6,7 @@ import { shareJoinLink } from "../lib/shareJoin";
 import { validateName } from "../lib/validate";
 import { toast } from "../lib/toast";
 import Icon from "./Icon";
+import BusyButton from "./BusyButton";
 import { C, F, press } from "../theme";
 
 const BESTOFS = [1, 3, 5] as const;
@@ -18,12 +19,13 @@ const MAX_COURTS = 10;
  * is an admin action.
  */
 export default function TournamentConfigTab({
-  tournament, isAdmin, isDraft, blocker, onStart, onChanged,
+  tournament, isAdmin, isDraft, blocker, starting, onStart, onChanged,
 }: {
   tournament: TournamentRow;
   isAdmin: boolean;
   isDraft: boolean;
   blocker: string | null;
+  starting: boolean;
   onStart: () => void;
   onChanged: () => void;
 }) {
@@ -128,9 +130,9 @@ export default function TournamentConfigTab({
       <Segmented value={finalsBestOf} options={BESTOFS} onPick={setFinalsBestOf} />
 
       {dirty ? (
-        <Pressable style={[s.save, (!!nameError || busy) && s.off]} disabled={!!nameError || busy} onPress={onSave}>
+        <BusyButton busy={busy} disabled={!!nameError} style={[s.save, !!nameError && s.off]} onPress={onSave}>
           <Text style={s.saveText}>Save changes</Text>
-        </Pressable>
+        </BusyButton>
       ) : null}
 
       <Pressable style={s.share} onPress={onSharePlayer}>
@@ -144,9 +146,9 @@ export default function TournamentConfigTab({
 
       {isDraft ? (
         <>
-          <Pressable style={[s.start, !!blocker && s.off]} disabled={!!blocker} onPress={onStart}>
+          <BusyButton busy={starting} disabled={!!blocker} style={[s.start, !!blocker && s.off]} onPress={onStart}>
             <Text style={s.startText}>Start tournament</Text>
-          </Pressable>
+          </BusyButton>
           {blocker ? <Text style={s.err}>{blocker}</Text> : null}
         </>
       ) : null}

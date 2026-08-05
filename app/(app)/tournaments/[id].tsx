@@ -45,6 +45,7 @@ export default function TournamentBracket() {
   const [isTournamentAdmin, setIsTournamentAdmin] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [starting, setStarting] = useState(false);
 
   const reload = useCallback(() => {
     if (!id) return;
@@ -135,11 +136,14 @@ export default function TournamentBracket() {
 
   const onStart = async () => {
     if (!id) return;
+    setStarting(true);
     try {
       await startTournament(id);
       reload();
     } catch (e) {
       toast((e as Error).message || "Could not start the tournament", "error");
+    } finally {
+      setStarting(false);
     }
   };
 
@@ -163,6 +167,7 @@ export default function TournamentBracket() {
         isAdmin={isAdmin}
         isDraft={!!isDraft}
         blocker={blocker}
+        starting={starting}
         onStart={onStart}
         onChanged={reload}
       />
