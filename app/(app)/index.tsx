@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Club, createClub, joinClub, listRealClubs, refreshClubs } from "../../src/repos/clubRepo";
 import { LinearGradient } from "expo-linear-gradient";
@@ -9,6 +9,7 @@ import { toast } from "../../src/lib/toast";
 import { validateName } from "../../src/lib/validate";
 import Icon from "../../src/components/Icon";
 import Logo from "../../src/components/Logo";
+import AnimatedList from "../../src/components/AnimatedList";
 import { C, F, GRAD, glow, press } from "../../src/theme";
 
 export default function Home() {
@@ -103,10 +104,10 @@ export default function Home() {
           {nameTouched && nameError ? <Text style={s.err}>{nameError}</Text> : null}
         </View>
       )}
-      <FlatList
-        data={clubs}
-        keyExtractor={(c) => c.id}
-        keyboardShouldPersistTaps="handled"
+      <AnimatedList
+        items={clubs.map((club) => club.name)}
+        onItemSelect={(_, index) => router.push(`/(app)/clubs/${clubs[index].id}`)}
+        keyboardShouldPersistTaps={true}
         contentContainerStyle={{ paddingBottom: 24 }}
         ListEmptyComponent={
           <View>
@@ -126,16 +127,18 @@ export default function Home() {
             </View>
           </View>
         }
-        renderItem={({ item }) => (
-          <Pressable style={({ pressed }) => [s.club, pressed && press]} onPress={() => router.push(`/(app)/clubs/${item.id}`)}>
+        renderItem={(item, index, selected) => (
+          <Pressable style={({ pressed }) => [s.club, pressed && press, selected && s.selectedClub]}
+            onPress={() => router.push(`/(app)/clubs/${clubs[index].id}`)}
+          >
             <View style={s.clubIcon}>
               <Icon name="account-group" color={C.red} size={22} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={s.clubName}>{item.name}</Text>
+              <Text style={s.clubName}>{item}</Text>
               <Text style={s.clubMeta}>
-                {item.role ?? "member"}
-                {item.invite_code ? ` · code ${item.invite_code}` : ""}
+                {clubs[index].role ?? "member"}
+                {clubs[index].invite_code ? ` · code ${clubs[index].invite_code}` : ""}
               </Text>
             </View>
             <Icon name="chevron-forward" color={C.text2} size={20} />
@@ -176,6 +179,7 @@ const s = StyleSheet.create({
   inlineCreate: { gap: 4 },
   empty: { color: C.text2, fontSize: 15, paddingVertical: 12 },
   club: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: C.card, borderRadius: 12, padding: 14, marginBottom: 8 },
+  selectedClub: { borderColor: C.red, borderWidth: 1 },
   clubIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,59,48,0.12)", alignItems: "center", justifyContent: "center" },
   clubName: { color: C.text, fontSize: 17, fontWeight: "700" },
   clubMeta: { color: C.text2, fontSize: 13, marginTop: 2 },

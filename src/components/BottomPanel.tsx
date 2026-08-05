@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import Animated, {
-  runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming,
+  Easing, runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming,
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -25,21 +25,33 @@ export default function BottomPanel({
   const backdrop = useSharedValue(0);
 
   useEffect(() => {
-    ty.value = reduced ? 0 : withSpring(0, { dampingRatio: 0.9, duration: 420 });
-    backdrop.value = withTiming(1, { duration: 200 });
+    // Apple fluid entrance: ease-out curve with slight bounce (dampingRatio 0.86)
+    ty.value = reduced ? 0 : withSpring(0, { dampingRatio: 0.86, duration: 450, overshootClamping: false });
+    backdrop.value = withTiming(1, { duration: 250, easing: Easing.out(Easing.cubic) });
   }, [reduced]);
 
   const panelStyle = useAnimatedStyle(() => ({ transform: [{ translateY: ty.value }] }));
   const backStyle = useAnimatedStyle(() => ({ opacity: backdrop.value }));
 
   const pan = Gesture.Pan()
-    .onUpdate((e) => { ty.value = Math.max(0, e.translationY); })
-    .onEnd((e) => {
-      if (e.translationY > 110 || e.velocityY > 800) {
-        backdrop.value = withTiming(0, { duration: 160 });
-        ty.value = withTiming(height, { duration: 200 }, () => runOnJS(onClose)());
+    .onUpdate((e) => { 
+      // Rubber-band resistance when dragging upward (negative translation)
+      if (e.translationY < 0) {
+        ty.value = e.translationY * 0.4; // 40% resistance for overscroll
       } else {
-        ty.value = withSpring(0, { dampingRatio: 0.9, duration: 420 });
+        ty.value = e.translationY;
+      }
+    })
+    .onEnd((e) => {
+      // Velocity-driven dismissal: flick down > 900px/s or drag > 120px
+      const shouldDismiss = e.translationY > 120 || e.velocityY > 900;
+      
+      if (shouldDismiss) {
+        backdrop.value = withTiming(0, { duration: 180, easing: Easing.in(Easing.cubic) });
+        ty.value = withTiming(height, { duration: 250, easing: Easing.in(Easing.cubic) }, () => runOnJS(onClose)());
+      } else {
+        // Spring back with velocity handoff (Reanimated automatically preserves gesture velocity)
+        ty.value = withSpring(0, { dampingRatio: 0.86, duration: 450, velocity: e.velocityY });
       }
     });
 

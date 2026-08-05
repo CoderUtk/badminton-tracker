@@ -112,11 +112,16 @@ const s = StyleSheet.create({
   },
   half: { flex: 1 },
   net: { width: 2, backgroundColor: LINE },
-  box: { flex: 1, alignItems: "center", justifyContent: "center" },
+  box: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   boxDivider: { borderBottomWidth: 1, borderColor: LINE },
   boxServing: {
     borderWidth: 1.5,
     // borderColor and backgroundColor are overridden dynamically per serving team
+    // Emil: subtle glow for state emphasis without overwhelming the court
   },
   dot: {
     position: "absolute", top: 10, right: 10,

@@ -7,6 +7,7 @@ import { Club, listRealClubs, listPlayers } from "../src/repos/clubRepo";
 import Court from "../src/components/Court";
 import Icon from "../src/components/Icon";
 import FormScreen from "../src/components/FormScreen";
+import PressableScale from "../src/components/PressableScale";
 import { C } from "../src/theme";
 
 export default function NewMatch() {
@@ -117,13 +118,14 @@ export default function NewMatch() {
     <FormScreen contentContainerStyle={{ padding: 16, gap: 12 }}>
       <View style={s.seg}>
         {[true, false].map((d) => (
-          <Pressable
+          <PressableScale
             key={String(d)}
             style={[s.segBtn, doubles === d && s.segOn]}
             onPress={() => { setDoubles(d); setFirstServerIdx(0); }}
+            scaleTo={0.96}
           >
             <Text style={[s.segText, doubles === d && s.segTextOn]}>{d ? "Doubles" : "Singles"}</Text>
-          </Pressable>
+          </PressableScale>
         ))}
       </View>
 
@@ -145,20 +147,20 @@ export default function NewMatch() {
       </View>
       <View style={s.swapRow}>
         {doubles && (
-          <Pressable style={s.swapBtn} onPress={() => swapTeam("A")}>
+          <PressableScale style={s.swapBtn} onPress={() => swapTeam("A")} scaleTo={0.95}>
             <Icon name="swap-vertical" color={C.text} size={16} />
             <Text style={s.swapText}>Team A</Text>
-          </Pressable>
+          </PressableScale>
         )}
-        <Pressable style={[s.swapBtn, s.swapSides]} onPress={swapSides}>
+        <PressableScale style={[s.swapBtn, s.swapSides]} onPress={swapSides} scaleTo={0.95}>
           <Icon name="swap-horizontal" color={C.text} size={16} />
           <Text style={s.swapText}>Swap sides</Text>
-        </Pressable>
+        </PressableScale>
         {doubles && (
-          <Pressable style={s.swapBtn} onPress={() => swapTeam("B")}>
+          <PressableScale style={s.swapBtn} onPress={() => swapTeam("B")} scaleTo={0.95}>
             <Icon name="swap-vertical" color={C.text} size={16} />
             <Text style={s.swapText}>Team B</Text>
-          </Pressable>
+          </PressableScale>
         )}
       </View>
 

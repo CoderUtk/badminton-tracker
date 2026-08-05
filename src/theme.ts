@@ -61,5 +61,20 @@ export const textGlow = (color: string, radius = 12) => ({
 
 export const radius = { sm: 8, md: 12, lg: 16, xl: 20, pill: 999 } as const;
 
+/** 
+ * Emil's custom easing curves: all animations use ease-out (never ease-in).
+ * Exits should be faster than entrances (250ms exit vs 300ms entrance).
+ */
+export const easing = {
+  // Apple's signature curve: ease-out with slight snap
+  standard: [0.4, 0, 0.2, 1] as const,
+  // Snappier for quick feedback (button presses, toggles)
+  snappy: [0.25, 0.1, 0.25, 1] as const,
+  // Smooth for page transitions and large movements
+  smooth: [0.32, 0.72, 0, 1] as const,
+  // Exit curve: faster, more direct
+  exit: [0.4, 0, 1, 1] as const,
+} as const;
+
 /** Instant press feedback for any Pressable — subtle scale + dim. Transform/opacity only (GPU-safe). */
-export const press = { transform: [{ scale: 0.97 }], opacity: 0.9 } as const;
+export const press = { transform: [{ scale: 0.97 }], opacity: 0.92 } as const;

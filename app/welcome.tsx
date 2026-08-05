@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
 import { completeOnboarding, getMyProfile, type Hand } from "../src/repos/profileRepo";
 import { validateName } from "../src/lib/validate";
 import { toast } from "../src/lib/toast";
@@ -24,9 +25,22 @@ export default function Welcome() {
   const [busy, setBusy] = useState(false);
   const [age, setAge] = useState("");
   const [hand, setHand] = useState<Hand | null>(null);
+  
+  // Fluid entrance animation for hero content
+  const heroOpacity = useSharedValue(0);
+  const heroY = useSharedValue(20);
+  
+  const heroStyle = useAnimatedStyle(() => ({
+    opacity: heroOpacity.value,
+    transform: [{ translateY: heroY.value }],
+  }));
 
   useEffect(() => {
     void getMyProfile().then((p) => { if (p?.displayName) setName(p.displayName); });
+    
+    // Staggered entrance: hero first, card follows
+    heroOpacity.value = withTiming(1, { duration: 600 });
+    heroY.value = withSpring(0, { dampingRatio: 0.86, duration: 500 });
   }, []);
 
   const error = validateName(name, "Display name", { requireLetter: true });
@@ -56,12 +70,12 @@ export default function Welcome() {
 
   return (
     <FormScreen contentContainerStyle={s.scroll}>
-      <View style={s.hero}>
+      <Animated.View style={[s.hero, heroStyle]}>
         <Logo size={52} />
         <Text style={s.eyebrow}>ONE LAST THING</Text>
         <Text style={s.headline}>What should we{"\n"}call you?</Text>
         <Text style={s.sub}>This is the name your club sees on scoreboards.</Text>
-      </View>
+      </Animated.View>
 
       <View style={s.card}>
         <Text style={s.label}>Display name</Text>
@@ -94,9 +108,14 @@ export default function Welcome() {
         <Text style={[s.label, { marginTop: 4 }]}>Playing hand</Text>
         <View style={s.handRow}>
           {(["left", "right"] as Hand[]).map((h) => (
-            <Pressable key={h} style={[s.handChip, hand === h && s.handChipOn]} onPress={() => setHand(h)}>
+            <PressableScale 
+              key={h} 
+              style={[s.handChip, hand === h && s.handChipOn]} 
+              onPress={() => setHand(h)}
+              scaleTo={0.96}
+            >
               <Text style={[s.handChipText, hand === h && s.handChipTextOn]}>{h === "left" ? "Left" : "Right"}</Text>
-            </Pressable>
+            </PressableScale>
           ))}
         </View>
 

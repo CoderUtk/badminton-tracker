@@ -4,11 +4,11 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-na
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-// Apple fluid springs: press-in snappy + critically damped (no wobble while held);
-// release settles critically damped. Springs are interruptible — a fast double
-// tap re-targets from the live scale instead of snapping, so it never feels dead.
-const IN = { dampingRatio: 1, duration: 180 } as const;
-const OUT = { dampingRatio: 1, duration: 320 } as const;
+// Apple fluid springs: response time 0.3s (300ms) for press-in with critical damping
+// (dampingRatio 1 = no wobble). Release uses 0.4s response for smooth settle.
+// Springs are interruptible — a fast double-tap re-targets from live scale (never snaps).
+const IN = { dampingRatio: 1, duration: 300, overshootClamping: false } as const;
+const OUT = { dampingRatio: 0.9, duration: 400, overshootClamping: false } as const;
 
 type Props = Omit<PressableProps, "style"> & {
   style?: StyleProp<ViewStyle>;
@@ -16,16 +16,36 @@ type Props = Omit<PressableProps, "style"> & {
   children?: React.ReactNode;
 };
 
-/** Pressable with a spring scale on press. Drop-in for taps that want fluid feedback. */
-export default function PressableScale({ style, scaleTo = 0.96, children, onPressIn, onPressOut, disabled, ...rest }: Props) {
+/** 
+ * Pressable with fluid spring scale on press. Drop-in for taps that want premium feedback.
+ * Emil's principle: scale(0.97) feels confident without over-animation. Origin-aware transforms
+ * ensure the element scales from its visual center.
+ */
+export default function PressableScale({ style, scaleTo = 0.97, children, onPressIn, onPressOut, disabled, ...rest }: Props) {
   const scale = useSharedValue(1);
-  const anim = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const opacity = useSharedValue(1);
+  
+  const anim = useAnimatedStyle(() => ({ 
+    transform: [{ scale: scale.value }],
+    opacity: opacity.value,
+  }));
+  
   return (
     <AnimatedPressable
       {...rest}
       disabled={disabled}
-      onPressIn={(e) => { if (!disabled) scale.value = withSpring(scaleTo, IN); onPressIn?.(e); }}
-      onPressOut={(e) => { scale.value = withSpring(1, OUT); onPressOut?.(e); }}
+      onPressIn={(e) => { 
+        if (!disabled) {
+          scale.value = withSpring(scaleTo, IN);
+          opacity.value = withSpring(0.92, IN);
+        }
+        onPressIn?.(e);
+      }}
+      onPressOut={(e) => { 
+        scale.value = withSpring(1, OUT);
+        opacity.value = withSpring(1, OUT);
+        onPressOut?.(e);
+      }}
       style={[style, anim]}
     >
       {children}
