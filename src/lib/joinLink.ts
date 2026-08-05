@@ -17,6 +17,8 @@ export function buildTournamentSpectatorJoinPath(tournamentId: string): string {
 
 export type JoinRole = "player" | "scorer" | "spectator";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * Extract a join target from a deep link. Accepts a full URL with any scheme
  * or a bare path, so the same helper serves Linking callbacks and router
@@ -72,6 +74,12 @@ export function parseJoinTarget(
       return { kind, id, role };
     }
     at = parts.indexOf("join", at + 1);
+  }
+
+  // No "join/..." segment found. A bare tournament id (pasted straight from
+  // the guest spectate screen, no link wrapper) is still a valid target.
+  if (parts.length === 1 && UUID_RE.test(parts[0])) {
+    return { kind: "tournament", id: parts[0], role: "player" };
   }
 
   return null;
