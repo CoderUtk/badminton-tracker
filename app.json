@@ -52,6 +52,7 @@
       "expo-web-browser",
       "expo-font",
       "./plugins/withQuietAndroidBuild",
+      "./plugins/withReleaseSigning",
       [
         "@sentry/react-native/expo",
         {
