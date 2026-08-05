@@ -4,9 +4,13 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { listAllTournaments, type TournamentListRow } from "../../../src/repos/tournamentRepo";
 import { toast } from "../../../src/lib/toast";
 import Icon from "../../../src/components/Icon";
-import { C, F, press } from "../../../src/theme";
+import { C, F, press, glow } from "../../../src/theme";
 
-const statusColor = (s: string) => (s === "done" ? C.text3 : s === "live" ? C.red : C.accent);
+const STATUS_COLOR: Record<string, string> = {
+  draft: C.accent,
+  live: C.red,
+  done: C.text3,
+};
 
 export default function TournamentsList() {
   const router = useRouter();
@@ -38,19 +42,36 @@ export default function TournamentsList() {
         data={rows}
         keyExtractor={(t) => t.id}
         ListEmptyComponent={<Text style={s.empty}>No tournaments yet.</Text>}
-        renderItem={({ item }) => (
-          <Pressable style={({ pressed }) => [s.card, pressed && press]} onPress={() => router.push(`/tournaments/${item.id}`)}>
-            <Icon name="trophy" color={statusColor(item.status)} size={22} />
-            <View style={{ flex: 1 }}>
-              <Text style={s.name}>{item.name}</Text>
-              <Text style={s.meta}>
-                {item.clubName ? `${item.clubName} · ` : ""}
-                {item.status === "draft" ? "Draft" : `${item.size}-player · ${item.status}`}
-              </Text>
-            </View>
-            <Icon name="chevron-forward" color={C.text2} size={20} />
-          </Pressable>
-        )}
+        renderItem={({ item }) => {
+          const color = STATUS_COLOR[item.status] ?? C.accent;
+          return (
+            <Pressable
+              style={({ pressed }) => [
+                s.card,
+                { borderLeftColor: color, borderLeftWidth: 4 },
+                item.status === "live" && glow(C.red, 10, 0.35),
+                pressed && press,
+              ]}
+              onPress={() => router.push(`/tournaments/${item.id}`)}
+            >
+              <View style={[s.iconWrap, { backgroundColor: color + "15" }]}>
+                <Icon name="trophy" color={color} size={22} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.name}>{item.name}</Text>
+                <Text style={s.meta}>
+                  {item.clubName ? `${item.clubName} · ` : ""}
+                  {item.size}-player
+                </Text>
+                <View style={[s.statusPill, { backgroundColor: color + "22" }]}>
+                  <View style={[s.statusDot, { backgroundColor: color }]} />
+                  <Text style={[s.status, { color }]}>{item.status.toUpperCase()}</Text>
+                </View>
+              </View>
+              <Icon name="chevron-forward" color={C.text2} size={20} />
+            </Pressable>
+          );
+        }}
       />
     </View>
   );
@@ -62,6 +83,10 @@ const s = StyleSheet.create({
   newText: { color: C.text, fontFamily: F.semibold, fontSize: 16 },
   empty: { color: C.text2, textAlign: "center", marginTop: 40 },
   card: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: C.card, borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: C.line },
+  iconWrap: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
   name: { color: C.text, fontSize: 16, fontFamily: F.semibold },
   meta: { color: C.text2, fontSize: 13, marginTop: 2 },
+  statusPill: { flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, marginTop: 6 },
+  statusDot: { width: 7, height: 7, borderRadius: 4 },
+  status: { fontSize: 11, fontFamily: F.bold, letterSpacing: 0.7 },
 });
