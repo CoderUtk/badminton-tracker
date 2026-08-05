@@ -6,6 +6,7 @@
     "@expo-google-fonts/chakra-petch": "^0.4.1",
     "@expo-google-fonts/russo-one": "^0.4.1",
     "@expo/vector-icons": "^15.0.3",
+    "@react-native-community/datetimepicker": "8.4.4",
     "@react-native-community/netinfo": "11.4.1",
     "@sentry/react-native": "~7.2.0",
     "@supabase/supabase-js": "^2.110.8",
@@ -29,6 +30,7 @@
     "expo-sqlite": "~16.0.10",
     "expo-status-bar": "~3.0.9",
     "expo-web-browser": "~15.0.11",
+    "motion": "^12.42.2",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
@@ -39,8 +41,7 @@
     "react-native-svg": "15.12.1",
     "react-native-view-shot": "4.0.3",
     "react-native-web": "^0.21.0",
-    "zustand": "^5.0.14",
-    "motion": "^12.42.2"
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@types/jest": "29.5.14",
