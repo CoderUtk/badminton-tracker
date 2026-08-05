@@ -18,7 +18,7 @@ test("builds an https join link when the domain is configured", async () => {
   const { shareJoinLink } = require("../src/lib/shareJoin");
   await shareJoinLink("join/club/abc", "Join Smash Club on CourtSide:");
   expect(share).toHaveBeenCalledWith({
-    message: "Join Smash Club on CourtSide: https://courtside-links.vercel.app/join/club/abc",
+    message: "Join Smash Club on CourtSide:\nhttps://courtside-links.vercel.app/join/club/abc",
   });
 });
 
@@ -27,6 +27,6 @@ test("falls back to the custom scheme when no domain is configured", async () =>
   await shareJoinLink("join/club/abc", "Join Smash Club on CourtSide:");
   expect(createURL).toHaveBeenCalledWith("join/club/abc");
   expect(share).toHaveBeenCalledWith({
-    message: "Join Smash Club on CourtSide: badminton://join/club/abc",
+    message: "Join Smash Club on CourtSide:\nbadminton://join/club/abc",
   });
 });

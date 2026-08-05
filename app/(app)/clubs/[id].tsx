@@ -81,7 +81,7 @@ export default function ClubDetail() {
             </Pressable>
             <Pressable
               style={s.secondary}
-              onPress={() => shareJoinLink(buildClubJoinPath(club.id), `Join ${club.name} on CourtSide:`)}
+              onPress={() => shareJoinLink(buildClubJoinPath(club.id), `🏸 ${club.name} wants you on the roster — join on CourtSide:`)}
             >
               <Text style={s.secondaryText}>Share join link</Text>
             </Pressable>

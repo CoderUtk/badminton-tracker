@@ -17,7 +17,7 @@ const JOIN_LINK_DOMAIN = process.env.EXPO_PUBLIC_JOIN_LINK_DOMAIN;
 export async function shareJoinLink(path: string, message: string): Promise<void> {
   try {
     const url = JOIN_LINK_DOMAIN ? `https://${JOIN_LINK_DOMAIN}/${path}` : Linking.createURL(path);
-    await Share.share({ message: `${message} ${url}` });
+    await Share.share({ message: `${message}\n${url}` });
   } catch (e) {
     toast((e as Error).message || "Could not share the link", "error");
   }
