@@ -15,6 +15,7 @@ const MCI = new Set([
   "account-group",
   "account-plus",
   "scoreboard-outline",
+  "screen-rotation",
 ]);
 
 export type IconName =
@@ -32,10 +33,11 @@ export type IconName =
   | "share-social-outline" | "create-outline"
   | "ellipse" | "trash-outline"
   | "information-circle-outline" | "hand-left-outline"
+  | "phone-portrait-outline" | "phone-landscape-outline" | "sync-outline"
   // MaterialCommunityIcons
   | "badminton" | "trophy" | "trophy-outline"
   | "shuffle-variant" | "account-group" | "account-plus"
-  | "scoreboard-outline";
+  | "scoreboard-outline" | "screen-rotation";
 
 export default function Icon({
   name,

@@ -8,7 +8,7 @@ import { MatchState, pointSituation, serverName, TeamId } from "../engine";
 import type { MatchRecord } from "../repos/matchRepo";
 import { useMatchStore } from "../stores/matchStore";
 import Court from "../components/Court";
-import Icon from "../components/Icon";
+import Icon, { type IconName } from "../components/Icon";
 import PressableScale from "../components/PressableScale";
 import { C, F, glow, textGlow } from "../theme";
 
@@ -43,11 +43,31 @@ export default function MatchScreen({
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const portrait = height >= width;
+  const [orientationMode, setOrientationMode] = useState<"auto" | "portrait" | "landscape">("auto");
+  const [orientationSheetOpen, setOrientationSheetOpen] = useState(false);
   useEffect(() => {
     // Allow the player to score in either orientation; landscape gives the court
-    // the most room, portrait puts big +1 buttons under the court.
+    // the most room, portrait puts big +1 buttons under the court. Restore auto
+    // on leaving so the lock doesn't leak into the rest of the app.
     ScreenOrientation.unlockAsync().catch(() => {});
+    return () => { ScreenOrientation.unlockAsync().catch(() => {}); };
   }, []);
+  const setOrientation = (mode: "auto" | "portrait" | "landscape") => {
+    setOrientationMode(mode);
+    setOrientationSheetOpen(false);
+    const lock =
+      mode === "auto" ? ScreenOrientation.unlockAsync()
+      : mode === "portrait" ? ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP)
+      : ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+    lock.catch(() => {});
+  };
+  const orientationLabel = orientationMode === "auto" ? "Auto" : orientationMode === "portrait" ? "Portrait" : "Landscape";
+  const ORIENTATION_OPTIONS: { mode: "auto" | "portrait" | "landscape"; icon: IconName; label: string }[] = [
+    { mode: "auto", icon: "screen-rotation", label: "Auto" },
+    { mode: "portrait", icon: "phone-portrait-outline", label: "Portrait" },
+    { mode: "landscape", icon: "phone-landscape-outline", label: "Landscape" },
+  ];
+  const orientationIcon = ORIENTATION_OPTIONS.find((o) => o.mode === orientationMode)!.icon;
 
   const { state, events, redoStack, open, dispatch, undo, redo, endEarly, close } = useMatchStore();
 
@@ -175,6 +195,29 @@ export default function MatchScreen({
       <PressableScale style={[s.iconBtn, redoStack.length === 0 && s.iconDisabled]} onPress={redo} accessibilityLabel="Redo rally">
         <Icon name="arrow-redo" color={C.text} size={18} />
       </PressableScale>
+      <View>
+        <PressableScale
+          style={s.iconBtn}
+          onPress={() => setOrientationSheetOpen((v) => !v)}
+          accessibilityLabel={`Screen orientation: ${orientationLabel}. Tap to change.`}
+        >
+          <Icon name={orientationIcon} color={C.text} size={18} />
+        </PressableScale>
+        {orientationSheetOpen && (
+          <View style={s.orientDropdown}>
+            {ORIENTATION_OPTIONS.map((opt) => (
+              <Pressable
+                key={opt.mode}
+                style={[s.orientOption, orientationMode === opt.mode && s.orientOptionOn]}
+                onPress={() => setOrientation(opt.mode)}
+                accessibilityLabel={opt.label}
+              >
+                <Icon name={opt.icon} color={orientationMode === opt.mode ? C.red : C.text} size={19} />
+              </Pressable>
+            ))}
+          </View>
+        )}
+      </View>
     </View>
   );
   const rightGroup = (
@@ -258,6 +301,12 @@ const s = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
   iconDisabled: { opacity: 0.35 },
+  orientDropdown: {
+    position: "absolute", top: 46, left: 0, zIndex: 20,
+    backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.line, padding: 5, gap: 4,
+  },
+  orientOption: { width: 40, height: 40, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  orientOptionOn: { backgroundColor: C.cardHi },
   pressed: { transform: [{ scale: 0.97 }], opacity: 0.92 },
   endBtn: {
     flexDirection: "row", gap: 6, backgroundColor: C.red, borderRadius: 10, height: 40, paddingHorizontal: 14,

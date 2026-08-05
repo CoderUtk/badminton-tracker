@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 import type { MatchState, TeamId } from "../engine";
 import { serviceCourt } from "../engine";
 import Icon from "./Icon";
+import NetDivider from "./NetDivider";
 import { C } from "../theme";
 
 /**
@@ -94,7 +95,7 @@ export default function Court({ state }: { state: MatchState }) {
   return (
     <View style={s.court}>
       <Half state={state} team="A" />
-      <View style={s.net} />
+      <NetDivider />
       <Half state={state} team="B" />
     </View>
   );
@@ -111,7 +112,6 @@ const s = StyleSheet.create({
     overflow: "hidden",
   },
   half: { flex: 1 },
-  net: { width: 2, backgroundColor: LINE },
   box: {
     flex: 1,
     alignItems: "center",
