@@ -7,7 +7,7 @@ import { completeOnboarding, getMyProfile, type Hand } from "../src/repos/profil
 import { validateName } from "../src/lib/validate";
 import { toast } from "../src/lib/toast";
 import { consumePendingLink } from "../src/lib/pendingLink";
-import { parseJoinTarget } from "../src/lib/joinLink";
+import { joinRouteFor, parseJoinTarget } from "../src/lib/joinLink";
 import FormScreen from "../src/components/FormScreen";
 import Logo from "../src/components/Logo";
 import PressableScale from "../src/components/PressableScale";
@@ -56,11 +56,7 @@ export default function Welcome() {
       // display name — honour it instead of always landing on home.
       const path = consumePendingLink();
       const target = path ? parseJoinTarget(path) : null;
-      router.replace(
-        target
-          ? `/join/${target.kind}/${target.id}${target.role === "scorer" ? "/scorer" : ""}`
-          : "/",
-      );
+      router.replace(target ? joinRouteFor(target) : "/");
     } catch (e) {
       toast((e as Error).message || "Could not save your name", "error");
     } finally {

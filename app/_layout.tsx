@@ -19,7 +19,7 @@ import { scheduleInactivityReminder } from "../src/lib/reminders";
 import AnimatedSplash from "../src/components/AnimatedSplash";
 import Toaster from "../src/components/Toaster";
 import { consumePendingLink, setPendingLink } from "../src/lib/pendingLink";
-import { parseJoinTarget } from "../src/lib/joinLink";
+import { joinRouteFor, parseJoinTarget } from "../src/lib/joinLink";
 import * as Sentry from "@sentry/react-native";
 import { initObservability, sentryEnabled } from "../src/lib/observability";
 import { C, F } from "../src/theme";
@@ -90,11 +90,7 @@ function Gate({ children }: { children: React.ReactNode }) {
     if (inAuth || inWelcome) {
       const path = consumePendingLink();
       const target = path ? parseJoinTarget(path) : null;
-      router.replace(
-        target
-          ? `/join/${target.kind}/${target.id}${target.role === "scorer" ? "/scorer" : ""}`
-          : "/",
-      );
+      router.replace(target ? joinRouteFor(target) : "/");
       return;
     }
   }, [session, loading, needsName, segments, router]);

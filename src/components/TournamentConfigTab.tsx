@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { updateTournament, type TournamentRow } from "../repos/tournamentRepo";
-import { buildTournamentJoinPath, buildTournamentScorerJoinPath } from "../lib/joinLink";
+import { buildTournamentJoinPath, buildTournamentScorerJoinPath, buildTournamentSpectatorJoinPath } from "../lib/joinLink";
 import { shareJoinLink } from "../lib/shareJoin";
 import { validateName } from "../lib/validate";
 import { toast } from "../lib/toast";
@@ -59,6 +59,8 @@ export default function TournamentConfigTab({
     shareJoinLink(buildTournamentJoinPath(tournament.id), `Join "${tournament.name}" on CourtSide:`);
   const onShareScorer = () =>
     shareJoinLink(buildTournamentScorerJoinPath(tournament.id), `Score "${tournament.name}" on CourtSide:`);
+  const onShareSpectator = () =>
+    shareJoinLink(buildTournamentSpectatorJoinPath(tournament.id), `Watch "${tournament.name}" live on CourtSide:`);
 
   // Values above MAX_COURTS are refused, not clamped silently.
   const Stepper = ({ value, onChange }: { value: number; onChange: (v: number) => void }) => (
@@ -107,6 +109,10 @@ export default function TournamentConfigTab({
           <Icon name="share-social-outline" color={C.text} size={18} />
           <Text style={s.shareText}>Share join link</Text>
         </Pressable>
+        <Pressable style={s.share} onPress={onShareSpectator}>
+          <Icon name="share-social-outline" color={C.text} size={18} />
+          <Text style={s.shareText}>Share spectator link</Text>
+        </Pressable>
       </View>
     );
   }
@@ -142,6 +148,10 @@ export default function TournamentConfigTab({
       <Pressable style={s.share} onPress={onShareScorer}>
         <Icon name="share-social-outline" color={C.text} size={18} />
         <Text style={s.shareText}>Share scorer link</Text>
+      </Pressable>
+      <Pressable style={s.share} onPress={onShareSpectator}>
+        <Icon name="share-social-outline" color={C.text} size={18} />
+        <Text style={s.shareText}>Share spectator link</Text>
       </Pressable>
 
       {isDraft ? (
