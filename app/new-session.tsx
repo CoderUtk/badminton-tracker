@@ -7,6 +7,7 @@ import { createSession } from "../src/repos/sessionRepo";
 import DatePicker, { startOfDay } from "../src/components/DatePicker";
 import BusyButton from "../src/components/BusyButton";
 import FormScreen from "../src/components/FormScreen";
+import Stepper from "../src/components/Stepper";
 import { C } from "../src/theme";
 import DateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
 
@@ -27,8 +28,9 @@ export default function NewSession() {
   const [clubs, setClubs] = useState<Club[]>([]);
   const [clubId, setClubId] = useState<string | null>(null);
   const [location, setLocation] = useState("Badminton hall");
-  const [courts, setCourts] = useState(2);
+  const [courts, setCourts] = useState(1);
   const [day, setDay] = useState<Date>(() => startOfDay(new Date()));
+  const [showCalendar, setShowCalendar] = useState(false);
   const [timeMinutes, setTimeMinutes] = useState(DEFAULT_TIME_MINUTES);
   const [timePickerOpen, setTimePickerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -92,14 +94,28 @@ export default function NewSession() {
           <TextInput style={s.input} value={location} onChangeText={setLocation} placeholder="Venue" placeholderTextColor={C.text2} />
           <Text style={s.label}>When</Text>
           <View style={s.chips}>
-            <Pressable style={[s.chip, sameDay(day, today) && s.chipOn]} onPress={() => setDay(today)}>
+            <Pressable
+              style={[s.chip, sameDay(day, today) && !showCalendar && s.chipOn]}
+              onPress={() => { setDay(today); setShowCalendar(false); }}
+            >
               <Text style={s.chipText}>Today</Text>
             </Pressable>
-            <Pressable style={[s.chip, sameDay(day, tomorrow) && s.chipOn]} onPress={() => setDay(tomorrow)}>
+            <Pressable
+              style={[s.chip, sameDay(day, tomorrow) && !showCalendar && s.chipOn]}
+              onPress={() => { setDay(tomorrow); setShowCalendar(false); }}
+            >
               <Text style={s.chipText}>Tomorrow</Text>
             </Pressable>
+            <Pressable
+              style={[s.chip, (showCalendar || (!sameDay(day, today) && !sameDay(day, tomorrow))) && s.chipOn]}
+              onPress={() => setShowCalendar((v) => !v)}
+            >
+              <Text style={s.chipText}>Pick a date</Text>
+            </Pressable>
           </View>
-          <DatePicker value={day} onChange={setDay} />
+          {showCalendar && (
+            <DatePicker value={day} onChange={(d) => { setDay(d); setShowCalendar(false); }} />
+          )}
           <Text style={s.hint}>
             {day.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}
           </Text>
@@ -123,13 +139,7 @@ export default function NewSession() {
             </Modal>
           )}
           <Text style={s.label}>Courts</Text>
-          <View style={s.chips}>
-            {[1, 2, 3, 4].map((n) => (
-              <Pressable key={n} style={[s.chip, courts === n && s.chipOn]} onPress={() => setCourts(n)}>
-                <Text style={s.chipText}>{n}</Text>
-              </Pressable>
-            ))}
-          </View>
+          <Stepper value={courts} min={1} max={8} onChange={setCourts} />
           <BusyButton busy={saving} style={s.cta} onPress={save}>
             <Text style={s.ctaText}>Create session</Text>
           </BusyButton>
