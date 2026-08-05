@@ -50,24 +50,42 @@ export default function TournamentBracket() {
     if (!id) return;
     (async () => {
       try {
-        // Reconcile: any cell whose linked match has completed advances the winner.
-        const { bracket: b0 } = await getTournament(id);
-        for (const cell of b0) {
-          if (cell.matchId && !cell.winnerEntrant) {
-            const m = await getMatch(cell.matchId);
-            if (m && m.status !== "live" && m.winner) {
-              const winnerEntrant = m.winner === "A" ? cell.entrantA : cell.entrantB;
-              if (winnerEntrant) await finishBracketMatch(cell.id, winnerEntrant);
+        const { tournament: t, entrants: ents, bracket: b0 } = await getTournament(id);
+
+        // Reconcile: any cell whose linked match has completed advances the
+        // winner. Checked in parallel rather than one cell at a time — a
+        // sequential await-per-cell loop turns a bracket with several
+        // unresolved matches into that many stacked network round trips.
+        const toCheck = b0.filter((cell) => cell.matchId && !cell.winnerEntrant);
+        const matches = await Promise.all(toCheck.map((cell) => getMatch(cell.matchId!)));
+        let changed = false;
+        await Promise.all(toCheck.map(async (cell, i) => {
+          const m = matches[i];
+          if (m && m.status !== "live" && m.winner) {
+            const winnerEntrant = m.winner === "A" ? cell.entrantA : cell.entrantB;
+            if (winnerEntrant) {
+              await finishBracketMatch(cell.id, winnerEntrant);
+              changed = true;
             }
           }
+        }));
+
+        // Only re-fetch the full tournament if reconciliation actually
+        // changed something — the common case (nothing to advance) skips a
+        // second redundant getTournament call entirely.
+        if (changed) {
+          const fresh = await getTournament(id);
+          setTournament(fresh.tournament);
+          setEntrants(fresh.entrants);
+          setBracket(fresh.bracket);
+        } else {
+          setTournament(t);
+          setEntrants(ents);
+          setBracket(b0);
         }
-        const { tournament: t, entrants: ents, bracket: b } = await getTournament(id);
-        setTournament(t);
-        setEntrants(ents);
-        setBracket(b);
-        const club = await getClub(t.clubId);
+
+        const [club, staffRole] = await Promise.all([getClub(t.clubId), myStaffRole(id)]);
         setClubRole(club?.role ?? null);
-        const staffRole = await myStaffRole(id);
         setIsTournamentAdmin(staffRole === "admin");
         const isAdmin = club?.role === "owner" || club?.role === "admin" || staffRole === "admin";
         const [staffList, reqs] = await Promise.all([
