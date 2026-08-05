@@ -25,8 +25,9 @@ export default function NewSession() {
 
   useEffect(() => {
     void listRealClubs().then((items) => {
-      setClubs(items);
-      setClubId(items[0]?.id ?? null);
+      const adminClubs = items.filter((c) => c.role === "owner" || c.role === "admin");
+      setClubs(adminClubs);
+      setClubId(adminClubs[0]?.id ?? null);
     });
   }, []);
 
@@ -53,42 +54,48 @@ export default function NewSession() {
   return (
     <FormScreen contentContainerStyle={s.content}>
       <Text style={s.intro}>Set up the court night. Players can check in from the session screen.</Text>
-      <Text style={s.label}>Club</Text>
-      <View style={s.chips}>
-        {clubs.map((club) => (
-          <Pressable key={club.id} style={[s.chip, club.id === clubId && s.chipOn]} onPress={() => setClubId(club.id)}>
-            <Text style={s.chipText}>{club.name}</Text>
-          </Pressable>
-        ))}
-      </View>
-      <Text style={s.label}>Where</Text>
-      <TextInput style={s.input} value={location} onChangeText={setLocation} placeholder="Venue" placeholderTextColor={C.text2} />
-      <Text style={s.label}>When</Text>
-      <View style={s.chips}>
-        <Pressable style={[s.chip, sameDay(day, today) && s.chipOn]} onPress={() => setDay(today)}>
-          <Text style={s.chipText}>Today</Text>
-        </Pressable>
-        <Pressable style={[s.chip, sameDay(day, tomorrow) && s.chipOn]} onPress={() => setDay(tomorrow)}>
-          <Text style={s.chipText}>Tomorrow</Text>
-        </Pressable>
-      </View>
-      <DatePicker value={day} onChange={setDay} />
-      <Text style={s.hint}>
-        {day.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}
-      </Text>
-      <Text style={s.label}>Time</Text>
-      <TimePicker value={timeMinutes} onChange={setTimeMinutes} />
-      <Text style={s.label}>Courts</Text>
-      <View style={s.chips}>
-        {[1, 2, 3, 4].map((n) => (
-          <Pressable key={n} style={[s.chip, courts === n && s.chipOn]} onPress={() => setCourts(n)}>
-            <Text style={s.chipText}>{n}</Text>
-          </Pressable>
-        ))}
-      </View>
-      <BusyButton busy={saving} style={s.cta} onPress={save}>
-        <Text style={s.ctaText}>Create session</Text>
-      </BusyButton>
+      {clubs.length === 0 ? (
+        <Text style={s.hint}>You need to be an admin of a club to plan a session.</Text>
+      ) : (
+        <>
+          <Text style={s.label}>Club</Text>
+          <View style={s.chips}>
+            {clubs.map((club) => (
+              <Pressable key={club.id} style={[s.chip, club.id === clubId && s.chipOn]} onPress={() => setClubId(club.id)}>
+                <Text style={s.chipText}>{club.name}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <Text style={s.label}>Where</Text>
+          <TextInput style={s.input} value={location} onChangeText={setLocation} placeholder="Venue" placeholderTextColor={C.text2} />
+          <Text style={s.label}>When</Text>
+          <View style={s.chips}>
+            <Pressable style={[s.chip, sameDay(day, today) && s.chipOn]} onPress={() => setDay(today)}>
+              <Text style={s.chipText}>Today</Text>
+            </Pressable>
+            <Pressable style={[s.chip, sameDay(day, tomorrow) && s.chipOn]} onPress={() => setDay(tomorrow)}>
+              <Text style={s.chipText}>Tomorrow</Text>
+            </Pressable>
+          </View>
+          <DatePicker value={day} onChange={setDay} />
+          <Text style={s.hint}>
+            {day.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}
+          </Text>
+          <Text style={s.label}>Time</Text>
+          <TimePicker value={timeMinutes} onChange={setTimeMinutes} />
+          <Text style={s.label}>Courts</Text>
+          <View style={s.chips}>
+            {[1, 2, 3, 4].map((n) => (
+              <Pressable key={n} style={[s.chip, courts === n && s.chipOn]} onPress={() => setCourts(n)}>
+                <Text style={s.chipText}>{n}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <BusyButton busy={saving} style={s.cta} onPress={save}>
+            <Text style={s.ctaText}>Create session</Text>
+          </BusyButton>
+        </>
+      )}
     </FormScreen>
   );
 }

@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import { listSessions, type ClubSession } from "../../../src/repos/sessionRepo";
+import { listSessions, refreshSessions, type ClubSession } from "../../../src/repos/sessionRepo";
 import Icon from "../../../src/components/Icon";
 import { C } from "../../../src/theme";
 import { useHasRealClubs } from "../../../src/hooks/useHasRealClubs";
@@ -25,7 +25,9 @@ function dateLabel(timestamp: number) {
 export default function Sessions() {
   const router = useRouter();
   const [sessions, setSessions] = useState<ClubSession[]>([]);
-  const reload = useCallback(() => void listSessions().then(setSessions), []);
+  const reload = useCallback(() => {
+    void refreshSessions().then(() => listSessions().then(setSessions));
+  }, []);
   useFocusEffect(reload);
   const hasRealClubs = useHasRealClubs();
 

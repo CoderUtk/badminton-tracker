@@ -13,6 +13,7 @@ import Icon from "../../../src/components/Icon";
 import Sheet from "../../../src/components/Sheet";
 import { C } from "../../../src/theme";
 import { toast } from "../../../src/lib/toast";
+import { useSession } from "../../../src/stores/session";
 
 type Tab = "attendance" | "games";
 type MatchRow = MatchRecord & { live?: Record<TeamId, number> };
@@ -20,6 +21,7 @@ type MatchRow = MatchRecord & { live?: Record<TeamId, number> };
 export default function SessionDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { session: authSession } = useSession();
   const [session, setSession] = useState<ClubSession | null>(null);
   const [attendance, setAttendanceRows] = useState<Attendance[]>([]);
   const [matches, setMatches] = useState<MatchRow[]>([]);
@@ -112,7 +114,7 @@ export default function SessionDetail() {
   };
 
   if (!session) return <View style={s.center}><Text style={s.muted}>Session not found.</Text></View>;
-  const isAdmin = clubRole === "owner" || clubRole === "admin";
+  const isCreator = !!authSession && authSession.user.id === session.created_by;
   const done = session.status === "done";
   const showAttendance = tab === "attendance" && !done;
 
@@ -261,7 +263,7 @@ export default function SessionDetail() {
         </>
       }
       ListFooterComponent={
-        isAdmin ? (
+        isCreator ? (
           <Pressable style={s.deleteBtn} onPress={() => setConfirmingDelete(true)}>
             <Icon name="trash-outline" color={C.red} size={18} />
             <Text style={s.deleteText}>Delete session</Text>
@@ -282,7 +284,7 @@ export default function SessionDetail() {
         </View>
       )}
       />
-      {isAdmin && (
+      {isCreator && (
         <Sheet
           visible={confirmingDelete}
           title="Delete session?"
