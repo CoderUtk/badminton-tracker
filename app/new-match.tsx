@@ -8,6 +8,8 @@ import Court from "../src/components/Court";
 import Icon from "../src/components/Icon";
 import FormScreen from "../src/components/FormScreen";
 import PressableScale from "../src/components/PressableScale";
+import BusyButton from "../src/components/BusyButton";
+import { toast } from "../src/lib/toast";
 import { C } from "../src/theme";
 
 export default function NewMatch() {
@@ -20,6 +22,7 @@ export default function NewMatch() {
   const [points, setPoints] = useState<11 | 15 | 21>(21);
   const [bestOf, setBestOf] = useState<1 | 3 | 5>(3);
   const [firstServerIdx, setFirstServerIdx] = useState(0); // index into name fields
+  const [starting, setStarting] = useState(false);
 
   useEffect(() => {
     listRealClubs().then((cs) => {
@@ -104,10 +107,16 @@ export default function NewMatch() {
   };
 
   const start = async () => {
-    const config = buildConfig();
-    const side = (t: "A" | "B") => config.teams[t].map((p) => ({ club_player_id: null, name: p.name }));
-    const id = await createMatch(config, side("A"), side("B"), clubId, params.sessionId ?? null);
-    router.replace(`/score/${id}`);
+    setStarting(true);
+    try {
+      const config = buildConfig();
+      const side = (t: "A" | "B") => config.teams[t].map((p) => ({ club_player_id: null, name: p.name }));
+      const id = await createMatch(config, side("A"), side("B"), clubId, params.sessionId ?? null);
+      router.replace(`/score/${id}`);
+    } catch (e) {
+      toast((e as Error).message || "Could not start the match", "error");
+      setStarting(false);
+    }
   };
 
   const label = (i: number) =>
@@ -214,9 +223,9 @@ export default function NewMatch() {
         </>
       )}
 
-      <Pressable style={[s.cta, !filled && { opacity: 0.5 }]} disabled={!filled} onPress={start}>
+      <BusyButton busy={starting} disabled={!filled} style={[s.cta, !filled && { opacity: 0.5 }]} onPress={start}>
         <Text style={s.ctaText}>Start scoring</Text>
-      </Pressable>
+      </BusyButton>
     </FormScreen>
   );
 }
