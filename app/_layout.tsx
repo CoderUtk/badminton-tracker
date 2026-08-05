@@ -20,6 +20,7 @@ import AnimatedSplash from "../src/components/AnimatedSplash";
 import Toaster from "../src/components/Toaster";
 import { consumePendingLink, setPendingLink } from "../src/lib/pendingLink";
 import { joinRouteFor, parseJoinTarget } from "../src/lib/joinLink";
+import { isGuestAllowedSegments } from "../src/lib/gateRedirect";
 import * as Sentry from "@sentry/react-native";
 import { initObservability, sentryEnabled } from "../src/lib/observability";
 import { C, F } from "../src/theme";
@@ -57,7 +58,7 @@ function Gate({ children }: { children: React.ReactNode }) {
   useEffect(() => subscribeProfile(() => setProfileTick((n) => n + 1)), []);
 
   useEffect(() => {
-    if (!session) { setNeedsName(undefined); return; }
+    if (!session || session.user.is_anonymous) { setNeedsName(undefined); return; }
     let live = true;
     void getMyProfile().then((p) => {
       if (live) setNeedsName(p !== null && !p.displayNameSet);
@@ -74,6 +75,14 @@ function Gate({ children }: { children: React.ReactNode }) {
         // Remember where they were headed; Gate replays it once signed in.
         if (segments[0] === "join") setPendingLink(pathname);
         router.replace("/sign-in");
+      }
+      return;
+    }
+    if (session.user.is_anonymous) {
+      // Guests skip the display-name step entirely and are confined to a
+      // small allowlist of routes — everything else bounces to the guest home.
+      if (inAuth || inWelcome || !isGuestAllowedSegments(segments)) {
+        router.replace("/guest");
       }
       return;
     }
@@ -148,6 +157,7 @@ function RootLayout() {
           <Stack.Screen name="(app)" options={{ headerShown: false }} />
           <Stack.Screen name="(auth)/sign-in" options={{ headerShown: false }} />
           <Stack.Screen name="welcome" options={{ headerShown: false }} />
+          <Stack.Screen name="guest" options={{ headerShown: false }} />
           <Stack.Screen name="join/club/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="join/tournament/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="join/tournament/[id]/scorer" options={{ headerShown: false }} />
