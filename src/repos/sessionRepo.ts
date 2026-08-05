@@ -1,7 +1,7 @@
-import * as Crypto from "expo-crypto";
 import { getDb } from "../db/db";
+import { supabase } from "../lib/supabase";
 import { isStaleLive } from "../session/autoFinish";
-import type { ClubPlayer } from "./clubRepo";
+import { listRealClubs, type ClubPlayer } from "./clubRepo";
 import {
   endLiveMatchesForSession, listMatchesForClub, listMatchesForSession,
   type MatchRecord,
@@ -19,6 +19,11 @@ export interface ClubSession {
   courts: number;
   status: SessionStatus;
   created_at: number;
+  // Nullable: a session whose creator's account was later deleted keeps the
+  // session (0016_profile_delete_cascade.sql sets this null rather than
+  // cascading), but no one is "the creator" anymore — isCreator checks in
+  // Task 2 naturally evaluate false, which is the correct, safe behavior.
+  created_by: string | null;
 }
 
 export interface Attendance extends ClubPlayer {
@@ -31,15 +36,78 @@ export async function createSession(input: {
   location?: string;
   courts: number;
 }): Promise<string> {
-  const id = Crypto.randomUUID();
-  const db = await getDb();
-  await db?.runAsync(
-    `insert into sessions_cache (id, club_id, starts_at, location, courts, status, created_at)
-     values (?, ?, ?, ?, ?, 'scheduled', ?)`,
-    id, input.clubId, input.startsAt, input.location?.trim() || null,
-    Math.max(1, Math.min(20, Math.floor(input.courts))), Date.now()
-  );
-  return id;
+  if (!supabase) throw new Error("Sign in to plan a session");
+  const uid = (await supabase.auth.getUser()).data.user?.id;
+  if (!uid) throw new Error("Sign in to plan a session");
+  const courts = Math.max(1, Math.min(20, Math.floor(input.courts)));
+  const { data, error } = await supabase
+    .from("sessions")
+    .insert({
+      club_id: input.clubId,
+      starts_at: new Date(input.startsAt).toISOString(),
+      location: input.location?.trim() || null,
+      courts,
+      created_by: uid,
+    })
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+  await refreshSessions();
+  return data.id as string;
+}
+
+/**
+ * Pull sessions + attendance for every club the user belongs to into the
+ * local cache. No-op offline or with no real clubs. Mirrors
+ * clubRepo.refreshClubs's write-through-then-refresh shape.
+ */
+let refreshing = false;
+export async function refreshSessions(): Promise<void> {
+  if (!supabase || refreshing) return;
+  refreshing = true;
+  try {
+    const db = await getDb();
+    if (!db) return;
+    const clubs = await listRealClubs();
+    if (clubs.length === 0) return;
+    const clubIds = clubs.map((c) => c.id);
+
+    const { data: sessions, error: sErr } = await supabase
+      .from("sessions")
+      .select("id, club_id, starts_at, ends_at, location, courts, status, created_at, created_by")
+      .in("club_id", clubIds);
+    if (sErr) return; // stay on cache
+
+    const sessionIds = (sessions ?? []).map((s) => s.id as string);
+    const attendance = sessionIds.length > 0
+      ? await supabase.from("attendance").select("session_id, club_player_id, status").in("session_id", sessionIds)
+      : { data: [] as { session_id: string; club_player_id: string; status: string }[], error: null };
+    if (attendance.error) return; // stay on cache
+
+    await db.withTransactionAsync(async () => {
+      await db.runAsync("delete from sessions_cache");
+      await db.runAsync("delete from attendance_cache");
+      for (const s of sessions ?? []) {
+        await db.runAsync(
+          `insert into sessions_cache
+             (id, club_id, starts_at, ends_at, location, courts, status, created_at, created_by, synced)
+           values (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+          s.id as string, s.club_id as string, new Date(s.starts_at as string).getTime(),
+          s.ends_at ? new Date(s.ends_at as string).getTime() : null,
+          s.location as string | null, s.courts as number, s.status as string,
+          new Date(s.created_at as string).getTime(), s.created_by as string,
+        );
+      }
+      for (const a of attendance.data ?? []) {
+        await db.runAsync(
+          "insert into attendance_cache (session_id, club_player_id, status, synced) values (?, ?, ?, 1)",
+          a.session_id as string, a.club_player_id as string, a.status as string,
+        );
+      }
+    });
+  } finally {
+    refreshing = false;
+  }
 }
 
 export async function listSessions(clubId?: string): Promise<ClubSession[]> {
@@ -79,10 +147,14 @@ export async function getSession(id: string): Promise<ClubSession | null> {
   return row;
 }
 
+/** Change a session's status. Any club member may call this (RPC-gated, not admin-only). */
 export async function updateSessionStatus(id: string, status: SessionStatus): Promise<void> {
+  if (!supabase) throw new Error("Sign in to update a session");
+  const { error } = await supabase.rpc("set_session_status", { p_session_id: id, p_status: status });
+  if (error) throw new Error(error.message);
   const db = await getDb();
   await db?.runAsync(
-    "update sessions_cache set status = ?, ends_at = case when ? = 'done' then ? else ends_at end, synced = 0 where id = ?",
+    "update sessions_cache set status = ?, ends_at = case when ? = 'done' then ? else ends_at end where id = ?",
     status, status, Date.now(), id
   );
 }
@@ -153,28 +225,44 @@ export async function listAttendance(sessionId: string, clubId: string): Promise
 }
 
 /**
- * Hard-delete a session. Matches created under it survive, unlinked — SQLite
- * has no FK enforcement locally, so this mirrors in code the same
- * on-delete-set-null relationship the Supabase schema already declares for
- * matches.session_id (0001_init.sql:77).
+ * Delete a session. Creator only (enforced by RLS — a blocked delete returns
+ * zero rows, which the .select() + throw-on-empty check turns into a real
+ * error rather than a silent no-op). Matches created under it survive,
+ * unlinked, mirroring the on-delete-set-null relationship already declared
+ * for matches.session_id (0001_init.sql:77).
  */
 export async function deleteSession(id: string): Promise<void> {
+  if (!supabase) throw new Error("Sign in to delete a session");
+  const { data, error } = await supabase.from("sessions").delete().eq("id", id).select();
+  if (error) throw new Error(error.message);
+  if (!data || data.length === 0) throw new Error("Could not delete session");
   const db = await getDb();
   await db?.runAsync("update matches set session_id = null where session_id = ?", id);
   await db?.runAsync("delete from attendance_cache where session_id = ?", id);
   await db?.runAsync("delete from sessions_cache where id = ?", id);
 }
 
+/** Check a player in/out. Any club member may mark any player (shared check-in board). */
 export async function setAttendance(
   sessionId: string,
   playerId: string,
   status: AttendanceStatus
 ): Promise<void> {
+  if (!supabase) throw new Error("Sign in to update attendance");
+  const { data, error } = await supabase
+    .from("attendance")
+    .upsert(
+      { session_id: sessionId, club_player_id: playerId, status },
+      { onConflict: "session_id,club_player_id" },
+    )
+    .select();
+  if (error) throw new Error(error.message);
+  if (!data || data.length === 0) throw new Error("Could not update attendance");
   const db = await getDb();
   await db?.runAsync(
     `insert into attendance_cache (session_id, club_player_id, status, synced)
-     values (?, ?, ?, 0)
-     on conflict(session_id, club_player_id) do update set status = excluded.status, synced = 0`,
+     values (?, ?, ?, 1)
+     on conflict(session_id, club_player_id) do update set status = excluded.status, synced = 1`,
     sessionId, playerId, status
   );
 }

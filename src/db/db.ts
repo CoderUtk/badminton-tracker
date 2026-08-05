@@ -56,6 +56,7 @@ const MIGRATIONS = [
   TOURNAMENT_ALTER_DDL,
   TOURNAMENT_COURTS_DDL,
   CLUBS_PERSONAL_DDL,
+  `alter table sessions_cache add column created_by text;`,
 ];
 
 let dbPromise: Promise<SQLiteDatabase> | null = null;
