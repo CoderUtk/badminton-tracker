@@ -109,11 +109,13 @@ export default function TournamentPlayersTab({
       </Text>
 
       {entrants.map((e) => {
+        const ownName = roster.find((p) => p.id === e.clubPlayerId)?.name ?? e.name;
         const partnerName = roster.find((p) => p.id === e.partnerClubPlayerId)?.name ?? null;
         const options = roster.filter((p) => p.id === e.clubPlayerId || !takenIds.has(p.id) || p.id === e.partnerClubPlayerId);
+        const displayName = matchType === "doubles" ? ownName : e.name;
         return (
           <View key={e.id} style={s.row}>
-            <Text style={s.name} numberOfLines={1}>{e.name}</Text>
+            <Text style={s.name} numberOfLines={1}>{displayName}</Text>
             {isAdmin && isDraft && matchType === "doubles" ? (
               <View style={s.partnerRow}>
                 {options.filter((p) => p.id !== e.clubPlayerId).map((p) => (

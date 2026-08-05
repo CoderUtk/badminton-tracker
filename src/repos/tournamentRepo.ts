@@ -192,7 +192,7 @@ export async function addGuestEntrant(
 
   const { data, error } = await supabase
     .from("tournament_entrants")
-    .insert({ tournament_id: tournamentId, club_player_id: added.id, seed: nextSeed })
+    .insert({ id: Crypto.randomUUID(), tournament_id: tournamentId, club_player_id: added.id, seed: nextSeed })
     .select();
   if (error) throw new Error(error.message);
   if (!data || data.length === 0) throw new Error("Could not add that player");

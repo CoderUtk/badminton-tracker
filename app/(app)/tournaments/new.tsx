@@ -25,6 +25,8 @@ export default function NewTournament() {
   const [picked, setPicked] = useState<string[]>([]); // club_player_id in selection order
   const [guestName, setGuestName] = useState("");
   const [addingGuest, setAddingGuest] = useState(false);
+  const [tab, setTab] = useState<"config" | "entrants">("config");
+  const [entrantMode, setEntrantMode] = useState<"registered" | "guest">("registered");
 
   useEffect(() => {
     (async () => {
@@ -133,65 +135,105 @@ export default function NewTournament() {
     // A FlatList must not be nested in a ScrollView, so this screen keeps its
     // View root and only lifts it above the keyboard.
     <KeyboardAvoidingView style={s.root} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <TextInput
-        style={s.input} placeholder="Tournament name" placeholderTextColor={C.text2}
-        value={name} onChangeText={setName} onBlur={() => setNameTouched(true)}
-      />
-      {nameTouched && nameError ? <Text style={s.err}>{nameError}</Text> : null}
-
-      <Text style={s.h}>Format</Text>
-      <Segmented value={matchType} options={["singles", "doubles"]} onPick={(v) => setMode(v as MatchType)} />
-
-      <View style={s.gamesRow}>
-        <View style={s.gamesCol}>
-          <Text style={s.h}>Games / match</Text>
-          <Segmented value={bestOf} options={BESTOFS} onPick={(v) => setBestOf(v as number)} />
-        </View>
-        <View style={s.gamesCol}>
-          <Text style={s.h}>Semis onward</Text>
-          <Segmented value={finalsBestOf} options={BESTOFS} onPick={(v) => setFinalsBestOf(v as number)} />
-        </View>
-      </View>
-
-      <Text style={s.h}>Courts</Text>
-      <CourtsStepper />
-
-      <Text style={s.h}>Pick entrants ({entrantCount} → {drawSizeFor(entrantCount)} draw)</Text>
-      <View style={s.guestRow}>
-        <TextInput
-          style={[s.input, { flex: 1 }]}
-          placeholder="Guest player name"
-          placeholderTextColor={C.text2}
-          value={guestName}
-          onChangeText={setGuestName}
-          onSubmitEditing={() => { if (!guestError && !addingGuest) void onAddGuest(); }}
-          returnKeyType="done"
-        />
-        <Pressable
-          style={({ pressed }) => [s.guestBtn, pressed && press, (!!guestError || addingGuest) && s.off]}
-          disabled={!!guestError || addingGuest}
-          onPress={onAddGuest}
-        >
-          <Text style={s.guestBtnText}>Add</Text>
+      <View style={s.tabRow}>
+        <Pressable onPress={() => setTab("config")} style={({ pressed }) => [s.tabBtn, pressed && press, tab === "config" && s.tabOn]}>
+          <Text style={[s.tabText, tab === "config" && s.tabTextOn]}>Config</Text>
+        </Pressable>
+        <Pressable onPress={() => setTab("entrants")} style={({ pressed }) => [s.tabBtn, pressed && press, tab === "entrants" && s.tabOn]}>
+          <Text style={[s.tabText, tab === "entrants" && s.tabTextOn]}>Entrants ({entrantCount})</Text>
         </Pressable>
       </View>
-      <FlatList
-        style={{ flex: 1 }}
-        data={players}
-        keyExtractor={(p) => p.id}
-        ListEmptyComponent={<Text style={s.empty}>No club players. Add players to the club first.</Text>}
-        renderItem={({ item }) => {
-          const idx = picked.indexOf(item.id);
-          const on = idx >= 0;
-          const badge = matchType === "doubles" ? `P${Math.floor(idx / 2) + 1}` : `#${idx + 1}`;
-          return (
-            <Pressable style={({ pressed }) => [s.player, pressed && press, on && s.playerOn]} onPress={() => toggle(item.id)}>
-              <Text style={[s.playerName, on && { color: C.text }]}>{item.name}</Text>
-              {on ? <Text style={s.seed}>{badge}</Text> : null}
+
+      {tab === "config" ? (
+        <View style={{ gap: 10 }}>
+          <TextInput
+            style={s.input} placeholder="Tournament name" placeholderTextColor={C.text2}
+            value={name} onChangeText={setName} onBlur={() => setNameTouched(true)}
+          />
+          {nameTouched && nameError ? <Text style={s.err}>{nameError}</Text> : null}
+
+          <Text style={s.h}>Format</Text>
+          <Segmented value={matchType} options={["singles", "doubles"]} onPick={(v) => setMode(v as MatchType)} />
+
+          <View style={s.gamesRow}>
+            <View style={s.gamesCol}>
+              <Text style={s.h}>Games / match</Text>
+              <Segmented value={bestOf} options={BESTOFS} onPick={(v) => setBestOf(v as number)} />
+            </View>
+            <View style={s.gamesCol}>
+              <Text style={s.h}>Semis onward</Text>
+              <Segmented value={finalsBestOf} options={BESTOFS} onPick={(v) => setFinalsBestOf(v as number)} />
+            </View>
+            <View style={s.gamesCol}>
+              <Text style={s.h}>Courts</Text>
+              <CourtsStepper />
+            </View>
+          </View>
+        </View>
+      ) : (
+        <View style={{ flex: 1, gap: 10 }}>
+          <Text style={s.h}>{entrantCount} → {drawSizeFor(entrantCount)} draw</Text>
+
+          <View style={s.segRow}>
+            <Pressable
+              onPress={() => setEntrantMode("registered")}
+              style={({ pressed }) => [s.segBtn, pressed && press, entrantMode === "registered" && s.segOn]}
+            >
+              <Text style={[s.segText, entrantMode === "registered" && s.segTextOn]}>Registered</Text>
             </Pressable>
-          );
-        }}
-      />
+            <Pressable
+              onPress={() => setEntrantMode("guest")}
+              style={({ pressed }) => [s.segBtn, pressed && press, entrantMode === "guest" && s.segOn]}
+            >
+              <Text style={[s.segText, entrantMode === "guest" && s.segTextOn]}>Add guest</Text>
+            </Pressable>
+          </View>
+
+          {entrantMode === "guest" ? (
+            <>
+              <View style={s.guestRow}>
+                <TextInput
+                  style={[s.input, { flex: 1 }]}
+                  placeholder="Guest player name"
+                  placeholderTextColor={C.text2}
+                  value={guestName}
+                  onChangeText={setGuestName}
+                  onSubmitEditing={() => { if (!guestError && !addingGuest) void onAddGuest(); }}
+                  returnKeyType="done"
+                  autoFocus
+                />
+                <Pressable
+                  style={({ pressed }) => [s.guestBtn, pressed && press, (!!guestError || addingGuest) && s.off]}
+                  disabled={!!guestError || addingGuest}
+                  onPress={onAddGuest}
+                >
+                  <Text style={s.guestBtnText}>Add</Text>
+                </Pressable>
+              </View>
+              {guestName && guestError ? <Text style={s.err}>{guestError}</Text> : null}
+            </>
+          ) : (
+            <FlatList
+              style={{ flex: 1 }}
+              data={players}
+              keyExtractor={(p) => p.id}
+              ListEmptyComponent={<Text style={s.empty}>No club players. Add players to the club first.</Text>}
+              renderItem={({ item }) => {
+                const idx = picked.indexOf(item.id);
+                const on = idx >= 0;
+                const badge = matchType === "doubles" ? `P${Math.floor(idx / 2) + 1}` : `#${idx + 1}`;
+                return (
+                  <Pressable style={({ pressed }) => [s.player, pressed && press, on && s.playerOn]} onPress={() => toggle(item.id)}>
+                    <Text style={[s.playerName, on && { color: C.text }]}>{item.name}</Text>
+                    {on ? <Text style={s.seed}>{badge}</Text> : null}
+                  </Pressable>
+                );
+              }}
+            />
+          )}
+        </View>
+      )}
+
       {picked.length > 0 && entrantsBlocker ? <Text style={s.err}>{entrantsBlocker}</Text> : null}
       <Pressable style={({ pressed }) => [s.create, pressed && press, !canCreate && s.off]} disabled={!canCreate} onPress={onCreate}>
         <Text style={s.createText}>Create bracket</Text>
@@ -209,7 +251,7 @@ const s = StyleSheet.create({
   segOn: { borderColor: C.red, backgroundColor: "rgba(255,59,48,0.12)" },
   segText: { color: C.text2, fontFamily: F.semibold, fontSize: 15, textTransform: "capitalize" },
   segTextOn: { color: C.text },
-  stepRow: { flexDirection: "row", alignItems: "center", gap: 16 },
+  stepRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
   stepBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, alignItems: "center", justifyContent: "center" },
   stepBtnText: { color: C.text, fontFamily: F.bold, fontSize: 20 },
   stepValue: { color: C.text, fontFamily: F.bold, fontSize: 18, minWidth: 24, textAlign: "center" },
@@ -227,4 +269,9 @@ const s = StyleSheet.create({
   guestRow: { flexDirection: "row", gap: 8 },
   guestBtn: { backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 12, paddingHorizontal: 18, justifyContent: "center" },
   guestBtnText: { color: C.text, fontFamily: F.semibold, fontSize: 15 },
+  tabRow: { flexDirection: "row", gap: 8 },
+  tabBtn: { flex: 1, alignItems: "center", paddingVertical: 12, backgroundColor: C.card, borderRadius: 12, borderWidth: 1, borderColor: C.line },
+  tabOn: { borderColor: C.red, backgroundColor: "rgba(255,59,48,0.12)" },
+  tabText: { color: C.text2, fontFamily: F.semibold, fontSize: 15 },
+  tabTextOn: { color: C.text },
 });
