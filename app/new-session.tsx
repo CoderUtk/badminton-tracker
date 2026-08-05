@@ -1,27 +1,18 @@
 import React, { useEffect, useState } from "react";
-import { Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { toast } from "../src/lib/toast";
 import { useRouter } from "expo-router";
 import { listRealClubs, type Club } from "../src/repos/clubRepo";
 import { createSession } from "../src/repos/sessionRepo";
 import DatePicker, { startOfDay } from "../src/components/DatePicker";
+import TimePicker from "../src/components/TimePicker";
 import BusyButton from "../src/components/BusyButton";
 import FormScreen from "../src/components/FormScreen";
 import Stepper from "../src/components/Stepper";
 import { C } from "../src/theme";
-import DateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
 
 /** Default club-night slot: 6:00 PM on the chosen day, as minutes-since-midnight. */
 const DEFAULT_TIME_MINUTES = 18 * 60;
-
-/** "6:00 PM", "11:30 AM", etc. from minutes-since-midnight. */
-function formatTime(minutes: number): string {
-  const hour24 = Math.floor(minutes / 60);
-  const minute = minutes % 60;
-  const period = hour24 < 12 ? "AM" : "PM";
-  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
-  return `${hour12}:${minute.toString().padStart(2, "0")} ${period}`;
-}
 
 export default function NewSession() {
   const router = useRouter();
@@ -32,7 +23,6 @@ export default function NewSession() {
   const [day, setDay] = useState<Date>(() => startOfDay(new Date()));
   const [showCalendar, setShowCalendar] = useState(false);
   const [timeMinutes, setTimeMinutes] = useState(DEFAULT_TIME_MINUTES);
-  const [timePickerOpen, setTimePickerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -42,18 +32,6 @@ export default function NewSession() {
       setClubId(adminClubs[0]?.id ?? null);
     });
   }, []);
-
-  const timeAsDate = () => {
-    const d = new Date(day);
-    d.setHours(Math.floor(timeMinutes / 60), timeMinutes % 60, 0, 0);
-    return d;
-  };
-
-  const onTimeChange = (event: DateTimePickerEvent, selected?: Date) => {
-    if (Platform.OS === "android") setTimePickerOpen(false);
-    if (event.type === "dismissed" || !selected) return;
-    setTimeMinutes(selected.getHours() * 60 + selected.getMinutes());
-  };
 
   const today = startOfDay(new Date());
   const tomorrow = startOfDay(new Date(Date.now() + 86400000));
@@ -120,24 +98,7 @@ export default function NewSession() {
             {day.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}
           </Text>
           <Text style={s.label}>Time</Text>
-          <Pressable style={s.input} onPress={() => setTimePickerOpen(true)}>
-            <Text style={s.timeText}>{formatTime(timeMinutes)}</Text>
-          </Pressable>
-          {timePickerOpen && Platform.OS === "android" && (
-            <DateTimePicker mode="time" display="default" value={timeAsDate()} onChange={onTimeChange} />
-          )}
-          {Platform.OS === "ios" && (
-            <Modal visible={timePickerOpen} transparent animationType="fade" onRequestClose={() => setTimePickerOpen(false)}>
-              <Pressable style={s.sheetScrim} onPress={() => setTimePickerOpen(false)}>
-                <Pressable style={s.sheet} onPress={() => {}}>
-                  <DateTimePicker mode="time" display="spinner" value={timeAsDate()} onChange={onTimeChange} />
-                  <Pressable style={s.sheetDone} onPress={() => setTimePickerOpen(false)}>
-                    <Text style={s.sheetDoneText}>Done</Text>
-                  </Pressable>
-                </Pressable>
-              </Pressable>
-            </Modal>
-          )}
+          <TimePicker value={timeMinutes} onChange={setTimeMinutes} />
           <Text style={s.label}>Courts</Text>
           <Stepper value={courts} min={1} max={8} onChange={setCourts} />
           <BusyButton busy={saving} style={s.cta} onPress={save}>
@@ -159,9 +120,4 @@ const s = StyleSheet.create({
   chip: { minWidth: 54, minHeight: 42, paddingHorizontal: 14, justifyContent: "center", alignItems: "center", borderRadius: 21, backgroundColor: C.card, borderWidth: 1, borderColor: C.line },
   chipOn: { backgroundColor: C.red, borderColor: C.red }, chipText: { color: C.text, fontWeight: "700" },
   cta: { minHeight: 56, marginTop: 18, borderRadius: 14, backgroundColor: C.red, alignItems: "center", justifyContent: "center" }, ctaText: { color: C.text, fontSize: 18, fontWeight: "900" },
-  timeText: { color: C.text, fontSize: 16, lineHeight: 52 },
-  sheetScrim: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  sheet: { backgroundColor: C.card, borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16 },
-  sheetDone: { marginTop: 8, alignItems: "center", paddingVertical: 12 },
-  sheetDoneText: { color: C.red, fontSize: 16, fontWeight: "800" },
 });
