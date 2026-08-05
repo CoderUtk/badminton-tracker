@@ -6,6 +6,7 @@ import { listRealClubs, type Club } from "../src/repos/clubRepo";
 import { createSession } from "../src/repos/sessionRepo";
 import DatePicker, { startOfDay } from "../src/components/DatePicker";
 import TimePicker from "../src/components/TimePicker";
+import BusyButton from "../src/components/BusyButton";
 import FormScreen from "../src/components/FormScreen";
 import { C } from "../src/theme";
 
@@ -20,6 +21,7 @@ export default function NewSession() {
   const [courts, setCourts] = useState(2);
   const [day, setDay] = useState<Date>(() => startOfDay(new Date()));
   const [timeMinutes, setTimeMinutes] = useState(DEFAULT_TIME_MINUTES);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     void listRealClubs().then((items) => {
@@ -34,11 +36,18 @@ export default function NewSession() {
 
   const save = async () => {
     if (!clubId) { toast("Create or select a club before planning a session.", "info"); return; }
-    const hour = Math.floor(timeMinutes / 60);
-    const minute = timeMinutes % 60;
-    const startsAt = new Date(day.getFullYear(), day.getMonth(), day.getDate(), hour, minute).getTime();
-    const id = await createSession({ clubId, startsAt, location, courts });
-    router.replace(`/(app)/sessions/${id}`);
+    setSaving(true);
+    try {
+      const hour = Math.floor(timeMinutes / 60);
+      const minute = timeMinutes % 60;
+      const startsAt = new Date(day.getFullYear(), day.getMonth(), day.getDate(), hour, minute).getTime();
+      const id = await createSession({ clubId, startsAt, location, courts });
+      router.replace(`/(app)/sessions/${id}`);
+    } catch (e) {
+      toast((e as Error).message || "Could not create session", "error");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -77,7 +86,9 @@ export default function NewSession() {
           </Pressable>
         ))}
       </View>
-      <Pressable style={s.cta} onPress={save}><Text style={s.ctaText}>Create session</Text></Pressable>
+      <BusyButton busy={saving} style={s.cta} onPress={save}>
+        <Text style={s.ctaText}>Create session</Text>
+      </BusyButton>
     </FormScreen>
   );
 }
