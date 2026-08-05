@@ -115,6 +115,15 @@ export default function SignIn() {
     }
   };
 
+  const continueAsGuest = async () => {
+    if (!supabase) return;
+    setBusy(true);
+    const { error } = await supabase.auth.signInAnonymously();
+    setBusy(false);
+    if (error) toast(error.message || "Could not continue as guest", "error");
+    // On success, Gate's session listener redirects to /guest automatically.
+  };
+
   // Online-only build: without keys the app cannot authenticate at all.
   if (!supabase) {
     return (
@@ -205,6 +214,10 @@ export default function SignIn() {
             <GoogleMark size={18} />
             <Text style={s.googleText}>Continue with Google</Text>
           </PressableScale>
+
+          <Pressable onPress={continueAsGuest} disabled={busy} hitSlop={8} style={{ marginTop: 4 }}>
+            <Text style={s.link}>Continue as guest</Text>
+          </Pressable>
         </View>
 
         <Text style={s.legal}>By continuing you agree to keep it friendly on court.</Text>
