@@ -43,7 +43,13 @@
       "expo-secure-store",
       "expo-web-browser",
       "expo-font",
-      "@sentry/react-native/expo"
+      [
+        "@sentry/react-native/expo",
+        {
+          "organization": "navalo-eg",
+          "project": "badminton-tracker"
+        }
+      ]
     ],
     "extra": {
       "router": {},
