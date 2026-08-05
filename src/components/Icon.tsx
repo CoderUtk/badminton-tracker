@@ -31,7 +31,7 @@ export type IconName =
   | "log-out-outline" | "swap-horizontal" | "swap-vertical"
   | "share-social-outline" | "create-outline"
   | "ellipse" | "trash-outline"
-  | "information-circle-outline"
+  | "information-circle-outline" | "hand-left-outline"
   // MaterialCommunityIcons
   | "badminton" | "trophy" | "trophy-outline"
   | "shuffle-variant" | "account-group" | "account-plus"

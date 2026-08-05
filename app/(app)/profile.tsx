@@ -3,7 +3,8 @@ import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-nativ
 import { useFocusEffect, useRouter } from "expo-router";
 import { supabase } from "../../src/lib/supabase";
 import { useSession } from "../../src/stores/session";
-import { getMyProfile, setDisplayName as saveProfileName } from "../../src/repos/profileRepo";
+import { getMyProfile, setDisplayName as saveProfileName, setProfileDetails, type Hand } from "../../src/repos/profileRepo";
+import SegmentedControl from "../../src/components/SegmentedControl";
 import { validateName } from "../../src/lib/validate";
 import { toast } from "../../src/lib/toast";
 import { getPlayerAnalytics, type PlayerAnalytics } from "../../src/repos/statsRepo";
@@ -25,12 +26,22 @@ export default function Profile() {
   const [remindersOn, setRemindersOn] = useState(false);
   const [remindersBusy, setRemindersBusy] = useState(false);
   const [editingName, setEditingName] = useState(false);
+  const [age, setAge] = useState<number | null>(null);
+  const [hand, setHand] = useState<Hand>("right");
+  const [savedAge, setSavedAge] = useState<number | null>(null);
+  const [savedHand, setSavedHand] = useState<Hand>("right");
+  const [ageDraft, setAgeDraft] = useState("");
+  const [editingDetails, setEditingDetails] = useState(false);
 
   useEffect(() => {
     void getMyProfile().then((p) => {
       const name = p?.displayName ?? "";
       setDisplayName(name);
       setSavedName(name);
+      setAge(p?.age ?? null);
+      setSavedAge(p?.age ?? null);
+      setHand(p?.hand ?? "right");
+      setSavedHand(p?.hand ?? "right");
     });
   }, []);
 
@@ -77,6 +88,27 @@ export default function Profile() {
   // Abandoning the edit must not leave the draft in the field — the hero reads
   // savedName, but the input is bound to displayName.
   const cancelNameEdit = () => { setDisplayName(savedName); setEditingName(false); };
+
+  const openDetailsEdit = () => {
+    setAge(savedAge);
+    setHand(savedHand);
+    setAgeDraft(savedAge != null ? String(savedAge) : "");
+    setEditingDetails(true);
+  };
+  const cancelDetailsEdit = () => { setAge(savedAge); setHand(savedHand); setEditingDetails(false); };
+  const saveDetails = () => {
+    const trimmed = ageDraft.trim();
+    const parsed = trimmed === "" ? null : Number(trimmed);
+    if (parsed !== null && (!Number.isInteger(parsed) || parsed < 5 || parsed > 100)) {
+      toast("Enter an age between 5 and 100, or leave it blank", "error");
+      return;
+    }
+    setEditingDetails(false);
+    if (parsed === savedAge && hand === savedHand) return;
+    void setProfileDetails(parsed, hand)
+      .then(() => { setSavedAge(parsed); setSavedHand(hand); setAge(parsed); toast("Details updated", "success"); })
+      .catch((e: Error) => toast(e.message || "Could not save your details", "error"));
+  };
 
   // Stats/matches are keyed by the name recorded on club_players, which is the
   // profile's display name — not the raw auth metadata, which can diverge.
@@ -131,6 +163,50 @@ export default function Profile() {
                 <Text style={s.modalCancelText}>Cancel</Text>
               </Pressable>
               <Pressable style={[s.modalBtn, s.modalSave, !!nameError && { opacity: 0.5 }]} disabled={!!nameError} onPress={saveDisplayName}>
+                <Text style={s.modalSaveText}>Save</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Player details: age and playing hand, editable after onboarding */}
+      <Pressable style={s.detailsCard} onPress={openDetailsEdit} accessibilityLabel="Edit player details">
+        <Icon name="hand-left-outline" color={C.text2} size={16} />
+        <Text style={s.detailsText}>
+          {savedAge != null ? `${savedAge} yrs` : "Age not set"} · {savedHand === "left" ? "Left-handed" : "Right-handed"}
+        </Text>
+        <Icon name="create-outline" color={C.text2} size={15} />
+      </Pressable>
+
+      <Modal visible={editingDetails} transparent animationType="fade" onRequestClose={cancelDetailsEdit}>
+        <Pressable style={s.modalBack} onPress={cancelDetailsEdit}>
+          <Pressable style={s.modalCard} onPress={(e) => e.stopPropagation()}>
+            <Text style={s.cardTitle}>Player details</Text>
+            <Text style={s.fieldLabel}>Age</Text>
+            <TextInput
+              style={s.nameInput}
+              placeholder="Optional"
+              placeholderTextColor={C.text2}
+              value={ageDraft}
+              onChangeText={setAgeDraft}
+              keyboardType="number-pad"
+              maxLength={3}
+            />
+            <Text style={s.fieldLabel}>Playing hand</Text>
+            <SegmentedControl
+              options={[
+                { label: "Left", value: "left" as Hand },
+                { label: "Right", value: "right" as Hand },
+              ]}
+              value={hand}
+              onChange={setHand}
+            />
+            <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
+              <Pressable style={[s.modalBtn, s.modalCancel]} onPress={cancelDetailsEdit}>
+                <Text style={s.modalCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable style={[s.modalBtn, s.modalSave]} onPress={saveDetails}>
                 <Text style={s.modalSaveText}>Save</Text>
               </Pressable>
             </View>
@@ -280,15 +356,18 @@ const s = StyleSheet.create({
   statLbl: { color: C.text2, fontSize: 11, fontFamily: F.medium, marginTop: 3, letterSpacing: 0.5 },
   card: { backgroundColor: C.card, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: C.line, gap: 8 },
   cardTitle: { color: C.text, fontSize: 15, fontWeight: "800" },
+  detailsCard: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: C.card, borderRadius: 12, borderWidth: 1, borderColor: C.line, paddingHorizontal: 14, minHeight: 44 },
+  detailsText: { flex: 1, color: C.text, fontSize: 13.5, fontWeight: "600" },
+  fieldLabel: { color: C.text2, fontSize: 12, fontWeight: "700", marginTop: 2 },
   nameInput: { backgroundColor: C.bgElev, color: C.text, borderRadius: 10, borderWidth: 1, borderColor: C.line, padding: 12, fontSize: 16 },
   err: { color: C.red, fontSize: 12.5, fontFamily: F.body },
   modalBack: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center", padding: 24 },
   modalCard: { width: "100%", backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.lineHi, padding: 18, gap: 10 },
-  modalBtn: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: "center" },
+  modalBtn: { flex: 1, borderRadius: 10, minHeight: 42, paddingVertical: 9, alignItems: "center", justifyContent: "center" },
   modalCancel: { backgroundColor: C.cardHi, borderWidth: 1, borderColor: C.line },
-  modalCancelText: { color: C.text2, fontFamily: F.semibold, fontSize: 16 },
+  modalCancelText: { color: C.text2, fontFamily: F.semibold, fontSize: 14 },
   modalSave: { backgroundColor: C.red },
-  modalSaveText: { color: C.text, fontFamily: F.semibold, fontSize: 16 },
+  modalSaveText: { color: C.text, fontFamily: F.semibold, fontSize: 14 },
   formRow: { flexDirection: "row", gap: 6 },
   formPill: { width: 30, height: 30, borderRadius: 8, alignItems: "center", justifyContent: "center" },
   pillW: { backgroundColor: C.green },
