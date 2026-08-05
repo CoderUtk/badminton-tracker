@@ -1,4 +1,4 @@
-import { buildClubJoinPath, buildTournamentScorerJoinPath, parseJoinTarget } from "../src/lib/joinLink";
+import { buildClubJoinPath, buildTournamentScorerJoinPath, buildTournamentSpectatorJoinPath, joinRouteFor, parseJoinTarget } from "../src/lib/joinLink";
 
 test("builds a club join path without a scheme", () => {
   expect(buildClubJoinPath("abc-123")).toBe("join/club/abc-123");
@@ -71,4 +71,22 @@ test("rejects an unresolved route segment placeholder", () => {
 
 test("accepts a leading-slash resolved pathname", () => {
   expect(parseJoinTarget("/join/club/abc-123")).toEqual({ kind: "club", id: "abc-123", role: "player" });
+});
+
+test("builds a tournament spectator path", () => {
+  expect(buildTournamentSpectatorJoinPath("t-1")).toBe("join/tournament/t-1/spectator");
+});
+
+test("parses the spectator role segment", () => {
+  expect(parseJoinTarget("badminton://join/tournament/t-1/spectator"))
+    .toEqual({ kind: "tournament", id: "t-1", role: "spectator" });
+  expect(parseJoinTarget("https://join.example.com/tournament/t-1/spectator"))
+    .toEqual({ kind: "tournament", id: "t-1", role: "spectator" });
+});
+
+test("joinRouteFor builds the in-app route for each role", () => {
+  expect(joinRouteFor({ kind: "tournament", id: "t-1", role: "player" })).toBe("/join/tournament/t-1");
+  expect(joinRouteFor({ kind: "tournament", id: "t-1", role: "scorer" })).toBe("/join/tournament/t-1/scorer");
+  expect(joinRouteFor({ kind: "tournament", id: "t-1", role: "spectator" })).toBe("/join/tournament/t-1/spectator");
+  expect(joinRouteFor({ kind: "club", id: "c-1", role: "player" })).toBe("/join/club/c-1");
 });

@@ -11,7 +11,11 @@ export function buildTournamentScorerJoinPath(tournamentId: string): string {
   return `join/tournament/${tournamentId}/scorer`;
 }
 
-export type JoinRole = "player" | "scorer";
+export function buildTournamentSpectatorJoinPath(tournamentId: string): string {
+  return `join/tournament/${tournamentId}/spectator`;
+}
+
+export type JoinRole = "player" | "scorer" | "spectator";
 
 /**
  * Extract a join target from a deep link. Accepts a full URL with any scheme
@@ -63,11 +67,18 @@ export function parseJoinTarget(
       // reject unresolved route placeholders like "[id]" and anything containing
       // brackets — a real target is always a concrete id, never a route param name.
       if (id.includes("[") || id.includes("]")) return null;
-      const role: JoinRole = parts[at + 3] === "scorer" ? "scorer" : "player";
+      const role: JoinRole =
+        parts[at + 3] === "scorer" ? "scorer" : parts[at + 3] === "spectator" ? "spectator" : "player";
       return { kind, id, role };
     }
     at = parts.indexOf("join", at + 1);
   }
 
   return null;
+}
+
+/** In-app route for a parsed join target — the single place that maps a role to its route suffix. */
+export function joinRouteFor(target: { kind: "club" | "tournament"; id: string; role: JoinRole }): string {
+  const suffix = target.role === "scorer" ? "/scorer" : target.role === "spectator" ? "/spectator" : "";
+  return `/join/${target.kind}/${target.id}${suffix}`;
 }
