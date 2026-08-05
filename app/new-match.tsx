@@ -28,11 +28,14 @@ export default function NewMatch() {
   const [starting, setStarting] = useState(false);
 
   useEffect(() => {
+    // Guests never save to a club — skip the fetch so a stale local clubs_cache
+    // from a previous signed-in account on this device can't leak through.
+    if (session?.user.is_anonymous) return;
     listRealClubs().then((cs) => {
       setClubs(cs);
       if (cs.length === 1) setClubId(cs[0].id);
     });
-  }, []);
+  }, [session]);
 
   useEffect(() => {
     if (params.clubId) setClubId(params.clubId);
