@@ -73,7 +73,7 @@ export default function ClubDetail() {
               style={s.shareBtn}
               accessibilityLabel="Share join link"
               hitSlop={10}
-              onPress={() => shareJoinLink(buildClubJoinPath(club.id), `🏸 ${club.name} wants you on the roster — join on CourtSide:`)}
+              onPress={() => shareJoinLink(buildClubJoinPath(club.id), `invited you to join "${club.name}"`)}
             >
               <ShareIcon size={16} color={C.text} />
             </Pressable>

@@ -21,26 +21,26 @@ afterEach(() => {
 test("builds an https join link when the domain is configured", async () => {
   process.env.EXPO_PUBLIC_JOIN_LINK_DOMAIN = "courtside-links.vercel.app";
   const { shareJoinLink } = require("../src/lib/shareJoin");
-  await shareJoinLink("join/club/abc", "Join Smash Club on CourtSide:");
+  await shareJoinLink("join/club/abc", 'invited you to join "Smash Club"');
   expect(share).toHaveBeenCalledWith({
-    message: "Join Smash Club on CourtSide:\nhttps://courtside-links.vercel.app/join/club/abc",
+    message: '🏸 Hey,\n"Someone" invited you to join "Smash Club" on CourtSide:\nhttps://courtside-links.vercel.app/join/club/abc',
   });
 });
 
 test("falls back to the custom scheme when no domain is configured", async () => {
   const { shareJoinLink } = require("../src/lib/shareJoin");
-  await shareJoinLink("join/club/abc", "Join Smash Club on CourtSide:");
+  await shareJoinLink("join/club/abc", 'invited you to join "Smash Club"');
   expect(createURL).toHaveBeenCalledWith("join/club/abc");
   expect(share).toHaveBeenCalledWith({
-    message: "Join Smash Club on CourtSide:\nbadminton://join/club/abc",
+    message: '🏸 Hey,\n"Someone" invited you to join "Smash Club" on CourtSide:\nbadminton://join/club/abc',
   });
 });
 
-test("appends the sharer's display name when signed in", async () => {
+test("uses the sharer's display name when signed in", async () => {
   getMyProfile.mockResolvedValue({ displayName: "Utkarsh" });
   const { shareJoinLink } = require("../src/lib/shareJoin");
-  await shareJoinLink("join/club/abc", "Join Smash Club on CourtSide:");
+  await shareJoinLink("join/club/abc", 'invited you to join "Smash Club"');
   expect(share).toHaveBeenCalledWith({
-    message: "Join Smash Club on CourtSide:\nbadminton://join/club/abc\n\n— Utkarsh",
+    message: '🏸 Hey,\n"Utkarsh" invited you to join "Smash Club" on CourtSide:\nbadminton://join/club/abc',
   });
 });

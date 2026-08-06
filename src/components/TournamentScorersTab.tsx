@@ -28,7 +28,7 @@ export default function TournamentScorersTab({
   const scorerRequests = requests.filter((r) => r.role === "scorer");
 
   const onShareScorer = () =>
-    shareJoinLink(buildTournamentScorerJoinPath(tournamentId), `🏸 Help run "${tournamentName}" — score it live on CourtSide:`);
+    shareJoinLink(buildTournamentScorerJoinPath(tournamentId), `invited you to help score "${tournamentName}"`);
 
   const decide = async (request: TournamentJoinRequest, approve: boolean) => {
     setBusy(true);

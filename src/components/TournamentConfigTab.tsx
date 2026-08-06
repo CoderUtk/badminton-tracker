@@ -56,11 +56,11 @@ export default function TournamentConfigTab({
   };
 
   const onSharePlayer = () =>
-    shareJoinLink(buildTournamentJoinPath(tournament.id), `🏸 You're invited to compete in "${tournament.name}" — join on CourtSide:`);
+    shareJoinLink(buildTournamentJoinPath(tournament.id), `invited you to compete in "${tournament.name}"`);
   const onShareScorer = () =>
-    shareJoinLink(buildTournamentScorerJoinPath(tournament.id), `🏸 Help run "${tournament.name}" — score it live on CourtSide:`);
+    shareJoinLink(buildTournamentScorerJoinPath(tournament.id), `invited you to help score "${tournament.name}"`);
   const onShareSpectator = () =>
-    shareJoinLink(buildTournamentSpectatorJoinPath(tournament.id), `🏸 "${tournament.name}" is live — watch the bracket on CourtSide:`);
+    shareJoinLink(buildTournamentSpectatorJoinPath(tournament.id), `invited you to watch "${tournament.name}" live`);
 
   // Values above MAX_COURTS are refused, not clamped silently.
   const Stepper = ({ value, onChange }: { value: number; onChange: (v: number) => void }) => (
