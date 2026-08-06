@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { generateMatchups, type GeneratedMatch, type MatchMode } from "../../../src/matchmaking/generator";
@@ -12,6 +12,8 @@ import { getClub } from "../../../src/repos/clubRepo";
 import Icon from "../../../src/components/Icon";
 import Sheet from "../../../src/components/Sheet";
 import SegmentedControl from "../../../src/components/SegmentedControl";
+import SessionResultCard from "../../../src/components/share/SessionResultCard";
+import { captureAndShare } from "../../../src/lib/share/captureAndShare";
 import { C } from "../../../src/theme";
 import { toast } from "../../../src/lib/toast";
 import { useSession } from "../../../src/stores/session";
@@ -36,6 +38,7 @@ export default function SessionDetail() {
   const [manualMode, setManualMode] = useState(false);
   const [manualPicks, setManualPicks] = useState<Attendance[]>([]);
   const [manualCourts, setManualCourts] = useState<{ teamA: Attendance[]; teamB: Attendance[] }[]>([]);
+  const shareCardRef = useRef<View>(null);
 
   const reload = useCallback(async () => {
     if (!id) return;
@@ -206,10 +209,15 @@ export default function SessionDetail() {
                   ))}
                 </View>
               )}
-              <Pressable style={s.shareBtn} onPress={() => Alert.alert("Coming soon", "Sharing a session card to your story is on the way.")}>
+              <Pressable style={s.shareBtn} onPress={() => void captureAndShare(shareCardRef)}>
                 <Icon name="trophy-outline" color={C.text} size={17} />
-                <Text style={s.shareText}>Share to story (soon)</Text>
+                <Text style={s.shareText}>Share to story</Text>
               </Pressable>
+            </View>
+          )}
+          {done && stats && (
+            <View ref={shareCardRef} collapsable={false} style={s.offscreenCard}>
+              <SessionResultCard session={session} stats={stats} />
             </View>
           )}
 
@@ -417,6 +425,7 @@ const s = StyleSheet.create({
   boardRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 7, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line },
   rank: { color: C.text2, width: 24, textAlign: "center", fontWeight: "800", fontSize: 15 }, boardName: { flex: 1, color: C.text, fontSize: 15, fontWeight: "700" }, boardWl: { color: C.text2, fontSize: 13, fontWeight: "700", fontVariant: ["tabular-nums"] },
   shareBtn: { flexDirection: "row", gap: 8, backgroundColor: C.cardHi, borderRadius: 11, minHeight: 46, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: C.line }, shareText: { color: C.text, fontWeight: "800" },
+  offscreenCard: { position: "absolute", top: -3000, left: 0 },
   seg: { flexDirection: "row", backgroundColor: C.card, borderRadius: 12, padding: 4, gap: 4, marginTop: 6 },
   segBtn: { flex: 1, flexDirection: "row", gap: 6, minHeight: 42, borderRadius: 9, alignItems: "center", justifyContent: "center" },
   segOn: { backgroundColor: C.red },
