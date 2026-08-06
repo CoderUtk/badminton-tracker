@@ -4,7 +4,7 @@
 
 ## Scope
 
-Three result-card types, four entry points, one capture/share pipeline. No dependency additions — `react-native-view-shot` and `expo-sharing` are already installed.
+Three result-card types, four entry points, one capture/share pipeline. `react-native-view-shot` and `expo-sharing` are already installed; one new dependency is required — `react-native-share` — since true direct-to-Instagram-Stories sharing needs native pasteboard/intent handling that pure JS/Expo APIs cannot do on either platform (see Architecture).
 
 ## Content Types
 
@@ -52,10 +52,9 @@ No avatar/photo field exists in the schema yet — it's a separate upcoming feat
 
 **Capture/share pipeline** (`src/lib/share/`):
 - `captureAndShare.ts` — calls `viewShotRef.capture()` → PNG file URI → passes to `shareToInstagramStory()`.
-- `shareToInstagramStory.ts` — platform-branched:
-  - iOS: `Linking.openURL('instagram-stories://share?...')`, image passed via `UIPasteboard`. True one-tap-to-Stories.
-  - Android: no direct IG-Stories intent (that requires a `content://` URI via FileProvider + Intent extras, which needs `expo-intent-launcher` — a new dependency this feature doesn't take on). Android goes straight to `expo-sharing`'s `shareAsync(uri)` generic OS share sheet; the user picks Instagram from it, which opens IG's own share composer (one extra tap vs iOS, no new dep or native config).
-  - On iOS, if the `instagram-stories://` scheme is unavailable (IG not installed) or `Linking.openURL` fails → falls back to `expo-sharing`'s `shareAsync(uri)`. Failure is silent to the user (no error shown) — they just see the generic sheet instead.
+- `shareToInstagramStory.ts` — uses `react-native-share`'s `Share.shareSingle({ social: Share.Social.INSTAGRAM_STORIES, backgroundImage: uri })`, which handles the platform-specific native mechanics internally: iOS's `UIPasteboard` item dictionary (tagged `com.instagram.sharedSticker.backgroundImage`, which plain `Linking`/`expo-clipboard` APIs cannot set) and Android's `content://` FileProvider + Intent extras. True one-tap-to-Stories on both platforms.
+  - If that call fails for any reason (Instagram not installed, user cancels, native error) → falls back to `expo-sharing`'s `shareAsync(uri)` generic OS share sheet. Failure is silent to the user (no error shown) — they just see the generic sheet instead.
+  - `react-native-share` is a native module: installed via `npx expo install react-native-share`, requires `expo prebuild` to regenerate native projects, and only works in a dev-client/EAS build (not Expo Go).
 
 **Data flow:** tap share icon → render hidden card with real match/session/tournament data → capture PNG → `shareToInstagramStory(uri)` → IG Stories opens pre-filled with the image, or fallback sheet.
 
