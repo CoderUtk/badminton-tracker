@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - One new dependency: `react-native-share`, installed via `npx expo install react-native-share` (not plain `npm install`, so Expo resolves an SDK-54-compatible version). It's a native module — after installing, `expo prebuild` must regenerate the native projects, and testing requires a dev-client/EAS build; it will not work in Expo Go. `react-native-view-shot` and `expo-sharing` were already installed and need no changes.
-- True direct-to-Instagram-Stories sharing (both platforms) requires native pasteboard/intent handling that pure JS/Expo APIs cannot do — `Linking.openURL` cannot pass image data, and `expo-clipboard`'s `setImageAsync` sets a plain clipboard image that Instagram's sticker API does not recognize (it looks for pasteboard items tagged `com.instagram.sharedSticker.backgroundImage`, iOS-side). `react-native-share`'s `Share.shareSingle({ social: Share.Social.INSTAGRAM_STORIES, ... })` handles this correctly on both platforms internally.
+- True direct-to-Instagram-Stories sharing (both platforms) requires native pasteboard/intent handling that pure JS/Expo APIs cannot do — `Linking.openURL` cannot pass image data, and `expo-clipboard`'s `setImageAsync` sets a plain clipboard image that Instagram's sticker API does not recognize (it looks for pasteboard items tagged `com.instagram.sharedSticker.backgroundImage`, iOS-side). `react-native-share`'s `Share.shareSingle({ social: Social.InstagramStories, ... })` handles this correctly on both platforms internally.
 - Cards are 1080×1920 (native IG Story canvas). Safe content zone is the centered 1080×1420 — nothing important renders in the top/bottom ~250px reserved for IG's own UI chrome.
 - All visuals reuse `src/theme.ts` tokens (`C`, `F`, `GRAD`, `glow`, `textGlow`, `radius`, `easing`) — no new colors, fonts, or animation curves.
 - Avatars: every card takes an optional `avatarUrl?: string | null` per player/entrant. Present → circular `Image`. Absent → the same initials-circle fallback already used at `app/(app)/profile.tsx:130` and `app/(app)/sessions/[id].tsx:366` (`C.cardHi` background, first-letter initial in `F.display`). No profile-picture feature exists yet — this is forward-compat only.
@@ -27,7 +27,7 @@
 - Modify: `app.json` (iOS scheme whitelist, needed by `react-native-share`'s internal availability check)
 
 **Interfaces:**
-- Produces: `react-native-share`'s `Share.shareSingle` and `Share.Social.INSTAGRAM_STORIES` importable from `"react-native-share"`, used by Task 8.
+- Produces: `react-native-share`'s `Share.shareSingle` and `Share.Social.InstagramStories` importable from `"react-native-share"`, used by Task 8.
 
 - [ ] **Step 1: Install the package with Expo's resolver**
 
@@ -563,7 +563,7 @@ git commit -m "feat(share): add TournamentResultCard"
 - Create: `src/lib/share/captureAndShare.ts`
 
 **Interfaces:**
-- Consumes: `react-native-view-shot`'s `captureRef` function, `react-native-share`'s `Share.shareSingle`/`Share.Social.INSTAGRAM_STORIES` (Task 1), `expo-sharing`'s `isAvailableAsync`/`shareAsync` as the fallback.
+- Consumes: `react-native-view-shot`'s `captureRef` function, `react-native-share`'s `Share.shareSingle`/`Share.Social.InstagramStories` (Task 1), `expo-sharing`'s `isAvailableAsync`/`shareAsync` as the fallback.
 - Produces:
   - `shareToInstagramStory(uri: string): Promise<void>`
   - `captureAndShare(viewRef: React.RefObject<View>): Promise<void>` — used by Task 9, 10, 11's share buttons.
@@ -572,7 +572,7 @@ git commit -m "feat(share): add TournamentResultCard"
 
 ```typescript
 // src/lib/share/shareToInstagramStory.ts
-import Share from "react-native-share";
+import Share, { Social } from "react-native-share";
 import * as Sharing from "expo-sharing";
 
 /**
@@ -585,7 +585,7 @@ import * as Sharing from "expo-sharing";
 export async function shareToInstagramStory(uri: string): Promise<void> {
   try {
     await Share.shareSingle({
-      social: Share.Social.INSTAGRAM_STORIES,
+      social: Social.InstagramStories,
       backgroundImage: uri,
       appId: "", // no interactive stickers/deep-link-back used, so no Facebook App ID is required
     });
