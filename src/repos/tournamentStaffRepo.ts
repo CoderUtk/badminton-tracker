@@ -48,6 +48,8 @@ export type SpectatorBracketCell = {
   round: number; idx: number; matchId: string | null;
   entrantA: string | null; entrantB: string | null; winnerEntrant: string | null;
   entrantAName: string | null; entrantBName: string | null;
+  court: string | null; matchStatus: string | null;
+  scoreSummary: { games: { A: number; B: number }[]; current?: { A: number; B: number } } | null;
 };
 export type SpectatorView = { name: string; status: string; cells: SpectatorBracketCell[] };
 
@@ -60,6 +62,8 @@ export async function getTournamentSpectatorView(tournamentId: string): Promise<
     name: string; status: string; round: number | null; idx: number | null; match_id: string | null;
     entrant_a: string | null; entrant_b: string | null; winner_entrant: string | null;
     entrant_a_name: string | null; entrant_b_name: string | null;
+    court: string | null; match_status: string | null;
+    score_summary: SpectatorBracketCell["scoreSummary"];
   }[] | null) ?? [];
   if (rows.length === 0) return null;
   return {
@@ -71,6 +75,7 @@ export async function getTournamentSpectatorView(tournamentId: string): Promise<
       round: r.round as number, idx: r.idx as number, matchId: r.match_id,
       entrantA: r.entrant_a, entrantB: r.entrant_b, winnerEntrant: r.winner_entrant,
       entrantAName: r.entrant_a_name, entrantBName: r.entrant_b_name,
+      court: r.court, matchStatus: r.match_status, scoreSummary: r.score_summary,
     })),
   };
 }
