@@ -2,16 +2,22 @@ import React from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import Svg, { Line } from "react-native-svg";
 import type { BracketMatch, Entrant } from "../tournament/types";
+import { gamesWonBy } from "../tournament/score";
 import Icon from "./Icon";
 import { C, F } from "../theme";
 
 const CELL_W = 150;
-const CELL_H = 56;
+const CELL_H = 84;
 const GAP_Y = 20;
 const COL_GAP = 44;
 const SLOT = CELL_H + GAP_Y;
 
 type Centers = Map<string, number>; // `${round}:${index}` -> centerY
+
+export type BracketLiveScore = {
+  status: string;
+  scoreSummary: { games: { A: number; B: number }[]; current?: { A: number; B: number } } | null;
+};
 
 function computeCenters(bracket: BracketMatch[], maxRound: number): Centers {
   const centers: Centers = new Map();
@@ -33,10 +39,12 @@ export default function BracketView({
   bracket,
   entrants,
   onCellPress,
+  liveScores,
 }: {
   bracket: BracketMatch[];
   entrants: Entrant[];
   onCellPress?: (cell: BracketMatch) => void;
+  liveScores?: Map<string, BracketLiveScore>;
 }) {
   if (bracket.length === 0) return null;
   const maxRound = Math.max(...bracket.map((m) => m.round));
@@ -74,6 +82,9 @@ export default function BracketView({
             const nameB = m.entrantB ? nameOf.get(m.entrantB) ?? "?" : "—";
             const live = !!m.matchId && !m.winnerEntrant;
             const isChampCell = m.round === maxRound && !!m.winnerEntrant;
+            const liveInfo = m.matchId ? liveScores?.get(m.matchId) : undefined;
+            const games = liveInfo?.scoreSummary?.games ?? [];
+            const current = liveInfo?.scoreSummary?.current;
             return (
               <TouchableOpacity
                 key={m.id}
@@ -91,24 +102,47 @@ export default function BracketView({
                   borderColor: live ? C.accent : isChampCell ? C.red : C.line,
                   justifyContent: "center",
                   paddingHorizontal: 10,
+                  paddingVertical: 8,
+                  gap: 2,
                 }}
               >
+                {m.court ? (
+                  <View style={{ position: "absolute", left: 8, top: 6, backgroundColor: C.cardHi, borderRadius: 6, paddingHorizontal: 5, paddingVertical: 1 }}>
+                    <Text style={{ color: C.text2, fontSize: 9, fontFamily: F.semibold }}>C{m.court}</Text>
+                  </View>
+                ) : null}
                 {(["A", "B"] as const).map((side) => {
                   const eid = side === "A" ? m.entrantA : m.entrantB;
                   const label = side === "A" ? nameA : nameB;
                   const won = m.winnerEntrant && m.winnerEntrant === eid;
+                  const wonGames = games.length ? gamesWonBy(games, side) : 0;
                   return (
                     <View key={side} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                       {won && isChampCell ? <Icon name="trophy" color={C.red} size={12} /> : null}
                       <Text
                         numberOfLines={1}
-                        style={{ color: won ? C.text : C.text2, fontFamily: won ? F.semibold : F.body, fontSize: 13 }}
+                        style={{ flex: 1, color: won ? C.text : C.text2, fontFamily: won ? F.semibold : F.body, fontSize: 13 }}
                       >
                         {label}
                       </Text>
+                      {wonGames > 0 ? (
+                        <Text style={{ color: C.bg, backgroundColor: won ? C.red : C.text2, fontSize: 9, fontFamily: F.semibold, minWidth: 14, textAlign: "center", borderRadius: 7, paddingHorizontal: 3 }}>
+                          {wonGames}
+                        </Text>
+                      ) : null}
                     </View>
                   );
                 })}
+                {live && current ? (
+                  <Text style={{ color: C.accent, fontSize: 12, fontFamily: F.semibold, marginTop: 2 }}>
+                    {current.A}-{current.B}
+                  </Text>
+                ) : null}
+                {!live && m.winnerEntrant && games.length ? (
+                  <Text numberOfLines={1} style={{ color: C.text2, fontSize: 10, marginTop: 2 }}>
+                    {games.map((g) => `${g.A}-${g.B}`).join("  ")}
+                  </Text>
+                ) : null}
                 {live ? (
                   <View style={{ position: "absolute", right: 8, top: 6, width: 7, height: 7, borderRadius: 4, backgroundColor: C.red }} />
                 ) : null}
