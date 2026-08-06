@@ -85,9 +85,21 @@ export default function SignIn() {
   const passwordSignUp = async () => {
     if (!supabase) return;
     setBusy(true);
-    const { data, error } = await supabase.auth.signUp({ email: email.trim(), password });
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: { emailRedirectTo: Linking.createURL("auth") },
+    });
     setBusy(false);
     if (error) { toast(error.message || "Could not create account", "error"); return; }
+
+    // When an account with this email already exists (e.g., via Google OAuth),
+    // Supabase returns a user with an empty identities array and no session.
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      toast("An account with this email already exists. Try signing in or use Google.", "error");
+      return;
+    }
+
     // Confirm-email is on for this project, so a fresh signUp has no session
     // yet — the trigger that creates the profile/personal club runs on
     // confirmation, not on signUp itself.

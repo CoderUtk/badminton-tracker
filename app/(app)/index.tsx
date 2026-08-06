@@ -127,10 +127,10 @@ export default function Home() {
                   style={s.input} placeholder="New club name" placeholderTextColor={C.text2}
                   value={name} onChangeText={setName} onBlur={() => setNameTouched(true)}
                 />
-                <Pressable style={({ pressed }) => [s.btn, pressed && press, !!nameError && s.btnOff]} disabled={!!nameError} onPress={onCreate}>
+                <BusyButton busy={creating} disabled={!!nameError} style={[s.btn, !!nameError && s.btnOff]} onPress={onCreate}>
                   <Icon name="add" color={C.text} size={18} />
                   <Text style={s.btnText}>Create</Text>
-                </Pressable>
+                </BusyButton>
               </View>
               {nameTouched && nameError ? <Text style={s.err}>{nameError}</Text> : null}
             </View>
@@ -192,15 +192,18 @@ const s = StyleSheet.create({
   clubIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,59,48,0.12)", alignItems: "center", justifyContent: "center" },
   clubName: { color: C.text, fontSize: 17, fontWeight: "700" },
   clubMeta: { color: C.text2, fontSize: 13, marginTop: 2 },
-  forms: { gap: 8 },
-  row: { flexDirection: "row", gap: 8 },
+  forms: { gap: 10, marginTop: 4 },
+  row: { flexDirection: "row", gap: 8, alignItems: "center" },
   input: {
     flex: 1, backgroundColor: C.card, color: C.text, borderRadius: 12,
-    borderWidth: 1, borderColor: C.line, padding: 12, fontSize: 16,
+    borderWidth: 1, borderColor: C.line, paddingHorizontal: 14, height: 48, fontSize: 16,
   },
-  btn: { flexDirection: "row", gap: 4, backgroundColor: C.red, borderRadius: 12, paddingHorizontal: 18, alignItems: "center", justifyContent: "center" },
+  btn: {
+    flexDirection: "row", gap: 4, backgroundColor: C.red, borderRadius: 12,
+    paddingHorizontal: 16, height: 48, minWidth: 96, alignItems: "center", justifyContent: "center",
+  },
   btnOff: { opacity: 0.5 },
   btnText: { color: C.text, fontSize: 16, fontWeight: "700" },
-  err: { color: C.red, fontSize: 12.5, fontFamily: F.body },
+  err: { color: C.red, fontSize: 12.5, fontFamily: F.body, marginTop: -2 },
   note: { color: C.text2, fontSize: 13, lineHeight: 19, marginTop: 2 },
 });

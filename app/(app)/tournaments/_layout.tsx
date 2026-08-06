@@ -1,4 +1,5 @@
 import { Stack } from "expo-router";
+import HeaderLogoLeft from "../../../src/components/HeaderLogoLeft";
 import { C } from "../../../src/theme";
 
 export const unstable_settings = { initialRouteName: "index" };
@@ -10,6 +11,7 @@ export default function TournamentsLayout() {
         headerStyle: { backgroundColor: C.bg },
         headerTintColor: C.text,
         contentStyle: { backgroundColor: C.bg },
+        headerLeft: (props) => <HeaderLogoLeft {...props} />,
       }}
     >
       <Stack.Screen name="index" options={{ title: "Tournaments" }} />
