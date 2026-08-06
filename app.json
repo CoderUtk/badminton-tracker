@@ -12,7 +12,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.navalo.courtside"
+      "bundleIdentifier": "com.navalo.courtside",
+      "infoPlist": {
+        "LSApplicationQueriesSchemes": ["instagram-stories", "instagram"]
+      }
     },
     "android": {
       "package": "com.navalo.courtside",
