@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { deleteClub, getClub, type Club } from "../../../src/repos/clubRepo";
+import { deleteClub, getClub, leaveClub, type Club } from "../../../src/repos/clubRepo";
 import { getClubStats, type PlayerStat, type SessionStats } from "../../../src/repos/sessionRepo";
 import { buildClubJoinPath } from "../../../src/lib/joinLink";
 import { shareJoinLink } from "../../../src/lib/shareJoin";
@@ -10,6 +10,7 @@ import Sheet from "../../../src/components/Sheet";
 import MenuButton from "../../../src/components/MenuButton";
 import HeaderLogoLeft from "../../../src/components/HeaderLogoLeft";
 import ShareIcon from "../../../src/components/ShareIcon";
+import Icon from "../../../src/components/Icon";
 import { C, F } from "../../../src/theme";
 
 function winPct(p: PlayerStat): string {
@@ -22,6 +23,7 @@ export default function ClubDetail() {
   const [club, setClub] = useState<Club | null>(null);
   const [stats, setStats] = useState<SessionStats | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [confirmingLeave, setConfirmingLeave] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const reload = useCallback(async () => {
@@ -43,6 +45,17 @@ export default function ClubDetail() {
       router.replace("/");
     } catch (e) {
       toast((e as Error).message || "Could not delete club", "error");
+    }
+  };
+
+  const onLeaveClub = async () => {
+    setConfirmingLeave(false);
+    if (!id) return;
+    try {
+      await leaveClub(id);
+      router.replace("/");
+    } catch (e) {
+      toast((e as Error).message || "Could not leave club", "error");
     }
   };
 
@@ -69,14 +82,25 @@ export default function ClubDetail() {
       ListHeaderComponent={
         <>
           <View style={s.hero}>
-            <Pressable
-              style={s.shareBtn}
-              accessibilityLabel="Share join link"
-              hitSlop={10}
-              onPress={() => shareJoinLink(buildClubJoinPath(club.id), `invited you to join "${club.name}"`)}
-            >
-              <ShareIcon size={16} color={C.text} />
-            </Pressable>
+            {isOwner ? (
+              <Pressable
+                style={s.shareBtn}
+                accessibilityLabel="Share join link"
+                hitSlop={10}
+                onPress={() => shareJoinLink(buildClubJoinPath(club.id), `invited you to join "${club.name}"`)}
+              >
+                <ShareIcon size={16} color={C.text} />
+              </Pressable>
+            ) : (
+              <Pressable
+                style={[s.shareBtn, s.leaveBtn]}
+                accessibilityLabel="Leave club"
+                hitSlop={10}
+                onPress={() => setConfirmingLeave(true)}
+              >
+                <Icon name="log-out-outline" size={16} color={C.red} />
+              </Pressable>
+            )}
             <Text style={s.eyebrow}>CLUB</Text>
             <Text style={[s.title, s.titleWithBtn]}>{club.name}</Text>
             {club.invite_code ? <Text style={s.code}>Invite code · {club.invite_code}</Text> : null}
@@ -147,6 +171,16 @@ export default function ClubDetail() {
         ]}
         onClose={() => setConfirmingDelete(false)}
       />
+      <Sheet
+        visible={confirmingLeave}
+        title="Leave club?"
+        message="You'll lose access to its sessions, matches, and tournaments."
+        actions={[
+          { label: "Leave", onPress: onLeaveClub, destructive: true },
+          { label: "Cancel", onPress: () => setConfirmingLeave(false) },
+        ]}
+        onClose={() => setConfirmingLeave(false)}
+      />
     </>
   );
 }
@@ -162,6 +196,7 @@ const s = StyleSheet.create({
     width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center",
     backgroundColor: C.cardHi, borderWidth: 1, borderColor: C.line,
   },
+  leaveBtn: { borderColor: C.red },
   eyebrow: { color: C.red, fontSize: 12, fontWeight: "900", letterSpacing: 0.8 },
   title: { color: C.text, fontSize: 24, fontFamily: F.display, letterSpacing: 0.5 },
   titleWithBtn: { paddingRight: 44 },
