@@ -1,11 +1,11 @@
-import { useCallback, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
   deleteTournament, finishBracketMatch, getTournament, startBracketMatch, startTournament,
   type MatchType, type TournamentRow,
 } from "../../../src/repos/tournamentRepo";
-import { getMatch } from "../../../src/repos/matchRepo";
+import { getMatch, type MatchRecord } from "../../../src/repos/matchRepo";
 import { getClub } from "../../../src/repos/clubRepo";
 import {
   getTournamentStaff, listPendingTournamentRequests, myStaffRole,
@@ -14,11 +14,12 @@ import {
 import { bracketStatus } from "../../../src/tournament/bracket";
 import { startBlocker } from "../../../src/tournament/draw";
 import type { BracketMatch, Entrant } from "../../../src/tournament/types";
-import BracketView from "../../../src/components/BracketView";
+import BracketView, { type BracketLiveScore } from "../../../src/components/BracketView";
 import Sheet from "../../../src/components/Sheet";
 import BottomPanel from "../../../src/components/BottomPanel";
 import MenuButton from "../../../src/components/MenuButton";
 import Icon from "../../../src/components/Icon";
+import PressableScale from "../../../src/components/PressableScale";
 import TournamentConfigTab from "../../../src/components/TournamentConfigTab";
 import TournamentPlayersTab from "../../../src/components/TournamentPlayersTab";
 import TournamentScorersTab from "../../../src/components/TournamentScorersTab";
@@ -26,6 +27,7 @@ import { toast } from "../../../src/lib/toast";
 import { C, F, press } from "../../../src/theme";
 
 type Tab = "config" | "players" | "scorers";
+const POLL_MS = 15000;
 
 export default function TournamentBracket() {
   const router = useRouter();
@@ -46,61 +48,100 @@ export default function TournamentBracket() {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  // Cache of live/finished matches keyed by matchId, used to render bracket
+  // cell scores. A ref (not just state) so reload() can check "have we
+  // already fetched this finished match's score?" without reload itself
+  // depending on — and being torn down/recreated by — the state it writes.
+  const liveMatchesRef = useRef<Map<string, MatchRecord>>(new Map());
+  const [liveMatches, setLiveMatches] = useState<Map<string, MatchRecord>>(new Map());
 
-  const reload = useCallback(() => {
+  const reload = useCallback(async () => {
     if (!id) return;
-    (async () => {
-      try {
-        const { tournament: t, entrants: ents, bracket: b0 } = await getTournament(id);
+    try {
+      const { tournament: t, entrants: ents, bracket: b0 } = await getTournament(id);
 
-        // Reconcile: any cell whose linked match has completed advances the
-        // winner. Checked in parallel rather than one cell at a time — a
-        // sequential await-per-cell loop turns a bracket with several
-        // unresolved matches into that many stacked network round trips.
-        const toCheck = b0.filter((cell) => cell.matchId && !cell.winnerEntrant);
-        const matches = await Promise.all(toCheck.map((cell) => getMatch(cell.matchId!)));
-        let changed = false;
-        await Promise.all(toCheck.map(async (cell, i) => {
-          const m = matches[i];
-          if (m && m.status !== "live" && m.winner) {
-            const winnerEntrant = m.winner === "A" ? cell.entrantA : cell.entrantB;
-            if (winnerEntrant) {
-              await finishBracketMatch(cell.id, winnerEntrant);
-              changed = true;
-            }
+      // Fetch every cell that either (a) is still unresolved — it might have
+      // just finished, or its live score changed — or (b) just finished and
+      // we haven't fetched its final score yet. A finished cell's score
+      // never changes again, so once cached it's never re-fetched. Checked
+      // in parallel rather than one cell at a time — a sequential
+      // await-per-cell loop turns a bracket with several unresolved matches
+      // into that many stacked network round trips.
+      const toFetch = b0.filter(
+        (cell) => cell.matchId && (!cell.winnerEntrant || !liveMatchesRef.current.has(cell.matchId))
+      );
+      const fetched = await Promise.all(toFetch.map((cell) => getMatch(cell.matchId!)));
+      const toReconcile: { cell: BracketMatch; match: MatchRecord }[] = [];
+      toFetch.forEach((cell, i) => {
+        const m = fetched[i];
+        if (!m) return;
+        liveMatchesRef.current.set(cell.matchId!, m);
+        if (!cell.winnerEntrant) toReconcile.push({ cell, match: m });
+      });
+      setLiveMatches(new Map(liveMatchesRef.current));
+
+      // Reconcile: any cell whose linked match has completed advances the winner.
+      let changed = false;
+      await Promise.all(toReconcile.map(async ({ cell, match: m }) => {
+        if (m.status !== "live" && m.winner) {
+          const winnerEntrant = m.winner === "A" ? cell.entrantA : cell.entrantB;
+          if (winnerEntrant) {
+            await finishBracketMatch(cell.id, winnerEntrant);
+            changed = true;
           }
-        }));
-
-        // Only re-fetch the full tournament if reconciliation actually
-        // changed something — the common case (nothing to advance) skips a
-        // second redundant getTournament call entirely.
-        if (changed) {
-          const fresh = await getTournament(id);
-          setTournament(fresh.tournament);
-          setEntrants(fresh.entrants);
-          setBracket(fresh.bracket);
-        } else {
-          setTournament(t);
-          setEntrants(ents);
-          setBracket(b0);
         }
+      }));
 
-        const [club, staffRole] = await Promise.all([getClub(t.clubId), myStaffRole(id)]);
-        setClubRole(club?.role ?? null);
-        setIsTournamentAdmin(staffRole === "admin");
-        const isAdmin = club?.role === "owner" || club?.role === "admin" || staffRole === "admin";
-        const [staffList, reqs] = await Promise.all([
-          getTournamentStaff(id),
-          isAdmin ? listPendingTournamentRequests(id) : Promise.resolve([]),
-        ]);
-        setStaff(staffList);
-        setRequests(reqs);
-      } catch (e) {
-        toast((e as Error).message || "Could not load the tournament", "error");
+      // Only re-fetch the full tournament if reconciliation actually
+      // changed something — the common case (nothing to advance) skips a
+      // second redundant getTournament call entirely.
+      if (changed) {
+        const fresh = await getTournament(id);
+        setTournament(fresh.tournament);
+        setEntrants(fresh.entrants);
+        setBracket(fresh.bracket);
+      } else {
+        setTournament(t);
+        setEntrants(ents);
+        setBracket(b0);
       }
-    })();
+
+      const [club, staffRole] = await Promise.all([getClub(t.clubId), myStaffRole(id)]);
+      setClubRole(club?.role ?? null);
+      setIsTournamentAdmin(staffRole === "admin");
+      const isAdmin = club?.role === "owner" || club?.role === "admin" || staffRole === "admin";
+      const [staffList, reqs] = await Promise.all([
+        getTournamentStaff(id),
+        isAdmin ? listPendingTournamentRequests(id) : Promise.resolve([]),
+      ]);
+      setStaff(staffList);
+      setRequests(reqs);
+    } catch (e) {
+      toast((e as Error).message || "Could not load the tournament", "error");
+    }
   }, [id]);
-  useFocusEffect(reload);
+
+  useFocusEffect(
+    useCallback(() => {
+      void reload();
+      const interval = setInterval(() => { void reload(); }, POLL_MS);
+      return () => clearInterval(interval);
+    }, [reload])
+  );
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await reload();
+    setRefreshing(false);
+  };
+
+  const liveScores = useMemo(
+    () => new Map<string, BracketLiveScore>(
+      [...liveMatches].map(([mid, m]) => [mid, { status: m.status, scoreSummary: m.score_summary }])
+    ),
+    [liveMatches]
+  );
 
   const onCellPress = (cell: BracketMatch) => {
     if (cell.matchId && !cell.winnerEntrant) {
@@ -202,7 +243,16 @@ export default function TournamentBracket() {
           headerRight: isAdmin ? () => <MenuButton onPress={() => setMenuOpen(true)} /> : undefined,
         }}
       />
-      <Text style={{ color: C.text, fontFamily: F.bold, fontSize: 18, marginBottom: 4 }}>{tournament.name}</Text>
+      <View style={s.titleRow}>
+        <Text style={s.titleText}>{tournament.name}</Text>
+        {!isDraft ? (
+          <PressableScale style={s.refreshBtn} onPress={onRefresh} disabled={refreshing}>
+            {refreshing
+              ? <ActivityIndicator size="small" color={C.text2} />
+              : <Icon name="sync-outline" color={C.text2} size={16} />}
+          </PressableScale>
+        ) : null}
+      </View>
       {champName ? (
         <Text style={{ color: C.red, fontFamily: F.semibold, marginBottom: 8 }}>🏆 Champion: {champName}</Text>
       ) : null}
@@ -210,7 +260,7 @@ export default function TournamentBracket() {
       {!isDraft ? (
         <>
           <View style={{ flex: 1, marginBottom: 8 }}>
-            <BracketView bracket={bracket} entrants={entrants} onCellPress={onCellPress} />
+            <BracketView bracket={bracket} entrants={entrants} onCellPress={onCellPress} liveScores={liveScores} />
           </View>
 
           <View style={s.tabRow}>
@@ -289,6 +339,9 @@ export default function TournamentBracket() {
 }
 
 const s = StyleSheet.create({
+  titleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 },
+  titleText: { color: C.text, fontFamily: F.bold, fontSize: 18 },
+  refreshBtn: { width: 28, height: 28, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: C.card },
   tabRow: { flexDirection: "row", gap: 8, marginTop: 8 },
   tabBtn: { flex: 1, alignItems: "center", paddingVertical: 10, backgroundColor: C.card, borderRadius: 10, borderWidth: 1, borderColor: C.line },
   tabOn: { borderColor: C.red, backgroundColor: "rgba(255,59,48,0.12)" },
