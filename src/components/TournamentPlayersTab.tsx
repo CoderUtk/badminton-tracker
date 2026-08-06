@@ -87,7 +87,7 @@ export default function TournamentPlayersTab({
   const decide = async (request: TournamentJoinRequest, approve: boolean) => {
     setBusy(true);
     try {
-      if (approve) await approveTournamentRequest(request.id, request.profileId);
+      if (approve) await approveTournamentRequest(request.id);
       else await denyTournamentRequest(request.id);
       toast(approve ? `${request.displayName} joined the draw` : "Request declined", approve ? "success" : "info");
       onChanged();
