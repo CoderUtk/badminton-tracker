@@ -53,9 +53,9 @@ No avatar/photo field exists in the schema yet — it's a separate upcoming feat
 **Capture/share pipeline** (`src/lib/share/`):
 - `captureAndShare.ts` — calls `viewShotRef.capture()` → PNG file URI → passes to `shareToInstagramStory()`.
 - `shareToInstagramStory.ts` — platform-branched:
-  - iOS: `Linking.openURL('instagram-stories://share?...')`, image passed via `UIPasteboard`.
-  - Android: `IntentLauncher.startActivityAsync` targeting package `com.instagram.android`, MIME `image/*`.
-  - Either path unavailable or failing → falls back to `expo-sharing`'s `shareAsync(uri)` generic share sheet. Failure is silent to the user (no error shown) — they just see the generic sheet instead.
+  - iOS: `Linking.openURL('instagram-stories://share?...')`, image passed via `UIPasteboard`. True one-tap-to-Stories.
+  - Android: no direct IG-Stories intent (that requires a `content://` URI via FileProvider + Intent extras, which needs `expo-intent-launcher` — a new dependency this feature doesn't take on). Android goes straight to `expo-sharing`'s `shareAsync(uri)` generic OS share sheet; the user picks Instagram from it, which opens IG's own share composer (one extra tap vs iOS, no new dep or native config).
+  - On iOS, if the `instagram-stories://` scheme is unavailable (IG not installed) or `Linking.openURL` fails → falls back to `expo-sharing`'s `shareAsync(uri)`. Failure is silent to the user (no error shown) — they just see the generic sheet instead.
 
 **Data flow:** tap share icon → render hidden card with real match/session/tournament data → capture PNG → `shareToInstagramStory(uri)` → IG Stories opens pre-filled with the image, or fallback sheet.
 
