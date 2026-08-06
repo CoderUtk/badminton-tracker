@@ -154,3 +154,9 @@ export async function getTournamentStaff(tournamentId: string): Promise<Tourname
     };
   });
 }
+
+export async function removeStaff(staffId: string): Promise<void> {
+  if (!supabase) throw new Error("Sign in to manage staff");
+  const { error } = await supabase.rpc("remove_tournament_staff", { p_staff_id: staffId });
+  if (error) throw new Error(error.message);
+}

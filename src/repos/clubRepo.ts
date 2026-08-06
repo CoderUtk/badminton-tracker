@@ -143,3 +143,10 @@ export async function listAllPlayerNames(): Promise<string[]> {
   );
   return rows.map((r) => r.name);
 }
+
+export async function removePlayer(clubPlayerId: string): Promise<void> {
+  if (!supabase) throw new Error("Sign in to manage players");
+  const { error } = await supabase.rpc("remove_club_player", { p_club_player_id: clubPlayerId });
+  if (error) throw new Error(error.message);
+  await refreshClubs();
+}
