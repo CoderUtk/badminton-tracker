@@ -3,12 +3,13 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { buildTournamentScorerJoinPath } from "../lib/joinLink";
 import { shareJoinLink } from "../lib/shareJoin";
 import {
-  approveTournamentRequest, denyTournamentRequest,
+  approveTournamentRequest, denyTournamentRequest, removeStaff,
   type TournamentJoinRequest, type TournamentStaff,
 } from "../repos/tournamentStaffRepo";
 import { toast } from "../lib/toast";
 import Icon from "./Icon";
 import PressableScale from "./PressableScale";
+import Sheet from "./Sheet";
 import { C, F } from "../theme";
 
 /** Staff roster plus pending scorer requests. Admin-only actions; everyone sees the roster. */
@@ -23,6 +24,7 @@ export default function TournamentScorersTab({
   onChanged: () => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<TournamentStaff | null>(null);
   const scorerRequests = requests.filter((r) => r.role === "scorer");
 
   const onShareScorer = () =>
@@ -42,6 +44,22 @@ export default function TournamentScorersTab({
     }
   };
 
+  const doRemove = async () => {
+    const member = pending;
+    setPending(null);
+    if (!member) return;
+    setBusy(true);
+    try {
+      await removeStaff(member.id);
+      toast(`${member.displayName} removed`, "success");
+      onChanged();
+    } catch (e) {
+      toast((e as Error).message || "Could not remove that scorer", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <View style={s.root}>
       {isAdmin ? (
@@ -55,6 +73,11 @@ export default function TournamentScorersTab({
         <View key={m.id} style={s.row}>
           <Text style={s.name} numberOfLines={1}>{m.displayName}</Text>
           <Text style={s.role}>{m.role === "admin" ? "Admin" : "Scorer"}</Text>
+          {isAdmin && m.role === "scorer" ? (
+            <PressableScale disabled={busy} onPress={() => setPending(m)} style={s.remove}>
+              <Icon name="trash-outline" color={C.text2} size={16} />
+            </PressableScale>
+          ) : null}
         </View>
       ))}
 
@@ -74,6 +97,16 @@ export default function TournamentScorersTab({
           ))}
         </>
       ) : null}
+      <Sheet
+        visible={!!pending}
+        title="Remove scorer?"
+        message={pending ? `${pending.displayName} will lose scorer access to this tournament.` : ""}
+        actions={[
+          { label: "Remove", onPress: doRemove, destructive: true },
+          { label: "Cancel", onPress: () => setPending(null) },
+        ]}
+        onClose={() => setPending(null)}
+      />
     </View>
   );
 }
@@ -85,6 +118,7 @@ const s = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: C.card, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: C.line },
   name: { flex: 1, color: C.text, fontFamily: F.body, fontSize: 15 },
   role: { color: C.text2, fontFamily: F.semibold, fontSize: 12, textTransform: "uppercase" },
+  remove: { width: 32, height: 32, borderRadius: 8, alignItems: "center", justifyContent: "center", backgroundColor: C.bgElev },
   sectionTitle: { color: C.text, fontFamily: F.bold, fontSize: 14, marginTop: 10 },
   reqBtn: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   deny: { backgroundColor: C.cardHi, borderWidth: 1, borderColor: C.line },
