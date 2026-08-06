@@ -17,7 +17,7 @@ export interface MatchRecord {
   side_b: SidePlayer[];
   status: "live" | "completed" | "forfeited";
   winner: TeamId | null;
-  score_summary: { games: { A: number; B: number }[] } | null;
+  score_summary: { games: { A: number; B: number }[]; current?: { A: number; B: number } } | null;
   created_at: number;
 }
 
@@ -80,6 +80,26 @@ export async function finalizeMatch(matchId: string, state: MatchState) {
   await db?.runAsync(
     "update matches set status = 'completed', winner = ?, score_summary = ?, synced = 0 where id = ?",
     state.winner, JSON.stringify(summary), matchId
+  );
+}
+
+/**
+ * Periodic live-score snapshot written while a match is in progress — not a
+ * status change. Called every ~15s by matchStore's live tick so other
+ * devices' next sync sees the current score without waiting for the match
+ * to finish. The `status = 'live'` guard makes a stray tick that races a
+ * just-finished match's finalizeMatch() a silent no-op instead of
+ * resurrecting score_summary after completion.
+ */
+export async function updateLiveScore(matchId: string, state: MatchState) {
+  const db = await getDb();
+  const summary = {
+    games: state.gameHistory.map((g) => g.score),
+    current: { A: state.score.A, B: state.score.B },
+  };
+  await db?.runAsync(
+    "update matches set score_summary = ?, synced = 0 where id = ? and status = 'live'",
+    JSON.stringify(summary), matchId
   );
 }
 
