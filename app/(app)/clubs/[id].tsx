@@ -99,6 +99,14 @@ export default function ClubDetail() {
                 <Text style={s.secondaryText}>Pending requests</Text>
               </Pressable>
             ) : null}
+            {isAdmin ? (
+              <Pressable
+                style={s.secondary}
+                onPress={() => router.push(`/(app)/clubs/players/${club.id}`)}
+              >
+                <Text style={s.secondaryText}>Manage players</Text>
+              </Pressable>
+            ) : null}
           </View>
           <View style={s.boardHeadRow}>
             <Text style={s.rank}>#</Text>
