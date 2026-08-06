@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Image, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
+import * as ImagePicker from "expo-image-picker";
 import { supabase } from "../../src/lib/supabase";
 import { useSession } from "../../src/stores/session";
-import { getMyProfile, setDisplayName as saveProfileName, setProfileDetails, type Hand } from "../../src/repos/profileRepo";
+import { getMyProfile, setDisplayName as saveProfileName, setProfileDetails, uploadAvatar, removeAvatar, type Hand } from "../../src/repos/profileRepo";
 import SegmentedControl from "../../src/components/SegmentedControl";
 import { validateName } from "../../src/lib/validate";
 import { toast } from "../../src/lib/toast";
@@ -11,6 +12,7 @@ import { getPlayerAnalytics, type PlayerAnalytics } from "../../src/repos/statsR
 import Icon from "../../src/components/Icon";
 import FormScreen from "../../src/components/FormScreen";
 import BadgeGrid from "../../src/components/BadgeGrid";
+import Sheet from "../../src/components/Sheet";
 import { evaluateBadges } from "../../src/achievements/rules";
 import { getSetting, setSetting, REMINDERS_KEY } from "../../src/repos/settingsRepo";
 import { scheduleInactivityReminder, cancelReminders } from "../../src/lib/reminders";
@@ -32,6 +34,10 @@ export default function Profile() {
   const [savedHand, setSavedHand] = useState<Hand>("right");
   const [ageDraft, setAgeDraft] = useState("");
   const [editingDetails, setEditingDetails] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarSheetOpen, setAvatarSheetOpen] = useState(false);
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
+  const [avatarBusy, setAvatarBusy] = useState(false);
 
   useEffect(() => {
     void getMyProfile().then((p) => {
@@ -42,6 +48,7 @@ export default function Profile() {
       setSavedAge(p?.age ?? null);
       setHand(p?.hand ?? "right");
       setSavedHand(p?.hand ?? "right");
+      setAvatarUrl(p?.avatarUrl ?? null);
     });
   }, []);
 
@@ -110,6 +117,46 @@ export default function Profile() {
       .catch((e: Error) => toast(e.message || "Could not save your details", "error"));
   };
 
+  const pickAndUpload = async (source: "camera" | "library") => {
+    setAvatarSheetOpen(false);
+    const perm = source === "camera"
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      toast(`Enable ${source === "camera" ? "camera" : "photo"} access in Settings to add a picture`, "error");
+      return;
+    }
+    const result = source === "camera"
+      ? await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.7 })
+      : await ImagePicker.launchImageLibraryAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.7 });
+    if (result.canceled || !result.assets[0]) return;
+
+    setAvatarBusy(true);
+    try {
+      const url = await uploadAvatar(result.assets[0].uri);
+      setAvatarUrl(url);
+      toast("Profile picture updated", "success");
+    } catch (e) {
+      toast((e as Error).message || "Could not upload that picture", "error");
+    } finally {
+      setAvatarBusy(false);
+    }
+  };
+
+  const doRemoveAvatar = async () => {
+    setConfirmingRemove(false);
+    setAvatarBusy(true);
+    try {
+      await removeAvatar();
+      setAvatarUrl(null);
+      toast("Profile picture removed", "success");
+    } catch (e) {
+      toast((e as Error).message || "Could not remove your picture", "error");
+    } finally {
+      setAvatarBusy(false);
+    }
+  };
+
   // Stats/matches are keyed by the name recorded on club_players, which is the
   // profile's display name — not the raw auth metadata, which can diverge.
   const me = savedName || "Player";
@@ -127,7 +174,18 @@ export default function Profile() {
       {/* Tap the name to edit it. The name is set once at signup and rarely
           changes, so a standing text field here just pushed the stats down. */}
       <View style={s.hero}>
-        <View style={s.avatar}><Text style={s.avatarText}>{initial}</Text></View>
+        <Pressable
+          style={s.avatar}
+          disabled={avatarBusy}
+          onPress={() => setAvatarSheetOpen(true)}
+          accessibilityLabel="Change profile picture"
+        >
+          {avatarUrl ? (
+            <Image source={{ uri: avatarUrl }} style={s.avatarImage} />
+          ) : (
+            <Text style={s.avatarText}>{initial}</Text>
+          )}
+        </Pressable>
         <Pressable
           onPress={() => { setDisplayName(savedName); setEditingName(true); }}
           style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8 }}
@@ -213,6 +271,28 @@ export default function Profile() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <Sheet
+        visible={avatarSheetOpen}
+        title="Profile picture"
+        actions={[
+          { label: "Take photo", onPress: () => void pickAndUpload("camera") },
+          { label: "Choose from library", onPress: () => void pickAndUpload("library") },
+          ...(avatarUrl ? [{ label: "Remove photo", destructive: true, onPress: () => { setAvatarSheetOpen(false); setConfirmingRemove(true); } }] : []),
+          { label: "Cancel", onPress: () => setAvatarSheetOpen(false) },
+        ]}
+        onClose={() => setAvatarSheetOpen(false)}
+      />
+      <Sheet
+        visible={confirmingRemove}
+        title="Remove profile picture?"
+        message="You'll go back to the default initial-letter avatar."
+        actions={[
+          { label: "Remove", onPress: doRemoveAvatar, destructive: true },
+          { label: "Cancel", onPress: () => setConfirmingRemove(false) },
+        ]}
+        onClose={() => setConfirmingRemove(false)}
+      />
 
       {/* Headline stats */}
       <View style={s.statGrid}>
@@ -348,6 +428,7 @@ const s = StyleSheet.create({
   hero: { flexDirection: "row", alignItems: "center", gap: 14, backgroundColor: C.card, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: C.line },
   avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: C.red, alignItems: "center", justifyContent: "center", ...glow(C.red, 12, 0.4) },
   avatarText: { color: C.text, fontSize: 24, fontFamily: F.display },
+  avatarImage: { width: 56, height: 56, borderRadius: 28 },
   name: { color: C.text, fontSize: 22, fontFamily: F.display, letterSpacing: 0.5 },
   sub: { color: C.text2, fontSize: 13, marginTop: 2, fontFamily: F.body },
   statGrid: { flexDirection: "row", gap: 8 },
