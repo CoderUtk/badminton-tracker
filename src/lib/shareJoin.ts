@@ -23,7 +23,7 @@ export async function shareJoinLink(path: string, action: string): Promise<void>
     const url = JOIN_LINK_DOMAIN ? `https://${JOIN_LINK_DOMAIN}/${path}` : Linking.createURL(path);
     const profile = await getMyProfile();
     const name = profile?.displayName || "Someone";
-    await Share.share({ message: `🏸 Hey,\n"${name}" ${action} on CourtSide:\n${url}` });
+    await Share.share({ message: `🏸 Hey,\n${name} ${action} on CourtSide:\n${url}` });
   } catch (e) {
     toast((e as Error).message || "Could not share the link", "error");
   }
