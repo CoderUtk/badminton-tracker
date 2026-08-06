@@ -12,6 +12,7 @@ test("maps bracket cells from the RPC response", async () => {
         name: "Smash Cup", status: "live", round: 1, idx: 0, match_id: "m-1",
         entrant_a: "e1", entrant_b: "e2", winner_entrant: null,
         entrant_a_name: "Ann", entrant_b_name: "Bo",
+        court: null, match_status: null, score_summary: null,
       },
     ],
     error: null,
@@ -28,8 +29,34 @@ test("maps bracket cells from the RPC response", async () => {
         round: 1, idx: 0, matchId: "m-1",
         entrantA: "e1", entrantB: "e2", winnerEntrant: null,
         entrantAName: "Ann", entrantBName: "Bo",
+        court: null, matchStatus: null, scoreSummary: null,
       },
     ],
+  });
+});
+
+test("carries court and live score through for a match in progress", async () => {
+  rpc.mockResolvedValue({
+    data: [
+      {
+        name: "Smash Cup", status: "live", round: 1, idx: 0, match_id: "m-1",
+        entrant_a: "e1", entrant_b: "e2", winner_entrant: null,
+        entrant_a_name: "Ann", entrant_b_name: "Bo",
+        court: "2", match_status: "live",
+        score_summary: { games: [], current: { A: 11, B: 7 } },
+      },
+    ],
+    error: null,
+  });
+
+  const view = await getTournamentSpectatorView("t-1");
+
+  expect(view?.cells[0]).toEqual({
+    round: 1, idx: 0, matchId: "m-1",
+    entrantA: "e1", entrantB: "e2", winnerEntrant: null,
+    entrantAName: "Ann", entrantBName: "Bo",
+    court: "2", matchStatus: "live",
+    scoreSummary: { games: [], current: { A: 11, B: 7 } },
   });
 });
 
@@ -39,6 +66,7 @@ test("returns an empty cell list for a tournament with no bracket yet", async ()
       name: "Smash Cup", status: "draft", round: null, idx: null, match_id: null,
       entrant_a: null, entrant_b: null, winner_entrant: null,
       entrant_a_name: null, entrant_b_name: null,
+      court: null, match_status: null, score_summary: null,
     }],
     error: null,
   });
