@@ -6,11 +6,16 @@ jest.mock("expo-linking", () => ({ createURL: (p: string) => createURL(p) }));
 
 jest.mock("../src/lib/toast", () => ({ toast: jest.fn() }));
 
+const getMyProfile = jest.fn().mockResolvedValue(null);
+jest.mock("../src/repos/profileRepo", () => ({ getMyProfile: () => getMyProfile() }));
+
 afterEach(() => {
   jest.resetModules();
   delete process.env.EXPO_PUBLIC_JOIN_LINK_DOMAIN;
   share.mockClear();
   createURL.mockClear();
+  getMyProfile.mockClear();
+  getMyProfile.mockResolvedValue(null);
 });
 
 test("builds an https join link when the domain is configured", async () => {
@@ -28,5 +33,14 @@ test("falls back to the custom scheme when no domain is configured", async () =>
   expect(createURL).toHaveBeenCalledWith("join/club/abc");
   expect(share).toHaveBeenCalledWith({
     message: "Join Smash Club on CourtSide:\nbadminton://join/club/abc",
+  });
+});
+
+test("appends the sharer's display name when signed in", async () => {
+  getMyProfile.mockResolvedValue({ displayName: "Utkarsh" });
+  const { shareJoinLink } = require("../src/lib/shareJoin");
+  await shareJoinLink("join/club/abc", "Join Smash Club on CourtSide:");
+  expect(share).toHaveBeenCalledWith({
+    message: "Join Smash Club on CourtSide:\nbadminton://join/club/abc\n\n— Utkarsh",
   });
 });

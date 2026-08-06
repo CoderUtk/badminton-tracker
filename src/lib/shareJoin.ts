@@ -1,6 +1,7 @@
 import { Share } from "react-native";
 import * as Linking from "expo-linking";
 import { toast } from "./toast";
+import { getMyProfile } from "../repos/profileRepo";
 
 /**
  * Vercel-hosted domain for join links. Falls back to the badminton:// custom
@@ -17,7 +18,9 @@ const JOIN_LINK_DOMAIN = process.env.EXPO_PUBLIC_JOIN_LINK_DOMAIN;
 export async function shareJoinLink(path: string, message: string): Promise<void> {
   try {
     const url = JOIN_LINK_DOMAIN ? `https://${JOIN_LINK_DOMAIN}/${path}` : Linking.createURL(path);
-    await Share.share({ message: `${message}\n${url}` });
+    const profile = await getMyProfile();
+    const from = profile?.displayName ? `\n\n— ${profile.displayName}` : "";
+    await Share.share({ message: `${message}\n${url}${from}` });
   } catch (e) {
     toast((e as Error).message || "Could not share the link", "error");
   }
