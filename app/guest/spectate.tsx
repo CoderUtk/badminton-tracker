@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { StyleSheet, Text, TextInput, View } from "react-native";
-import { useRouter } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { parseJoinTarget, joinRouteFor } from "../../src/lib/joinLink";
 import { toast } from "../../src/lib/toast";
 import FormScreen from "../../src/components/FormScreen";
@@ -22,6 +22,7 @@ export default function GuestSpectate() {
 
   return (
     <FormScreen contentContainerStyle={s.scroll}>
+      <Stack.Screen options={{ title: "Spectate" }} />
       <View style={s.hero}>
         <Text style={s.eyebrow}>SPECTATE</Text>
         <Text style={s.headline}>Watch a tournament</Text>
