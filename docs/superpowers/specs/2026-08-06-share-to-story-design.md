@@ -9,20 +9,26 @@ Three result-card types, four entry points, one capture/share pipeline. No depen
 ## Content Types
 
 ### MatchResultCard
-- Two team blocks: player names (`F.semibold`), winning team gets `C.accent` cyan glow (`textGlow()`) + "WINNER" pill in `C.red`.
+- Two team blocks: small avatar circle beside each player name (see Avatars below), player names (`F.semibold`), winning team gets `C.accent` cyan glow (`textGlow()`) + "WINNER" pill in `C.red`.
 - Score: huge `F.display` (RussoOne) numerals, `C.text` white, visual centerpiece.
 - Date + club/session name below score, `C.text3`.
 
 ### SessionResultCard
 - Same shell/watermark as match card.
-- Center: session name (`F.display`, smaller than match score) + top 3 standings rows (rank, name, win-loss) styled like existing card-list rows (`radius.md`, `C.card` background).
+- Center: session name (`F.display`, smaller than match score) + top 3 standings rows (rank, avatar, name, win-loss) styled like existing card-list rows (`radius.md`, `C.card` background), avatar sized/positioned like the existing row avatar in `sessions/[id].tsx`.
 
 ### TournamentResultCard (champion card, v1 scope — no bracket rendering)
 - Trophy icon + "CHAMPION" pill (`C.accent` glow).
+- Larger hero avatar above the champion name(s) (see Avatars below).
 - Champion name(s): huge `F.display`.
 - Runner-up below, smaller.
 - Tournament name + date.
 - Shown only when tournament status is complete.
+
+### Avatars (forward-compat for the upcoming profile-picture feature)
+No avatar/photo field exists in the schema yet — it's a separate upcoming feature. Each card accepts an optional `avatarUrl?: string | null` per player, so no rework is needed once it ships:
+- Present → circular `Image` at the card's avatar slot.
+- Absent (current default, always today) → same initials-circle fallback already used throughout the app (`C.cardHi` background, first-letter initial in `F.display`, e.g. `app/(app)/profile.tsx:130`, `app/(app)/sessions/[id].tsx:366`) — not a blank space, just the existing avatar pattern.
 
 ### Shared card shell (all three types)
 - Canvas: 1080×1920 (native IG Story size).
