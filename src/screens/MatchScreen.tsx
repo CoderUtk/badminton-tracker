@@ -10,6 +10,8 @@ import { useMatchStore } from "../stores/matchStore";
 import Court from "../components/Court";
 import Icon, { type IconName } from "../components/Icon";
 import PressableScale from "../components/PressableScale";
+import MatchResultCard from "../components/share/MatchResultCard";
+import { captureAndShare } from "../lib/share/captureAndShare";
 import { C, F, glow, textGlow } from "../theme";
 
 const DEBOUNCE_MS = 500;
@@ -91,6 +93,7 @@ export default function MatchScreen({
     return close;
   }, [matchId, open, close, record.config]);
 
+  const shareCardRef = useRef<View>(null);
   const lockedUntil = useRef(0);
   // Tick wall-clock; elapsed is derived from the match's start timestamp so it
   // survives pausing/leaving and resuming (no reset to 0).
@@ -146,7 +149,18 @@ export default function MatchScreen({
           }}
         >
           <Text style={s.bannerText}>{banner}</Text>
-          {state.phase === "match_over" && <Text style={s.bannerSub}>Tap to close</Text>}
+          {state.phase === "match_over" && (
+            <>
+              <Text style={s.bannerSub}>Tap to close</Text>
+              <PressableScale
+                style={s.shareButton}
+                onPress={(e) => { e.stopPropagation(); void captureAndShare(shareCardRef); }}
+              >
+                <Icon name="share-social-outline" size={20} color={C.text} />
+                <Text style={s.shareButtonText}>Share to Story</Text>
+              </PressableScale>
+            </>
+          )}
         </Pressable>
       ) : (
         <Court state={state} />
@@ -285,6 +299,12 @@ export default function MatchScreen({
           </>
         )}
       </View>
+
+      {state.phase === "match_over" && (
+        <View ref={shareCardRef} collapsable={false} style={s.offscreenCard}>
+          <MatchResultCard record={record} />
+        </View>
+      )}
     </View>
   );
 }
@@ -360,6 +380,12 @@ const s = StyleSheet.create({
   },
   bannerText: { color: C.text, fontSize: 20, fontWeight: "700", textAlign: "center", padding: 12 },
   bannerSub: { color: C.text2, fontSize: 13 },
+  shareButton: {
+    flexDirection: "row", alignItems: "center", gap: 8, marginTop: 16,
+    backgroundColor: C.cardHi, borderRadius: 999, paddingHorizontal: 20, paddingVertical: 10,
+  },
+  shareButtonText: { color: C.text, fontFamily: F.semibold, fontSize: 15 },
+  offscreenCard: { position: "absolute", top: -3000, left: 0 },
   meta: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 4 },
   metaText: { color: C.text2, fontSize: 12 },
   dots: { flexDirection: "row", gap: 3 },
