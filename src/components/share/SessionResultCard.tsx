@@ -26,7 +26,7 @@ export default function SessionResultCard({
           {top.map((p, i) => (
             <View key={p.name} style={s.row}>
               <Text style={s.rank}>{i + 1}</Text>
-              <Avatar name={p.name} avatarUrl={avatarUrls[p.name]} size={48} />
+              <Avatar name={p.name} avatarUrl={avatarUrls[p.name]} size={64} />
               <Text style={s.name}>{truncateName(p.name)}</Text>
               <Text style={s.record}>{p.wins}-{p.losses}</Text>
             </View>
@@ -38,15 +38,15 @@ export default function SessionResultCard({
 }
 
 const s = StyleSheet.create({
-  root: { width: "100%", alignItems: "center", gap: 20 },
-  title: { color: C.text, fontFamily: F.display, fontSize: 40, letterSpacing: 1 },
-  date: { color: C.text3, fontFamily: F.body, fontSize: 20, marginBottom: 12 },
-  rows: { width: "100%", gap: 12 },
+  root: { width: "100%", alignItems: "center", gap: 32 },
+  title: { color: C.text, fontFamily: F.display, fontSize: 56, letterSpacing: 1 },
+  date: { color: C.text3, fontFamily: F.body, fontSize: 24, marginBottom: 16 },
+  rows: { width: "100%", gap: 20 },
   row: {
-    flexDirection: "row", alignItems: "center", gap: 16,
-    backgroundColor: C.card, borderRadius: radius.md, padding: 16,
+    flexDirection: "row", alignItems: "center", gap: 20,
+    backgroundColor: C.card, borderRadius: radius.md, padding: 22,
   },
-  rank: { color: C.text2, fontFamily: F.display, fontSize: 28, width: 36 },
-  name: { flex: 1, color: C.text, fontFamily: F.semibold, fontSize: 24 },
-  record: { color: C.text2, fontFamily: F.medium, fontSize: 22 },
+  rank: { color: C.text2, fontFamily: F.display, fontSize: 36, width: 46 },
+  name: { flex: 1, color: C.text, fontFamily: F.semibold, fontSize: 30 },
+  record: { color: C.text2, fontFamily: F.medium, fontSize: 28 },
 });
