@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
@@ -19,9 +19,12 @@ import Sheet from "../../../src/components/Sheet";
 import BottomPanel from "../../../src/components/BottomPanel";
 import MenuButton from "../../../src/components/MenuButton";
 import Icon from "../../../src/components/Icon";
+import PressableScale from "../../../src/components/PressableScale";
 import TournamentConfigTab from "../../../src/components/TournamentConfigTab";
 import TournamentPlayersTab from "../../../src/components/TournamentPlayersTab";
 import TournamentScorersTab from "../../../src/components/TournamentScorersTab";
+import TournamentResultCard from "../../../src/components/share/TournamentResultCard";
+import { captureAndShare } from "../../../src/lib/share/captureAndShare";
 import { toast } from "../../../src/lib/toast";
 import { C, F, press } from "../../../src/theme";
 
@@ -46,6 +49,7 @@ export default function TournamentBracket() {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [starting, setStarting] = useState(false);
+  const shareCardRef = useRef<View>(null);
 
   const reload = useCallback(() => {
     if (!id) return;
@@ -126,6 +130,12 @@ export default function TournamentBracket() {
 
   const champ = bracketStatus(bracket).champion;
   const champName = champ ? entrants.find((e) => e.id === champ)?.name : null;
+  const maxRound = bracket.length ? Math.max(...bracket.map((m) => m.round)) : 0;
+  const finalMatch = bracket.find((m) => m.round === maxRound && m.index === 0);
+  const runnerUpId = finalMatch && champ
+    ? (finalMatch.entrantA === champ ? finalMatch.entrantB : finalMatch.entrantA)
+    : null;
+  const runnerUpName = runnerUpId ? entrants.find((e) => e.id === runnerUpId)?.name ?? "Runner-up" : "TBD";
   const isAdmin = clubRole === "owner" || clubRole === "admin" || isTournamentAdmin;
   // A legacy draft created before the two-phase split can already hold a
   // full bracket (status flipped to "live" only on the first finished
@@ -204,7 +214,21 @@ export default function TournamentBracket() {
       />
       <Text style={{ color: C.text, fontFamily: F.bold, fontSize: 18, marginBottom: 4 }}>{tournament.name}</Text>
       {champName ? (
-        <Text style={{ color: C.red, fontFamily: F.semibold, marginBottom: 8 }}>🏆 Champion: {champName}</Text>
+        <>
+          <Text style={{ color: C.red, fontFamily: F.semibold, marginBottom: 8 }}>🏆 Champion: {champName}</Text>
+          <PressableScale style={s.shareButton} onPress={() => void captureAndShare(shareCardRef)}>
+            <Icon name="share-social-outline" size={18} color={C.text} />
+            <Text style={s.shareButtonText}>Share Champion Card</Text>
+          </PressableScale>
+          <View ref={shareCardRef} collapsable={false} style={s.offscreenCard}>
+            <TournamentResultCard
+              tournamentName={tournament.name}
+              date={tournament.createdAt}
+              champion={{ name: champName }}
+              runnerUp={{ name: runnerUpName }}
+            />
+          </View>
+        </>
       ) : null}
 
       {!isDraft ? (
@@ -294,4 +318,11 @@ const s = StyleSheet.create({
   tabOn: { borderColor: C.red, backgroundColor: "rgba(255,59,48,0.12)" },
   tabText: { color: C.text2, fontFamily: F.semibold, fontSize: 14 },
   tabTextOn: { color: C.text },
+  shareButton: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: C.card, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 10,
+    alignSelf: "flex-start", marginBottom: 8,
+  },
+  shareButtonText: { color: C.text, fontSize: 14, fontWeight: "700" },
+  offscreenCard: { position: "absolute", top: -3000, left: 0 },
 });
