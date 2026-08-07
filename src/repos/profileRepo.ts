@@ -2,7 +2,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import { decode } from "base64-arraybuffer";
 import { supabase } from "../lib/supabase";
 
-export type Profile = { id: string; displayName: string; displayNameSet: boolean; age: number | null; hand: Hand | null; avatarUrl: string | null };
+export type Profile = { id: string; displayName: string; displayNameSet: boolean; age: number | null; hand: Hand | null; avatarUrl: string | null; username: string };
 export type Hand = "left" | "right";
 
 // The root Gate caches the profile to decide whether to show the welcome
@@ -24,7 +24,7 @@ export async function getMyProfile(): Promise<Profile | null> {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, display_name, display_name_set, age, hand, avatar_url")
+    .select("id, display_name, display_name_set, age, hand, avatar_url, username")
     .eq("id", uid)
     .maybeSingle();
   if (error || !data) return null;
@@ -36,6 +36,7 @@ export async function getMyProfile(): Promise<Profile | null> {
     age: (data.age as number | null) ?? null,
     hand: (data.hand as Hand | null) ?? null,
     avatarUrl: (data.avatar_url as string | null) ?? null,
+    username: (data.username as string | null) ?? "",
   };
 }
 
@@ -118,4 +119,23 @@ export async function removeAvatar(): Promise<void> {
   const { error } = await supabase.from("profiles").update({ avatar_url: null }).eq("id", uid);
   if (error) throw new Error(error.message);
   listeners.forEach((l) => l());
+}
+
+/**
+ * Change the signed-in user's handle. Returns the canonical (lowercased)
+ * value the server stored.
+ *
+ * Goes through the set_username RPC rather than a column update: the direct
+ * update grant on profiles.username is revoked, and only the RPC enforces the
+ * 30-day release hold and writes the username_history row (see
+ * 0029_usernames.sql).
+ */
+export async function setUsername(username: string): Promise<string> {
+  if (!supabase) throw new Error("Sign in to change your username");
+  const { data, error } = await supabase.rpc("set_username", {
+    p_username: username.trim().toLowerCase(),
+  });
+  if (error) throw new Error(error.message);
+  listeners.forEach((l) => l());
+  return data as string;
 }

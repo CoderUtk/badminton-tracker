@@ -146,26 +146,23 @@ The seed is `display_name` only. Email is deliberately not used as a fallback: d
 
 ### New-user trigger
 
-`handle_new_user` already runs on `auth.users` insert and seeds `display_name` and `avatar_url`. It gains a username so no account can ever exist without one:
+`handle_new_user` already runs on `auth.users` insert. It gains a username so no account can ever exist without one.
+
+> **Correction — this section shipped a defect.** As originally written, this spec printed a `handle_new_user` body copied from `0001_init.sql` and described the function as one that "seeds `display_name` and `avatar_url`". That description was stale as of `0010_personal_clubs.sql`. The live function at the time also created a Personal club and an owner `club_members` row (`0010`, restored by `0020`) and coalesced a null email before `split_part` (`0019`).
+>
+> `0029` and `0030` were written from this spec and dropped both fixes in production: new accounts got no Personal club (and so could not create a standalone tournament, since `tournaments.club_id` is NOT NULL), and anonymous sign-in 500'd on the `display_name` NOT NULL constraint. `0031_handle_new_user_restore.sql` repairs both and backfills the gap.
+>
+> Note `0020`'s own header records `0019` making this identical mistake. That makes this the *third* from-scratch rewrite of this function to silently drop an earlier fix. **Never write this function from a spec, a memory, or `0001_init.sql`.** Read every migration that has defined it — currently `0001`, `0010`, `0019`, `0020`, `0029`, `0030`, `0031` — and treat the newest as the base. `0031`'s header comment carries that history.
+
+The username seeding this spec actually calls for is one added argument to the profile insert:
 
 ```sql
-create or replace function public.handle_new_user()
-returns trigger language plpgsql security definer set search_path = public as $$
-declare v_name text;
-begin
-  v_name := coalesce(new.raw_user_meta_data ->> 'full_name', split_part(new.email, '@', 1));
-  insert into public.profiles (id, display_name, avatar_url, username)
-  values (
-    new.id,
-    v_name,
-    new.raw_user_meta_data ->> 'avatar_url',
     public.generate_username(nullif(trim(v_name), ''))
-  );
-  return new;
-end $$;
 ```
 
-Here the email local part *can* reach the seed, because `display_name` itself already defaults to it — that exposure predates this change and is not made worse.
+where `v_name` is the function's existing display-name expression. See `0031_handle_new_user_restore.sql` for the authoritative body.
+
+The email local part *can* reach the seed, because `display_name` itself already defaults to it — that exposure predates this change and is not made worse.
 
 ### `set_username` RPC
 

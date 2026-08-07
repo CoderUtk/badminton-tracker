@@ -4,9 +4,9 @@ import { useFocusEffect, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { supabase } from "../../src/lib/supabase";
 import { useSession } from "../../src/stores/session";
-import { getMyProfile, setDisplayName as saveProfileName, setProfileDetails, uploadAvatar, removeAvatar, type Hand } from "../../src/repos/profileRepo";
+import { getMyProfile, setDisplayName as saveProfileName, setProfileDetails, setUsername as saveProfileUsername, uploadAvatar, removeAvatar, type Hand } from "../../src/repos/profileRepo";
 import SegmentedControl from "../../src/components/SegmentedControl";
-import { validateName } from "../../src/lib/validate";
+import { validateName, validateUsername } from "../../src/lib/validate";
 import { toast } from "../../src/lib/toast";
 import { getPlayerAnalytics, type PlayerAnalytics } from "../../src/repos/statsRepo";
 import Icon from "../../src/components/Icon";
@@ -38,6 +38,10 @@ export default function Profile() {
   const [avatarSheetOpen, setAvatarSheetOpen] = useState(false);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [avatarBusy, setAvatarBusy] = useState(false);
+  const [username, setUsername] = useState<string>("");
+  const [usernameDraft, setUsernameDraft] = useState<string>("");
+  const [editingUsername, setEditingUsername] = useState(false);
+  const [usernameBusy, setUsernameBusy] = useState(false);
 
   useEffect(() => {
     void getMyProfile().then((p) => {
@@ -49,6 +53,7 @@ export default function Profile() {
       setHand(p?.hand ?? "right");
       setSavedHand(p?.hand ?? "right");
       setAvatarUrl(p?.avatarUrl ?? null);
+      setUsername(p?.username ?? "");
     });
   }, []);
 
@@ -95,6 +100,33 @@ export default function Profile() {
   // Abandoning the edit must not leave the draft in the field — the hero reads
   // savedName, but the input is bound to displayName.
   const cancelNameEdit = () => { setDisplayName(savedName); setEditingName(false); };
+
+  const usernameError = validateUsername(usernameDraft);
+
+  const openUsernameEdit = useCallback(() => {
+    setUsernameDraft(username);
+    setEditingUsername(true);
+  }, [username]);
+
+  const cancelUsernameEdit = useCallback(() => {
+    setEditingUsername(false);
+    setUsernameDraft(username);
+  }, [username]);
+
+  const saveUsername = useCallback(() => {
+    const v = usernameDraft.trim().toLowerCase();
+    if (usernameError) { toast(usernameError, "error"); return; }
+    if (v === username) { setEditingUsername(false); return; }
+    setUsernameBusy(true);
+    saveProfileUsername(v)
+      .then((saved) => {
+        setUsername(saved);
+        setEditingUsername(false);
+        toast("Username updated", "success");
+      })
+      .catch((e: Error) => toast(e.message || "Could not save your username", "error"))
+      .finally(() => setUsernameBusy(false));
+  }, [usernameDraft, usernameError, username]);
 
   const openDetailsEdit = () => {
     setAge(savedAge);
@@ -222,6 +254,50 @@ export default function Profile() {
                 <Text style={s.modalCancelText}>Cancel</Text>
               </Pressable>
               <Pressable style={[s.modalBtn, s.modalSave, !!nameError && { opacity: 0.5 }]} disabled={!!nameError} onPress={saveDisplayName}>
+                <Text style={s.modalSaveText}>Save</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Username: the account's global handle. Public by design — the helper
+          text in the editor is the whole expectation-setting mechanism, since
+          nothing can search for it yet. */}
+      <Pressable style={s.detailsCard} onPress={openUsernameEdit} accessibilityLabel="Edit username">
+        <Icon name="person-outline" color={C.text2} size={16} />
+        <Text style={s.detailsText}>{username ? `@${username}` : "Username unavailable — check your connection"}</Text>
+        <Icon name="create-outline" color={C.text2} size={15} />
+      </Pressable>
+
+      <Modal visible={editingUsername} transparent animationType="fade" onRequestClose={cancelUsernameEdit}>
+        <Pressable style={s.modalBack} onPress={cancelUsernameEdit}>
+          <Pressable style={s.modalCard} onPress={(e) => e.stopPropagation()}>
+            <Text style={s.cardTitle}>Username</Text>
+            <TextInput
+              style={s.nameInput}
+              placeholder="yourname"
+              placeholderTextColor={C.text2}
+              value={usernameDraft}
+              onChangeText={(t) => setUsernameDraft(t.toLowerCase())}
+              onSubmitEditing={saveUsername}
+              returnKeyType="done"
+              autoFocus
+              autoCapitalize="none"
+              autoCorrect={false}
+              maxLength={20}
+            />
+            <Text style={s.usernameHint}>Your username is public. Other players can find you by it.</Text>
+            {usernameError ? <Text style={s.err}>{usernameError}</Text> : null}
+            <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
+              <Pressable style={[s.modalBtn, s.modalCancel]} onPress={cancelUsernameEdit}>
+                <Text style={s.modalCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[s.modalBtn, s.modalSave, (!!usernameError || usernameBusy) && { opacity: 0.5 }]}
+                disabled={!!usernameError || usernameBusy}
+                onPress={saveUsername}
+              >
                 <Text style={s.modalSaveText}>Save</Text>
               </Pressable>
             </View>
@@ -430,6 +506,7 @@ const s = StyleSheet.create({
   avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: C.red, alignItems: "center", justifyContent: "center", ...glow(C.red, 12, 0.4) },
   avatarText: { color: C.text, fontSize: 24, fontFamily: F.display },
   avatarImage: { width: 56, height: 56, borderRadius: 28 },
+  usernameHint: { color: C.text2, fontSize: 12, lineHeight: 16, marginTop: 2 },
   name: { color: C.text, fontSize: 22, fontFamily: F.display, letterSpacing: 0.5 },
   sub: { color: C.text2, fontSize: 13, marginTop: 2, fontFamily: F.body },
   statGrid: { flexDirection: "row", gap: 8 },
