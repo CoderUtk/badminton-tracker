@@ -23,14 +23,14 @@ test("first win earns first_win and shows partial toward 10-win badge", () => {
 });
 
 test("five-win streak earns the streak badge", () => {
-  const b = evaluateBadges({ ...base, played: 6, wins: 5, form: ["W", "W", "W", "W", "W"] } as any, noProfile);
+  const b = evaluateBadges({ ...base, played: 6, wins: 5, winStreak: 5 } as any, noProfile);
   expect(b.find((x) => x.id === "streak_5")!.earned).toBe(true);
 });
 
 test("streak counts from the most recent match (form is newest-first)", () => {
-  const lost = evaluateBadges({ ...base, played: 6, wins: 5, form: ["L", "W", "W", "W", "W", "W"] } as any, noProfile);
+  const lost = evaluateBadges({ ...base, played: 6, wins: 5, winStreak: 0 } as any, noProfile);
   expect(lost.find((x) => x.id === "streak_5")!.earned).toBe(false);
-  const hot = evaluateBadges({ ...base, played: 6, wins: 5, form: ["W", "W", "W", "W", "W", "L"] } as any, noProfile);
+  const hot = evaluateBadges({ ...base, played: 6, wins: 5, winStreak: 5 } as any, noProfile);
   expect(hot.find((x) => x.id === "streak_5")!.earned).toBe(true);
 });
 

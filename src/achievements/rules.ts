@@ -13,15 +13,9 @@ type Analytics = {
 type ProfileFacts = { age: number | null; hand: Hand | null; avatarUrl: string | null };
 
 const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
-const currentStreak = (form: ("W" | "L")[]) => {
-  let n = 0;
-  for (let i = 0; i < form.length && form[i] === "W"; i++) n++;
-  return n;
-};
 const bool = (earned: boolean) => clamp01(earned ? 1 : 0);
 
 export function evaluateBadges(a: Analytics, profile: ProfileFacts): EarnedBadge[] {
-  const streak = currentStreak(a.form);
   const profileFieldsSet = [profile.avatarUrl, profile.age !== null, profile.hand !== null]
     .filter(Boolean).length;
 
@@ -33,7 +27,7 @@ export function evaluateBadges(a: Analytics, profile: ProfileFacts): EarnedBadge
     { id: "wins_10", title: "Contender", description: "Win 10 matches", icon: "trophy",
       earned: a.wins >= 10, progress: clamp01(a.wins / 10) },
     { id: "streak_5", title: "On Fire", description: "Win 5 in a row", icon: "flag",
-      earned: streak >= 5, progress: clamp01(streak / 5) },
+      earned: a.winStreak >= 5, progress: clamp01(a.winStreak / 5) },
     { id: "sharp", title: "Sharp", description: "Reach a 60% win rate (min 10 games)", icon: "scoreboard-outline",
       earned: a.played >= 10 && a.winPct >= 60, progress: clamp01(Math.min(a.played / 10, a.winPct / 60)) },
 

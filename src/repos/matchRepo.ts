@@ -161,6 +161,19 @@ export async function listMatches(): Promise<MatchRecord[]> {
   return rows.map(rowToRecord);
 }
 
+/** Every match on the device, uncapped — unlike listMatches(), which caps at
+ *  100 rows for the Matches list screen's performance. Used by achievement
+ *  analytics, which needs full lifetime history to correctly evaluate
+ *  milestone badges (e.g. 100 wins). */
+export async function listAllMatches(): Promise<MatchRecord[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.getAllAsync<Record<string, unknown>>(
+    "select * from matches order by created_at desc"
+  );
+  return rows.map(rowToRecord);
+}
+
 export async function listMatchesForSession(sessionId: string): Promise<MatchRecord[]> {
   const db = await getDb();
   if (!db) return [];
