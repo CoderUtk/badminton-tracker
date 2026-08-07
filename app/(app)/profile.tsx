@@ -265,7 +265,7 @@ export default function Profile() {
           nothing can search for it yet. */}
       <Pressable style={s.detailsCard} onPress={openUsernameEdit} accessibilityLabel="Edit username">
         <Icon name="person-outline" color={C.text2} size={16} />
-        <Text style={s.detailsText}>{username ? `@${username}` : "Username not set"}</Text>
+        <Text style={s.detailsText}>{username ? `@${username}` : "Username unavailable — check your connection"}</Text>
         <Icon name="create-outline" color={C.text2} size={15} />
       </Pressable>
 
