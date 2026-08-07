@@ -60,10 +60,15 @@ test("validateUsername rejects bad length", () => {
 });
 
 test("validateUsername rejects illegal characters and edge underscores", () => {
-  expect(validateUsername("_rahul")).not.toBeNull();
-  expect(validateUsername("rahul_")).not.toBeNull();
-  expect(validateUsername("rah ul")).not.toBeNull();
-  expect(validateUsername("rahul!")).not.toBeNull();
+  const expectedFormatError = "Usernames are 3-20 characters, using letters, numbers, and underscores";
+  expect(validateUsername("_rahul")).toBe(expectedFormatError);
+  expect(validateUsername("rahul_")).toBe(expectedFormatError);
+  expect(validateUsername("rah ul")).toBe(expectedFormatError);
+  expect(validateUsername("rahul!")).toBe(expectedFormatError);
+});
+
+test("validateUsername rejects whitespace-only input", () => {
+  expect(validateUsername("   ")).toBe("Username is required");
 });
 
 test("validateUsername rejects reserved words", () => {
