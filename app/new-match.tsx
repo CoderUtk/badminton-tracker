@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { defaultConfig, MatchConfig, replay } from "../src/engine";
+import { defaultConfig, GAME_FORMATS, MatchConfig, replay } from "../src/engine";
 import { createMatch } from "../src/repos/matchRepo";
 import { Club, listRealClubs, listPlayers } from "../src/repos/clubRepo";
 import Court from "../src/components/Court";
@@ -72,7 +72,7 @@ export default function NewMatch() {
       matchType: doubles ? "doubles" : "singles",
       teams,
       pointsToWin: points,
-      cap: points + 9, // 21→30 per BWF; shorter formats scale the same way
+      cap: GAME_FORMATS[points].maxScore, // 11->15, 15->20, 21->30
       intervalAt: points === 21 ? 11 : 0,
       bestOf,
       firstServer: { team: serverTeam, playerIndex: serverPlayer },
