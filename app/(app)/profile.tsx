@@ -198,7 +198,7 @@ export default function Profile() {
   useEffect(load, [load]);
 
   const initial = me.slice(0, 1).toUpperCase();
-  const badges = a ? evaluateBadges(a) : [];
+  const badges = a ? evaluateBadges(a, { age, hand, avatarUrl }) : [];
 
   return (
     <>
