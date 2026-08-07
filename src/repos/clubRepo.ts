@@ -153,7 +153,7 @@ export async function removePlayer(clubPlayerId: string): Promise<void> {
 
 /**
  * A non-owner member leaves a club. Blocked server-side if the caller is
- * the owner or has tournament history (see 0026_leave_club.sql).
+ * the owner or has tournament history (see 0028_leave_club.sql).
  */
 export async function leaveClub(clubId: string): Promise<void> {
   if (!supabase) throw new Error("Sign in to leave a club");

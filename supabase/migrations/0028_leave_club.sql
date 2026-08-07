@@ -1,4 +1,6 @@
--- 0026_leave_club.sql
+-- 0028_leave_club.sql
+-- Renumbered from 0026: that version was already taken by 0026_avatar_storage.sql,
+-- so `supabase db push` treated this file as applied and silently skipped it.
 -- Lets a non-owner member remove themselves from a club: their own
 -- club_members row and, if present, their own club_players roster row.
 -- Mirrors the guards already in remove_club_player
