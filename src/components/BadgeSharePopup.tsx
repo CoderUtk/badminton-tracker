@@ -30,7 +30,7 @@ export default function BadgeSharePopup({
         <View style={s.panel}>
           <Text style={s.title}>{badge.title}</Text>
           <View style={[s.previewClip, { width: PREVIEW_W, height: PREVIEW_H }]}>
-            <View style={{ width: CARD_W, height: CARD_H, transform: [{ scale: PREVIEW_SCALE }], position: "absolute", left: 0, top: 0 }}>
+            <View style={{ width: CARD_W, height: CARD_H, transform: [{ scale: PREVIEW_SCALE }], transformOrigin: "0 0", position: "absolute", left: 0, top: 0 }}>
               <BadgeResultCard badge={badge} playerName={playerName} />
             </View>
           </View>
