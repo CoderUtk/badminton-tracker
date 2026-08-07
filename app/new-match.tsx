@@ -200,8 +200,14 @@ export default function NewMatch() {
       <Text style={s.hint}>First to {Math.floor(bestOf / 2) + 1} {bestOf === 1 ? "game" : "games"} · best of {bestOf}</Text>
 
       <Text style={s.h}>First serve</Text>
+      <Text style={s.hint}>Service always starts from the right court.</Text>
       <View style={s.clubRow}>
-        {Array.from({ length: needed }, (_, i) => (
+        {/* Doubles: only the right-court player of each team (slots 0 and 2)
+            can serve first — the laws of badminton require the first serve
+            of a game to come from the right service court. Use "Swap
+            Team A/B" above to change who stands on the right before picking.
+            Singles has no left/right player distinction, so both slots stay. */}
+        {(doubles ? [0, 2] : Array.from({ length: needed }, (_, i) => i)).map((i) => (
           <Pressable
             key={i}
             style={[s.chip, firstServerIdx === i && s.chipOn]}
