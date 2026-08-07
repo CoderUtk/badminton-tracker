@@ -64,12 +64,12 @@ Without this, a user frees `rahul`, a stranger claims it, and once public profil
 
 ## Data layer
 
-### Migration `0028_usernames.sql`
+### Migration `0029_usernames.sql`
 
-Note: `0026` is used twice in this repo (`0026_avatar_storage.sql`, `0026_leave_club.sql`) and `0027` is taken. `0028` is the next free number — re-check `ls supabase/migrations` immediately before applying, since concurrent work has repeatedly collided on numbering in this project.
+Re-check `ls supabase/migrations | tail -3` immediately before applying. Concurrent sessions have collided on numbering repeatedly in this project, and one such collision (`0026` claimed by both `avatar_storage` and `leave_club`) caused `supabase db push` to silently skip a migration entirely — the version string was already in the ledger, so the second file was treated as applied. `0028` is now `0028_leave_club.sql`, so usernames takes `0029`.
 
 ```sql
--- 0028_usernames.sql
+-- 0029_usernames.sql
 -- A globally unique, human-typeable handle per account. Identity only:
 -- no lookup surface ships with this.
 
