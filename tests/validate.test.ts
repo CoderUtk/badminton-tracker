@@ -42,3 +42,31 @@ test("requireLetter still reports blank and length errors first", () => {
 test("without requireLetter a digits-only name is still allowed", () => {
   expect(validateName("123", "Club name")).toBeNull();
 });
+
+import { validateUsername } from "../src/lib/validate";
+
+test("validateUsername accepts legal handles", () => {
+  expect(validateUsername("abc")).toBeNull();
+  expect(validateUsername("rahul_07")).toBeNull();
+  expect(validateUsername("a".repeat(20))).toBeNull();
+  // Case and surrounding space are normalised, not rejected.
+  expect(validateUsername("  Rahul_07  ")).toBeNull();
+});
+
+test("validateUsername rejects bad length", () => {
+  expect(validateUsername("ab")).toBe("Usernames are 3-20 characters, using letters, numbers, and underscores");
+  expect(validateUsername("a".repeat(21))).toBe("Usernames are 3-20 characters, using letters, numbers, and underscores");
+  expect(validateUsername("")).toBe("Username is required");
+});
+
+test("validateUsername rejects illegal characters and edge underscores", () => {
+  expect(validateUsername("_rahul")).not.toBeNull();
+  expect(validateUsername("rahul_")).not.toBeNull();
+  expect(validateUsername("rah ul")).not.toBeNull();
+  expect(validateUsername("rahul!")).not.toBeNull();
+});
+
+test("validateUsername rejects reserved words", () => {
+  expect(validateUsername("admin")).toBe("That username is reserved");
+  expect(validateUsername("Support")).toBe("That username is reserved");
+});
