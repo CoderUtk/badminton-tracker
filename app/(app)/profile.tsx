@@ -169,6 +169,7 @@ export default function Profile() {
   const badges = a ? evaluateBadges(a) : [];
 
   return (
+    <>
     <FormScreen contentContainerStyle={s.content}>
       {/* Identity */}
       {/* Tap the name to edit it. The name is set once at signup and rarely
@@ -271,28 +272,6 @@ export default function Profile() {
           </Pressable>
         </Pressable>
       </Modal>
-
-      <Sheet
-        visible={avatarSheetOpen}
-        title="Profile picture"
-        actions={[
-          { label: "Take photo", onPress: () => void pickAndUpload("camera") },
-          { label: "Choose from library", onPress: () => void pickAndUpload("library") },
-          ...(avatarUrl ? [{ label: "Remove photo", destructive: true, onPress: () => { setAvatarSheetOpen(false); setConfirmingRemove(true); } }] : []),
-          { label: "Cancel", onPress: () => setAvatarSheetOpen(false) },
-        ]}
-        onClose={() => setAvatarSheetOpen(false)}
-      />
-      <Sheet
-        visible={confirmingRemove}
-        title="Remove profile picture?"
-        message="You'll go back to the default initial-letter avatar."
-        actions={[
-          { label: "Remove", onPress: doRemoveAvatar, destructive: true },
-          { label: "Cancel", onPress: () => setConfirmingRemove(false) },
-        ]}
-        onClose={() => setConfirmingRemove(false)}
-      />
 
       {/* Headline stats */}
       <View style={s.statGrid}>
@@ -400,6 +379,28 @@ export default function Profile() {
         </Pressable>
       )}
     </FormScreen>
+    <Sheet
+      visible={avatarSheetOpen}
+      title="Profile picture"
+      actions={[
+        { label: "Take photo", onPress: () => void pickAndUpload("camera") },
+        { label: "Choose from library", onPress: () => void pickAndUpload("library") },
+        ...(avatarUrl ? [{ label: "Remove photo", destructive: true, onPress: () => { setAvatarSheetOpen(false); setConfirmingRemove(true); } }] : []),
+        { label: "Cancel", onPress: () => setAvatarSheetOpen(false) },
+      ]}
+      onClose={() => setAvatarSheetOpen(false)}
+    />
+    <Sheet
+      visible={confirmingRemove}
+      title="Remove profile picture?"
+      message="You'll go back to the default initial-letter avatar."
+      actions={[
+        { label: "Remove", onPress: doRemoveAvatar, destructive: true },
+        { label: "Cancel", onPress: () => setConfirmingRemove(false) },
+      ]}
+      onClose={() => setConfirmingRemove(false)}
+    />
+    </>
   );
 }
 

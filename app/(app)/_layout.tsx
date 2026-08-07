@@ -1,20 +1,13 @@
 import React from "react";
-import { View } from "react-native";
 import { Tabs } from "expo-router";
 import Icon, { type IconName } from "../../src/components/Icon";
-import { LogoMark } from "../../src/components/Logo";
+import Logo from "../../src/components/Logo";
 import { C } from "../../src/theme";
 
 const icon = (name: IconName) =>
   function TabIcon({ color, size }: { color: string; size: number }) {
     return <Icon name={name} color={color} size={size} />;
   };
-
-export const headerLogo = () => (
-  <View style={{ paddingLeft: 16 }}>
-    <LogoMark size={26} />
-  </View>
-);
 
 export default function AppTabs() {
   return (
@@ -27,7 +20,8 @@ export default function AppTabs() {
         tabBarActiveTintColor: C.red,
         tabBarInactiveTintColor: C.text2,
         sceneStyle: { backgroundColor: C.bg },
-        headerLeft: headerLogo,
+        headerTitle: () => <Logo size={24} />,
+        headerTitleAlign: "center",
       }}
     >
       <Tabs.Screen name="index" options={{ title: "Home", tabBarIcon: icon("home") }} />
