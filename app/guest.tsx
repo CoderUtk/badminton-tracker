@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Linking, Platform, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { supabase } from "../src/lib/supabase";
 import { clearGuestMatchIds } from "../src/lib/guestMatches";
@@ -8,10 +8,16 @@ import Logo from "../src/components/Logo";
 import PressableScale from "../src/components/PressableScale";
 import { C, F } from "../src/theme";
 
+const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.navalo.courtside";
+
 export default function GuestHome() {
   const router = useRouter();
 
   const signIn = async () => {
+    if (Platform.OS === "web") {
+      void Linking.openURL(PLAY_STORE_URL);
+      return;
+    }
     await clearGuestMatchIds();
     await supabase?.auth.signOut();
     router.replace("/sign-in");
@@ -53,7 +59,11 @@ export default function GuestHome() {
       </PressableScale>
 
       <PressableScale style={s.signIn} onPress={signIn}>
-        <Text style={s.signInText}>Sign in for clubs, tournaments, and more</Text>
+        <Text style={s.signInText}>
+          {Platform.OS === "web"
+            ? "Get the app for clubs, tournaments, and more"
+            : "Sign in for clubs, tournaments, and more"}
+        </Text>
       </PressableScale>
     </View>
   );

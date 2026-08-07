@@ -1,6 +1,6 @@
 import "react-native-gesture-handler";
 import React, { useEffect, useState } from "react";
-import { AppState, Pressable, Text, View } from "react-native";
+import { AppState, Platform, Pressable, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Stack, usePathname, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -12,6 +12,7 @@ import {
   ChakraPetch_600SemiBold, ChakraPetch_700Bold,
 } from "@expo-google-fonts/chakra-petch";
 import { SessionProvider, useSession } from "../src/stores/session";
+import { supabase } from "../src/lib/supabase";
 import { getMyProfile, subscribeProfile } from "../src/repos/profileRepo";
 import { getDb } from "../src/db/db";
 import { startSyncListener } from "../src/sync/runner";
@@ -71,6 +72,12 @@ function Gate({ children }: { children: React.ReactNode }) {
     const inAuth = segments[0] === "(auth)";
     const inWelcome = segments[0] === "welcome";
     if (!session) {
+      if (Platform.OS === "web") {
+        // Web build is guest-only: skip the sign-in screen entirely and go
+        // straight to an anonymous session so it lands on /guest below.
+        void supabase?.auth.signInAnonymously();
+        return;
+      }
       if (!inAuth) {
         // Remember where they were headed; Gate replays it once signed in.
         if (segments[0] === "join") setPendingLink(pathname);
