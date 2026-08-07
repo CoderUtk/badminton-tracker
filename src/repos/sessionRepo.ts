@@ -266,3 +266,22 @@ export async function setAttendance(
     sessionId, playerId, status
   );
 }
+
+/** Non-empty locations for the given session ids, keyed by session id. Used
+ *  by achievements (Explorer) to count distinct venues without matches
+ *  needing to carry their own venue field. */
+export async function getSessionLocations(sessionIds: string[]): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  if (sessionIds.length === 0) return map;
+  const db = await getDb();
+  if (!db) return map;
+  const placeholders = sessionIds.map(() => "?").join(",");
+  const rows = await db.getAllAsync<{ id: string; location: string | null }>(
+    `select id, location from sessions_cache where id in (${placeholders})`,
+    ...sessionIds
+  );
+  for (const r of rows) {
+    if (r.location && r.location.trim()) map.set(r.id, r.location);
+  }
+  return map;
+}
