@@ -5,6 +5,7 @@ import type {
   Positions,
   TeamId,
 } from "./types";
+import { applyPoint, deriveScoringConfig, scoreState, type ScoreState } from "./scoring";
 
 const other = (t: TeamId): TeamId => (t === "A" ? "B" : "A");
 
@@ -32,22 +33,12 @@ function initialState(config: MatchConfig): MatchState {
   };
 }
 
-function isGameOver(s: MatchState, score: Record<TeamId, number>): TeamId | null {
-  const { pointsToWin, cap } = s.config;
-  for (const t of ["A", "B"] as TeamId[]) {
-    const mine = score[t];
-    const theirs = score[other(t)];
-    if (mine === cap) return t;
-    if (mine >= pointsToWin && mine - theirs >= 2) return t;
-  }
-  return null;
-}
-
 function applyRally(s: MatchState, by: TeamId): MatchState {
   if (s.phase !== "playing") {
     throw new Error(`Cannot score a rally while phase is "${s.phase}"`);
   }
-  const score = { ...s.score, [by]: s.score[by] + 1 };
+  const cfg = deriveScoringConfig(s.config.pointsToWin, s.config.cap);
+  const { score, gameWinner } = applyPoint(s.score, by, cfg);
   const rallies = [...s.rallies, by];
   let { servingTeam, servingPlayer } = s;
   const positions = { A: { ...s.positions.A }, B: { ...s.positions.B } };
@@ -70,7 +61,6 @@ function applyRally(s: MatchState, by: TeamId): MatchState {
     servingPlayer = 0;
   }
 
-  const gameWinner = isGameOver(s, score);
   if (gameWinner) {
     const gamesWon = { ...s.gamesWon, [gameWinner]: s.gamesWon[gameWinner] + 1 };
     const needed = Math.floor(s.config.bestOf / 2) + 1;
@@ -170,14 +160,20 @@ export function serverName(s: MatchState): string {
   return s.config.teams[s.servingTeam][s.servingPlayer].name;
 }
 
+/** Current DEUCE/ADVANTAGE/SUDDEN_DEATH/NORMAL/GAME_OVER classification of the live score. */
+export function gameScoreState(s: MatchState): ScoreState {
+  const cfg = deriveScoringConfig(s.config.pointsToWin, s.config.cap);
+  return scoreState(s.score, cfg);
+}
+
 /** "game" | "match" point for a team currently one rally from winning, else null. */
 export function pointSituation(
   s: MatchState
 ): { team: TeamId; kind: "game" | "match" } | null {
   if (s.phase !== "playing" && s.phase !== "interval") return null;
+  const cfg = deriveScoringConfig(s.config.pointsToWin, s.config.cap);
   for (const t of ["A", "B"] as TeamId[]) {
-    const next = { ...s.score, [t]: s.score[t] + 1 };
-    if (isGameOver(s, next)) {
+    if (applyPoint(s.score, t, cfg).gameWinner === t) {
       const needed = Math.floor(s.config.bestOf / 2) + 1;
       const kind = s.gamesWon[t] + 1 === needed ? "match" : "game";
       return { team: t, kind };

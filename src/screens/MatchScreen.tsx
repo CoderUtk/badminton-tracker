@@ -4,7 +4,7 @@ import * as Haptics from "expo-haptics";
 import * as ScreenOrientation from "expo-screen-orientation";
 import { useKeepAwake } from "expo-keep-awake";
 import { useRouter } from "expo-router";
-import { MatchState, pointSituation, serverName, TeamId } from "../engine";
+import { gameScoreState, MatchState, pointSituation, serverName, TeamId } from "../engine";
 import type { MatchRecord } from "../repos/matchRepo";
 import { useMatchStore } from "../stores/matchStore";
 import Court from "../components/Court";
@@ -245,6 +245,16 @@ export default function MatchScreen({
       </PressableScale>
     </View>
   );
+  const scoreState = playing ? gameScoreState(state) : null;
+  const statePillText =
+    !scoreState || scoreState === "NORMAL" || scoreState === "GAME_OVER"
+      ? null
+      : scoreState === "ADVANTAGE"
+      ? `ADVANTAGE — ${teamName(state.score.A > state.score.B ? "A" : "B")}`
+      : scoreState === "SUDDEN_DEATH"
+      ? "SUDDEN DEATH"
+      : "DEUCE";
+
   const scoreBlock = (
     <View style={s.scoreWrap}>
       <View style={s.timerChip}>
@@ -264,6 +274,11 @@ export default function MatchScreen({
           <View style={s.serveSlot}>{state.servingTeam === "B" && <View style={[s.serveDot, { backgroundColor: C.blue }]} />}</View>
         </View>
       </View>
+      {statePillText && (
+        <View style={s.statePill}>
+          <Text style={s.statePillText}>{statePillText}</Text>
+        </View>
+      )}
     </View>
   );
 
@@ -354,6 +369,11 @@ const s = StyleSheet.create({
   serveDot: { width: 8, height: 8, borderRadius: 4 },
   ribbonScore: { minWidth: 42, color: C.text, fontSize: 32, fontFamily: F.display, textAlign: "center", fontVariant: ["tabular-nums"] },
   scoreDivider: { color: C.text3, fontSize: 20, marginHorizontal: 2 },
+  statePill: {
+    alignSelf: "center", backgroundColor: C.card, borderRadius: 999,
+    paddingHorizontal: 12, paddingVertical: 4, borderWidth: 1, borderColor: C.red,
+  },
+  statePillText: { color: C.red, fontSize: 12, fontFamily: F.bold, letterSpacing: 0.6 },
   body: { flex: 1, flexDirection: "row", gap: 8 },
   bodyPortrait: { flexDirection: "column" },
   rail: {
