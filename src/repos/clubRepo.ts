@@ -42,6 +42,14 @@ export async function addGuestPlayer(clubId: string, name: string): Promise<void
   await refreshClubs();
 }
 
+/** Adds an accepted friend directly to a club's roster, skipping the invite-code flow. Owners/admins only (enforced by the RPC). */
+export async function addFriendToClub(clubId: string, friendId: string): Promise<void> {
+  if (!supabase) throw new Error("Sign in to add players");
+  const { error } = await supabase.rpc("add_friend_to_club", { p_club_id: clubId, p_friend_id: friendId });
+  if (error) throw new Error(error.message);
+  await refreshClubs();
+}
+
 /** Pull clubs + players from Supabase into the local cache. No-op offline. */
 let refreshing = false;
 export async function refreshClubs(): Promise<void> {
