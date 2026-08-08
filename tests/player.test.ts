@@ -240,3 +240,45 @@ describe("playerAnalytics — new derived facts", () => {
     expect(b.comebackKid).toBe(false);
   });
 });
+
+describe("longestWinStreak", () => {
+  const wl = (results: ("W" | "L")[]): MatchRecord[] =>
+    // newest-first, matching how listAllMatches returns rows
+    results.map((r, i) =>
+      match(
+        `x${i}`,
+        ["Utkarsh"],
+        ["Rival"],
+        r === "W" ? "A" : "B",
+        [{ A: 21, B: 10 }],
+        1000 - i
+      )
+    );
+
+  test("no matches -> 0", () => {
+    expect(playerAnalytics([], "Utkarsh").longestWinStreak).toBe(0);
+  });
+
+  test("all losses -> 0", () => {
+    expect(playerAnalytics(wl(["L", "L", "L"]), "Utkarsh").longestWinStreak).toBe(0);
+  });
+
+  test("finds the best run even when it is not the current one", () => {
+    // newest-first: current run is 1, but there is a run of 3 further back
+    const a = playerAnalytics(wl(["W", "L", "W", "W", "W", "L"]), "Utkarsh");
+    expect(a.winStreak).toBe(1);
+    expect(a.longestWinStreak).toBe(3);
+  });
+
+  test("equals winStreak when the best run is the current one", () => {
+    const a = playerAnalytics(wl(["W", "W", "W", "W", "L", "W"]), "Utkarsh");
+    expect(a.winStreak).toBe(4);
+    expect(a.longestWinStreak).toBe(4);
+  });
+
+  test("ignores matches the player did not play in", () => {
+    const mine = wl(["W", "W"]);
+    const theirs = [match("o1", ["Soham"], ["Meera"], "A", [{ A: 21, B: 5 }], 500)];
+    expect(playerAnalytics([...mine, ...theirs], "Utkarsh").longestWinStreak).toBe(2);
+  });
+});

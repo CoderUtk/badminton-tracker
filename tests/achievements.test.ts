@@ -4,7 +4,7 @@ const base = {
   played: 0, wins: 0, losses: 0, winPct: 0, gamesWon: 0, gamesLost: 0, pointsFor: 0, pointsAgainst: 0,
   form: [] as ("W" | "L")[], recent: [] as unknown[],
   dayStreak: 0, weekendWarrior: false, earlyBird: false, nightOwl: false,
-  maxMatchesInMonth: 0, maxMatchesInDay: 0, winStreak: 0, doublesPlayed: 0,
+  maxMatchesInMonth: 0, maxMatchesInDay: 0, winStreak: 0, longestWinStreak: 0, doublesPlayed: 0,
   flawlessVictory: false, nailBiter: false, comebackKid: false, venues: new Set<string>(),
 };
 const noProfile = { age: null, hand: null, avatarUrl: null };

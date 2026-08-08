@@ -38,6 +38,7 @@ export interface PlayerAnalytics {
   maxMatchesInMonth: number; // largest count of matches sharing a local (year, month)
   maxMatchesInDay: number; // largest count of matches sharing a local calendar day
   winStreak: number; // current win streak over full history (form is capped at 8 for display)
+  longestWinStreak: number; // best win run over full history, current or not
   doublesPlayed: number; // completed matches where config.matchType === "doubles"
   flawlessVictory: boolean; // any won game where the loser scored < 5
   nailBiter: boolean; // any won game whose winning score > that match's pointsToWin
@@ -91,6 +92,8 @@ export function playerAnalytics(
   let nightOwl = false;
   let winStreak = 0;
   let winStreakBroken = false;
+  let longestWinStreak = 0;
+  let currentRun = 0;
   let doublesPlayed = 0;
   let flawlessVictory = false;
   let nailBiter = false;
@@ -154,9 +157,12 @@ export function playerAnalytics(
       if (won) {
         wins += 1;
         if (!winStreakBroken) winStreak += 1;
+        currentRun += 1;
+        if (currentRun > longestWinStreak) longestWinStreak = currentRun;
       } else {
         losses += 1;
         winStreakBroken = true;
+        currentRun = 0;
       }
       if (form.length < 8) form.push(result);
       if (partner) bump(partners, partner, won);
@@ -232,6 +238,7 @@ export function playerAnalytics(
     maxMatchesInMonth,
     maxMatchesInDay,
     winStreak,
+    longestWinStreak,
     doublesPlayed,
     flawlessVictory,
     nailBiter,

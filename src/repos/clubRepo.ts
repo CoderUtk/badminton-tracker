@@ -142,6 +142,14 @@ export async function listPlayers(clubId: string): Promise<ClubPlayer[]> {
   );
 }
 
+/** Every club-player row on this device, across all clubs — used to work out
+ *  which name the signed-in user appears under in match records. */
+export async function listMyClubPlayers(): Promise<ClubPlayer[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.getAllAsync<ClubPlayer>("select * from club_players_cache order by name");
+}
+
 /** Distinct player names across every club (used to pick a profile identity). */
 export async function listAllPlayerNames(): Promise<string[]> {
   const db = await getDb();
