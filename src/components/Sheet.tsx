@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import Animated, {
   Easing, runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming,
 } from "react-native-reanimated";
@@ -64,13 +64,13 @@ export default function Sheet({
           <View style={s.grabber} />
           {title ? <Text style={s.title}>{title}</Text> : null}
           {message ? <Text style={s.msg}>{message}</Text> : null}
-          <View style={s.actions}>
+          <ScrollView style={{ maxHeight: height * 0.5 }} contentContainerStyle={s.actions} showsVerticalScrollIndicator={false}>
             {actions.map((a, i) => (
               <PressableScale key={i} onPress={a.onPress} style={[s.btn, a.destructive ? s.btnDestructive : a.primary ? s.btnPrimary : s.btnSecondary]}>
                 <Text style={[s.btnText, !a.destructive && !a.primary && s.btnTextSecondary]}>{a.label}</Text>
               </PressableScale>
             ))}
-          </View>
+          </ScrollView>
         </Animated.View>
       </GestureDetector>
     </View>
