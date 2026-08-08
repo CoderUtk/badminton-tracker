@@ -1,9 +1,10 @@
 import React, { useEffect } from "react";
-import { Image, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import Animated, {
   Easing, runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withTiming,
 } from "react-native-reanimated";
 import BadmintonRacketSvg from "./BadmintonRacketSvg";
+import { LogoMark } from "./Logo";
 import { C, F, glow } from "../theme";
 
 const RACKET_W = 190;
@@ -11,8 +12,8 @@ const RACKET_H = RACKET_W * 1.2;
 
 /**
  * Boot splash shown over the app while it loads. A racket swings in from the
- * left and recedes, the shuttlecock (assets/splash.png) flies to center and
- * settles, then the wordmark fades up.
+ * left and recedes, the LogoMark shuttlecock (the same mark used in headers)
+ * flies to center and settles, then the wordmark fades up.
  */
 export default function AnimatedSplash({ onFinish }: { onFinish: () => void }) {
   const { width, height } = useWindowDimensions();
@@ -105,7 +106,7 @@ export default function AnimatedSplash({ onFinish }: { onFinish: () => void }) {
       </Animated.View>
       <View style={styles.center}>
         <Animated.View style={shuttleStyle}>
-          <Image source={require("../../assets/splash.png")} style={styles.shuttle} resizeMode="contain" />
+          <LogoMark size={110} />
         </Animated.View>
         <Animated.View style={[styles.textWrap, textStyle]}>
           <Text style={styles.word}>
@@ -131,7 +132,6 @@ const styles = StyleSheet.create({
   // animated transform then carries it off-screen and back from that point.
   centerAnchor: { position: "absolute", top: "50%", left: "50%", marginLeft: -RACKET_W / 2, marginTop: -RACKET_H / 2 },
   center: { alignItems: "center", justifyContent: "center" },
-  shuttle: { width: 150, height: 150 },
   textWrap: { marginTop: 12, alignItems: "center" },
   word: { color: C.text, fontFamily: F.display, fontSize: 40, letterSpacing: 2, ...glow(C.red, 18, 0.5) },
   wordAccent: { color: C.red },
