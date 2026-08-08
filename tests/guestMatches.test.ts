@@ -1,3 +1,8 @@
+// node test env can't parse the real react-native package (Flow/ESM syntax);
+// stub just enough for guestMatches's Platform.OS check to take the native
+// (SecureStore) branch, matching what the mock below exercises.
+jest.mock("react-native", () => ({ Platform: { OS: "ios" } }));
+
 const store = new Map<string, string>();
 jest.mock("expo-secure-store", () => ({
   getItemAsync: (key: string) => Promise.resolve(store.get(key) ?? null),
