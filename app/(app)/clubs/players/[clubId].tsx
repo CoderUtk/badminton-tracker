@@ -1,7 +1,8 @@
 import React, { useCallback, useState } from "react";
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
-import { getClub, listPlayers, removePlayer, type ClubPlayer } from "../../../../src/repos/clubRepo";
+import { addFriendToClub, getClub, listPlayers, removePlayer, type ClubPlayer } from "../../../../src/repos/clubRepo";
+import { listFriends, type Friend } from "../../../../src/repos/friendRepo";
 import { toast } from "../../../../src/lib/toast";
 import Sheet from "../../../../src/components/Sheet";
 import Icon from "../../../../src/components/Icon";
@@ -15,6 +16,9 @@ export default function ClubPlayers() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [pending, setPending] = useState<ClubPlayer | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [addableFriends, setAddableFriends] = useState<Friend[]>([]);
+  const [addingId, setAddingId] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     if (!clubId) return;
@@ -46,6 +50,32 @@ export default function ClubPlayers() {
     }
   };
 
+  const openPicker = async () => {
+    try {
+      const friends = await listFriends();
+      const existingIds = new Set(players.map((p) => p.profile_id).filter(Boolean));
+      setAddableFriends(friends.filter((f) => !existingIds.has(f.id)));
+      setPickerOpen(true);
+    } catch (e) {
+      toast((e as Error).message || "Could not load friends", "error");
+    }
+  };
+
+  const onAddFriend = async (friend: Friend) => {
+    if (!clubId) return;
+    setAddingId(friend.id);
+    try {
+      await addFriendToClub(clubId, friend.id);
+      toast(`${friend.displayName} added`, "success");
+      setPickerOpen(false);
+      await reload();
+    } catch (e) {
+      toast((e as Error).message || "Could not add that friend", "error");
+    } finally {
+      setAddingId(null);
+    }
+  };
+
   if (loading) return <View style={s.center}><ActivityIndicator color={C.red} /></View>;
 
   return (
@@ -55,6 +85,14 @@ export default function ClubPlayers() {
         contentContainerStyle={s.content}
         data={players}
         keyExtractor={(p) => p.id}
+        ListHeaderComponent={
+          isAdmin ? (
+            <PressableScale style={s.addFriendBtn} onPress={openPicker}>
+              <Icon name="person-add" color={C.text} size={18} />
+              <Text style={s.addFriendText}>Add friend</Text>
+            </PressableScale>
+          ) : null
+        }
         ListEmptyComponent={<Text style={s.empty}>No players yet.</Text>}
         renderItem={({ item }) => (
           <View style={s.row}>
@@ -70,6 +108,23 @@ export default function ClubPlayers() {
             ) : null}
           </View>
         )}
+      />
+      <Sheet
+        visible={pickerOpen}
+        title="Add friend to club"
+        actions={
+          addableFriends.length > 0
+            ? [
+                ...addableFriends.map((f) => ({
+                  label: addingId === f.id ? `Adding ${f.displayName}...` : f.displayName,
+                  onPress: () => onAddFriend(f),
+                })),
+                { label: "Cancel", onPress: () => setPickerOpen(false) },
+              ]
+            : [{ label: "Cancel", onPress: () => setPickerOpen(false) }]
+        }
+        message={addableFriends.length === 0 ? "No friends available to add — everyone you're friends with is already in this club." : undefined}
+        onClose={() => setPickerOpen(false)}
       />
       <Sheet
         visible={!!pending}
@@ -90,6 +145,12 @@ const s = StyleSheet.create({
   content: { padding: 16, gap: 8 },
   center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: C.bg },
   empty: { color: C.text2, fontSize: 15, lineHeight: 22, padding: 24, textAlign: "center" },
+  addFriendBtn: {
+    flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center",
+    backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 12,
+    paddingVertical: 12, marginBottom: 8,
+  },
+  addFriendText: { color: C.text, fontFamily: F.semibold, fontSize: 15 },
   row: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: C.card, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: C.line },
   name: { flex: 1, color: C.text, fontSize: 16, fontFamily: F.semibold },
   remove: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: C.bgElev },
