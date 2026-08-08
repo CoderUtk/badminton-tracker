@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -9,8 +9,8 @@ import { ClubSession, listSessions, refreshSessions } from "../../src/repos/sess
 import { getMyProfile } from "../../src/repos/profileRepo";
 import { getPlayerAnalytics, type PlayerAnalytics } from "../../src/repos/statsRepo";
 import {
-  liveClubIds, pickNextSession, resolveMyPlayerName, sessionMetaLabel,
-  shouldShowFeatureCopy, statTileValues,
+  liveClubIds, pickNextSession, resolveMyPlayerName, resolveNextSessionTitle,
+  sessionMetaLabel, shouldShowFeatureCopy, statTileValues,
 } from "../../src/home/dashboard";
 import Icon from "../../src/components/Icon";
 import Logo from "../../src/components/Logo";
@@ -31,30 +31,69 @@ export default function Home() {
   // Stamped once per load rather than read during render, so the memos below
   // actually memoize and "Today" cannot flip mid-render.
   const [now, setNow] = useState(() => Date.now());
+  // Guards every setState below against a chain that resolves after a newer
+  // focus (or after unmount) has already started. Bumped both at the start
+  // of reload() and in the useFocusEffect cleanup.
+  const epochRef = useRef(0);
 
   const emailPrefix = session?.user.email?.split("@")[0] ?? null;
   const greetName = displayName || emailPrefix || "Player";
 
   const reload = useCallback(() => {
+    const epoch = ++epochRef.current;
     setNow(Date.now());
-    void refreshClubs().then(() => listRealClubs().then(setClubs));
-    void listRealClubs().then(setClubs);
-    void refreshSessions().then(() => listSessions().then(setSessions));
-    void listSessions().then(setSessions);
-    void getMyProfile().then(async (profile) => {
+
+    // Reads the local cache and derives clubs, sessions, and the player's
+    // name/analytics from it. Used once for an instant first paint (against
+    // whatever is already cached) and once more after the network refresh
+    // resolves, so a cold cache never leaves stale-wrong state on screen.
+    const loadFromCache = async () => {
+      const clubsNow = await listRealClubs();
+      if (epoch !== epochRef.current) return;
+      setClubs(clubsNow);
+
+      const sessionsNow = await listSessions();
+      if (epoch !== epochRef.current) return;
+      setSessions(sessionsNow);
+
+      const profile = await getMyProfile();
+      if (epoch !== epochRef.current) return;
       setDisplayName(profile?.displayName ?? null);
+
       const players = await listMyClubPlayers();
+      if (epoch !== epochRef.current) return;
       const name = resolveMyPlayerName(players, profile?.id ?? null, profile?.displayName ?? null);
-      setAnalytics(name ? await getPlayerAnalytics(name) : null);
-    });
+      const stats = name ? await getPlayerAnalytics(name) : null;
+      if (epoch !== epochRef.current) return;
+      setAnalytics(stats);
+    };
+
+    void loadFromCache()
+      .then(() => refreshClubs())
+      .then(() => refreshSessions())
+      .then(() => {
+        if (epoch !== epochRef.current) return;
+        return loadFromCache();
+      })
+      .catch(() => {
+        // A throw anywhere in the chain (e.g. getPlayerAnalytics) must not
+        // blank the screen or surface as an unhandled rejection — leave
+        // whatever state is already on screen from the last successful step.
+      });
   }, []);
-  useFocusEffect(reload);
+
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+      return () => {
+        epochRef.current += 1;
+      };
+    }, [reload])
+  );
 
   const next = useMemo(() => pickNextSession(sessions, now), [sessions, now]);
   const live = useMemo(() => liveClubIds(sessions), [sessions]);
-  const nextClubName = next
-    ? clubs.find((c) => c.id === next.club_id)?.name ?? "Session"
-    : null;
+  const nextSessionTitle = resolveNextSessionTitle(clubs, next);
   const stats = statTileValues(analytics);
   const showCopy = shouldShowFeatureCopy(analytics);
 
@@ -89,9 +128,9 @@ export default function Home() {
           </Text>
         )}
 
-        {next && nextClubName && (
+        {next && nextSessionTitle && (
           <NextSessionCard
-            title={nextClubName}
+            title={nextSessionTitle}
             meta={sessionMetaLabel(next, now)}
             onPress={() => router.push(`/(app)/sessions/${next.id}`)}
           />
@@ -126,6 +165,8 @@ export default function Home() {
               key={club.id}
               style={({ pressed }) => [s.club, pressed && press]}
               onPress={() => router.push(`/(app)/clubs/${club.id}`)}
+              accessibilityRole="button"
+              accessibilityLabel={club.name}
             >
               <View style={s.clubIcon}>
                 <Icon name="account-group" color={C.red} size={22} />

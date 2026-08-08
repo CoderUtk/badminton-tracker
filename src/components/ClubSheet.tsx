@@ -64,6 +64,7 @@ export default function ClubSheet({
         <View style={s.row}>
           <TextInput
             style={s.input} placeholder="New club name" placeholderTextColor={C.text2}
+            accessibilityLabel="New club name"
             value={name} onChangeText={setName} onBlur={() => setNameTouched(true)}
           />
           <BusyButton
@@ -82,6 +83,7 @@ export default function ClubSheet({
         <View style={s.row}>
           <TextInput
             style={s.input} placeholder="Invite code" placeholderTextColor={C.text2}
+            accessibilityLabel="Invite code"
             autoCapitalize="characters" value={inviteCode} onChangeText={setInviteCode}
           />
           <BusyButton
