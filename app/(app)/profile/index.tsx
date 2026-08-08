@@ -352,6 +352,16 @@ export default function Profile() {
         </Pressable>
       </Modal>
 
+      <Pressable style={s.card} onPress={() => router.push("/profile/friends")}>
+        <View style={s.reminderRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={s.cardTitle}>Friends</Text>
+            <Text style={s.reminderSub}>Add players by username, manage requests.</Text>
+          </View>
+          <Icon name="chevron-forward" color={C.text2} size={20} />
+        </View>
+      </Pressable>
+
       {/* Headline stats */}
       <View style={s.statGrid}>
         <Stat label="Played" value={a?.played ?? 0} />
@@ -430,15 +440,6 @@ export default function Profile() {
         )
       )}
 
-      <Pressable style={s.card} onPress={() => router.push("/profile/friends")}>
-        <View style={s.reminderRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={s.cardTitle}>Friends</Text>
-            <Text style={s.reminderSub}>Add players by username, manage requests.</Text>
-          </View>
-          <Icon name="chevron-forward" color={C.text2} size={20} />
-        </View>
-      </Pressable>
 
       {/* Local inactivity reminders */}
       <View style={s.card}>
