@@ -9,10 +9,14 @@ import { C, F, radius } from "../theme";
 
 const CARD_W = 1080;
 const CARD_H = 1920;
-// Title + share button + close button + gaps + panel padding, roughly —
-// the preview must shrink to leave this much room, or "Close" ends up
-// pushed below the screen with no way to dismiss the popup.
-const CHROME_H = 220;
+// Everything in the panel besides the preview: title (24) + share button
+// (46) + close button (30) + 3 gaps of 14 (42) + panel's own vertical
+// padding (40) + center wrapper's own vertical padding (48). The preview
+// must shrink to leave this much room, or "Close" ends up pushed below
+// the screen with no way to dismiss the popup — this exact bug shipped
+// once already from an under-estimated constant here.
+const CHROME_H = 24 + 46 + 30 + 42 + 40 + 48;
+const CHROME_MARGIN = 24; // small safety buffer against font-scaling/measurement drift
 
 export default function BadgeSharePopup({
   badge, playerName, onClose,
@@ -28,7 +32,7 @@ export default function BadgeSharePopup({
   if (!badge) return null;
 
   const availW = screenW - 64;
-  const availH = screenH - insets.top - insets.bottom - CHROME_H;
+  const availH = screenH - insets.top - insets.bottom - CHROME_H - CHROME_MARGIN;
   // Scale to fit both width and height (never upscale past a 320pt-wide card).
   const previewScale = Math.min(availW / CARD_W, availH / CARD_H, 320 / CARD_W);
   const previewW = CARD_W * previewScale;

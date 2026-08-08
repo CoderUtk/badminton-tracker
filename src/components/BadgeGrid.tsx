@@ -9,7 +9,8 @@ import { C, F, glow } from "../theme";
  * locked (progress 0, fully dimmed), in progress (0 < progress < 1,
  * standard-color icon + active progress fill), unlocked (earned, accented
  * icon + glow + checkmark badge, progress bar hidden since the goal's met).
- * Earned badges are pressable if onPressBadge is provided.
+ * Earned badges are pressable if onPressBadge is provided, and get a small
+ * share-icon corner badge as a visual hint that tapping opens the share popup.
  */
 export default function BadgeGrid({
   badges, onPressBadge,
@@ -34,6 +35,11 @@ export default function BadgeGrid({
             {b.earned && (
               <View style={s.checkBadge}>
                 <Icon name="checkmark-circle" color={C.red} size={16} />
+              </View>
+            )}
+            {b.earned && onPressBadge && (
+              <View style={s.shareBadge}>
+                <Icon name="share-social-outline" color={C.text2} size={12} />
               </View>
             )}
             <Icon name={b.icon as IconName} color={iconColor} size={24} />
@@ -68,6 +74,10 @@ const s = StyleSheet.create({
   checkBadge: {
     position: "absolute", top: 6, right: 6, zIndex: 1,
     backgroundColor: C.bgElev, borderRadius: 999,
+  },
+  shareBadge: {
+    position: "absolute", bottom: 6, right: 6, zIndex: 1,
+    backgroundColor: C.bgElev, borderRadius: 999, padding: 1,
   },
   title: { fontSize: 12, fontFamily: F.semibold, textAlign: "center" },
   titleEarned: { color: C.red },
