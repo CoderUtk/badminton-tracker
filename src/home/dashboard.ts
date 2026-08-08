@@ -4,7 +4,7 @@
  * repo has no component-render test infrastructure.
  */
 import type { ClubSession } from "../repos/sessionRepo";
-import type { ClubPlayer } from "../repos/clubRepo";
+import type { Club, ClubPlayer } from "../repos/clubRepo";
 import type { PlayerAnalytics } from "../analytics/player";
 
 /**
@@ -45,6 +45,17 @@ export function sessionMetaLabel(session: ClubSession, now: number): string {
   return `${when} · ${courts}`;
 }
 
+/**
+ * Title for the next-session card: the name of the club the session belongs
+ * to, resolved against the clubs already loaded on this screen. Returns null
+ * — never a generic fallback — when there is no session or its club is not
+ * among the loaded clubs, so the render gate that checks this stays honest.
+ */
+export function resolveNextSessionTitle(clubs: Club[], next: ClubSession | null): string | null {
+  if (!next) return null;
+  return clubs.find((c) => c.id === next.club_id)?.name ?? null;
+}
+
 /** Clubs with a session currently in progress, for the row's Live pill. */
 export function liveClubIds(sessions: ClubSession[]): Set<string> {
   return new Set(sessions.filter((s) => s.status === "live").map((s) => s.club_id));
@@ -72,12 +83,14 @@ export function statTileValues(analytics: PlayerAnalytics | null): {
   matches: string; winRate: string; streak: string; hasRates: boolean;
 } {
   const played = analytics?.played ?? 0;
-  const hasRates = played >= MIN_MATCHES_FOR_RATES;
+  if (!analytics || played < MIN_MATCHES_FOR_RATES) {
+    return { matches: String(played), winRate: "—", streak: "—", hasRates: false };
+  }
   return {
     matches: String(played),
-    winRate: hasRates ? `${analytics!.winPct}%` : "—",
-    streak: hasRates ? String(analytics!.longestWinStreak) : "—",
-    hasRates,
+    winRate: `${analytics.winPct}%`,
+    streak: String(analytics.longestWinStreak),
+    hasRates: true,
   };
 }
 

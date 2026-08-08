@@ -147,7 +147,7 @@ export async function listPlayers(clubId: string): Promise<ClubPlayer[]> {
 export async function listMyClubPlayers(): Promise<ClubPlayer[]> {
   const db = await getDb();
   if (!db) return [];
-  return db.getAllAsync<ClubPlayer>("select * from club_players_cache");
+  return db.getAllAsync<ClubPlayer>("select * from club_players_cache order by name");
 }
 
 /** Distinct player names across every club (used to pick a profile identity). */

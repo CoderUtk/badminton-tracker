@@ -5,11 +5,12 @@ import {
   sessionMetaLabel,
   liveClubIds,
   resolveMyPlayerName,
+  resolveNextSessionTitle,
   statTileValues,
   shouldShowFeatureCopy,
 } from "../src/home/dashboard";
 import type { ClubSession, SessionStatus } from "../src/repos/sessionRepo";
-import type { ClubPlayer } from "../src/repos/clubRepo";
+import type { Club, ClubPlayer } from "../src/repos/clubRepo";
 import type { PlayerAnalytics } from "../src/analytics/player";
 
 const NOW = new Date("2026-08-08T12:00:00").getTime();
@@ -82,13 +83,12 @@ describe("sessionDateLabel", () => {
     // Verify it's NOT today
     expect(label).not.toMatch(/^Today/);
 
-    // Verify it uses the weekday, month, and day format
-    const expectedDate = new Date(at).toLocaleDateString([], {
-      weekday: "short",
-      month: "short",
-      day: "numeric"
-    });
-    expect(label).toBe(expectedDate);
+    // Shape assertion instead of recomputing the same toLocaleDateString call
+    // the implementation uses: the day-of-month must appear, and the "·" the
+    // same-day branch uses to join date and time must not. Locale-safe — no
+    // hardcoded English month.
+    expect(label).toContain("11");
+    expect(label).not.toContain("·");
   });
 });
 
@@ -159,6 +159,38 @@ describe("resolveMyPlayerName", () => {
   test("ignores club players with a blank name", () => {
     const blank: ClubPlayer[] = [{ id: "p9", club_id: "c1", profile_id: "me", name: "  " }];
     expect(resolveMyPlayerName(blank, "me", "Fallback")).toBe("Fallback");
+  });
+
+  test("multiple matching club players -> deterministically picks the first", () => {
+    const multi: ClubPlayer[] = [
+      { id: "p1", club_id: "c1", profile_id: "me", name: "Alpha" },
+      { id: "p2", club_id: "c2", profile_id: "me", name: "Beta" },
+    ];
+    // listMyClubPlayers now orders by name, so callers can rely on array
+    // order for determinism; resolveMyPlayerName just takes the first match.
+    expect(resolveMyPlayerName(multi, "me", "Fallback")).toBe("Alpha");
+    expect(resolveMyPlayerName([...multi].reverse(), "me", "Fallback")).toBe("Beta");
+  });
+});
+
+describe("resolveNextSessionTitle", () => {
+  const clubs: Club[] = [
+    { id: "c1", name: "Riverside", invite_code: null, role: "member", personal: false },
+    { id: "c2", name: "Downtown", invite_code: null, role: "member", personal: false },
+  ];
+
+  test("returns the matching club's name", () => {
+    const next = session("a", NOW + HOUR, "scheduled", { club_id: "c2" });
+    expect(resolveNextSessionTitle(clubs, next)).toBe("Downtown");
+  });
+
+  test("returns null when the session's club is not among the loaded clubs", () => {
+    const next = session("a", NOW + HOUR, "scheduled", { club_id: "unknown" });
+    expect(resolveNextSessionTitle(clubs, next)).toBeNull();
+  });
+
+  test("returns null when there is no session", () => {
+    expect(resolveNextSessionTitle(clubs, null)).toBeNull();
   });
 });
 
