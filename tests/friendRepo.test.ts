@@ -1,9 +1,11 @@
 const getUser = jest.fn();
 const from = jest.fn();
+const rpc = jest.fn();
 jest.mock("../src/lib/supabase", () => ({
   supabase: {
     auth: { getUser: (...a: unknown[]) => getUser(...a) },
     from: (...a: unknown[]) => from(...a),
+    rpc: (...a: unknown[]) => rpc(...a),
   },
 }));
 
@@ -12,6 +14,7 @@ import { sendFriendRequest, respondToRequest, cancelRequest, removeFriend, listF
 beforeEach(() => {
   getUser.mockReset().mockResolvedValue({ data: { user: { id: "u-me" } } });
   from.mockReset();
+  rpc.mockReset();
 });
 
 test("sendFriendRequest looks up the username then inserts a pending request", async () => {
@@ -46,17 +49,12 @@ test("sendFriendRequest throws a friendly message on a duplicate request", async
   await expect(sendFriendRequest("rahul")).rejects.toThrow("Already friends or request already pending");
 });
 
-test("respondToRequest(accept) updates status to accepted", async () => {
-  const eq2 = jest.fn().mockResolvedValue({ error: null });
-  const eq1 = jest.fn(() => ({ eq: eq2 }));
-  const update = jest.fn(() => ({ eq: eq1 }));
-  from.mockReturnValue({ update });
+test("respondToRequest(accept) calls the accept_friend_request RPC", async () => {
+  rpc.mockResolvedValue({ error: null });
 
   await respondToRequest("u-requester", true);
 
-  expect(update).toHaveBeenCalledWith(expect.objectContaining({ status: "accepted" }));
-  expect(eq1).toHaveBeenCalledWith("requester_id", "u-requester");
-  expect(eq2).toHaveBeenCalledWith("addressee_id", "u-me");
+  expect(rpc).toHaveBeenCalledWith("accept_friend_request", { p_requester_id: "u-requester" });
 });
 
 test("respondToRequest(decline) deletes the row", async () => {
@@ -133,5 +131,24 @@ test("listIncomingRequests returns pending rows addressed to me", async () => {
 
   expect(eqStatus).toHaveBeenCalledWith("status", "pending");
   expect(eqAddressee).toHaveBeenCalledWith("addressee_id", "u-me");
+  expect(result).toEqual([{ profileId: "u-them", displayName: "Trg", avatarUrl: null }]);
+});
+
+test("listOutgoingRequests returns pending rows I sent", async () => {
+  const eqRequester = jest.fn().mockResolvedValue({ data: [{ addressee_id: "u-them" }], error: null });
+  const eqStatus = jest.fn(() => ({ eq: eqRequester }));
+  const selectFriendships = jest.fn(() => ({ eq: eqStatus }));
+  const inProfiles = jest.fn().mockResolvedValue({
+    data: [{ id: "u-them", display_name: "Trg", avatar_url: null }],
+    error: null,
+  });
+  from.mockImplementation((table: string) =>
+    table === "friendships" ? { select: selectFriendships } : { select: () => ({ in: inProfiles }) }
+  );
+
+  const result = await listOutgoingRequests();
+
+  expect(eqStatus).toHaveBeenCalledWith("status", "pending");
+  expect(eqRequester).toHaveBeenCalledWith("requester_id", "u-me");
   expect(result).toEqual([{ profileId: "u-them", displayName: "Trg", avatarUrl: null }]);
 });

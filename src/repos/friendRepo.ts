@@ -56,11 +56,7 @@ export async function respondToRequest(requesterId: string, accept: boolean): Pr
   if (!supabase) throw new Error("Sign in to manage friend requests");
   const uid = await currentUserId();
   if (accept) {
-    const { error } = await supabase
-      .from("friendships")
-      .update({ status: "accepted", responded_at: new Date().toISOString() })
-      .eq("requester_id", requesterId)
-      .eq("addressee_id", uid);
+    const { error } = await supabase.rpc("accept_friend_request", { p_requester_id: requesterId });
     if (error) throw new Error(error.message);
   } else {
     const { error } = await supabase
