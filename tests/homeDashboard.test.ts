@@ -78,8 +78,17 @@ describe("sessionDateLabel", () => {
   test("a different day uses weekday, month and date", () => {
     const at = new Date("2026-08-11T18:30:00").getTime();
     const label = sessionDateLabel(at, NOW);
+
+    // Verify it's NOT today
     expect(label).not.toMatch(/^Today/);
-    expect(label).toContain("Aug");
+
+    // Verify it uses the weekday, month, and day format
+    const expectedDate = new Date(at).toLocaleDateString([], {
+      weekday: "short",
+      month: "short",
+      day: "numeric"
+    });
+    expect(label).toBe(expectedDate);
   });
 });
 
