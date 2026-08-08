@@ -12,6 +12,8 @@ import { getPlayerAnalytics, type PlayerAnalytics } from "../../src/repos/statsR
 import Icon from "../../src/components/Icon";
 import FormScreen from "../../src/components/FormScreen";
 import BadgeGrid from "../../src/components/BadgeGrid";
+import BadgeSharePopup from "../../src/components/BadgeSharePopup";
+import type { EarnedBadge } from "../../src/achievements/types";
 import Sheet from "../../src/components/Sheet";
 import { evaluateBadges } from "../../src/achievements/rules";
 import { getSetting, setSetting, REMINDERS_KEY } from "../../src/repos/settingsRepo";
@@ -42,6 +44,7 @@ export default function Profile() {
   const [usernameDraft, setUsernameDraft] = useState<string>("");
   const [editingUsername, setEditingUsername] = useState(false);
   const [usernameBusy, setUsernameBusy] = useState(false);
+  const [selectedBadge, setSelectedBadge] = useState<EarnedBadge | null>(null);
 
   useEffect(() => {
     void getMyProfile().then((p) => {
@@ -361,7 +364,7 @@ export default function Profile() {
       {a && (
         <View style={s.card}>
           <Text style={s.cardTitle}>Achievements</Text>
-          <BadgeGrid badges={badges} />
+          <BadgeGrid badges={badges} onPressBadge={setSelectedBadge} />
         </View>
       )}
 
@@ -475,6 +478,11 @@ export default function Profile() {
         { label: "Cancel", onPress: () => setConfirmingRemove(false) },
       ]}
       onClose={() => setConfirmingRemove(false)}
+    />
+    <BadgeSharePopup
+      badge={selectedBadge}
+      playerName={me}
+      onClose={() => setSelectedBadge(null)}
     />
     </>
   );

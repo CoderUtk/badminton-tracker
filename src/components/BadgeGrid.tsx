@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import Icon, { type IconName } from "./Icon";
 import type { EarnedBadge } from "../achievements/types";
 import { C, F, glow } from "../theme";
@@ -9,18 +9,28 @@ import { C, F, glow } from "../theme";
  * locked (progress 0, fully dimmed), in progress (0 < progress < 1,
  * standard-color icon + active progress fill), unlocked (earned, accented
  * icon + glow + checkmark badge, progress bar hidden since the goal's met).
- * Purely presentational — no data fetching, no tap action, so plain Views
- * rather than PressableScale.
+ * Earned badges are pressable if onPressBadge is provided.
  */
-export default function BadgeGrid({ badges }: { badges: EarnedBadge[] }) {
+export default function BadgeGrid({
+  badges, onPressBadge,
+}: {
+  badges: EarnedBadge[];
+  onPressBadge?: (badge: EarnedBadge) => void;
+}) {
   return (
     <View style={s.grid}>
       {badges.map((b) => {
         const inProgress = !b.earned && b.progress > 0;
         const iconColor = b.earned ? C.red : inProgress ? C.text : C.text3;
         const titleStyle = b.earned ? s.titleEarned : inProgress ? s.titleActive : s.titleLocked;
+        const Wrapper = b.earned ? Pressable : View;
+        const wrapperProps = b.earned ? { onPress: () => onPressBadge?.(b) } : {};
         return (
-          <View key={b.id} style={[s.chip, b.earned && s.chipEarned, b.earned && glow(C.red, 10, 0.35)]}>
+          <Wrapper
+            key={b.id}
+            style={[s.chip, b.earned && s.chipEarned, b.earned && glow(C.red, 10, 0.35)]}
+            {...wrapperProps}
+          >
             {b.earned && (
               <View style={s.checkBadge}>
                 <Icon name="checkmark-circle" color={C.red} size={16} />
@@ -34,7 +44,7 @@ export default function BadgeGrid({ badges }: { badges: EarnedBadge[] }) {
                 <View style={[s.fill, { width: `${Math.round(b.progress * 100)}%` }, inProgress && s.fillActive]} />
               </View>
             )}
-          </View>
+          </Wrapper>
         );
       })}
     </View>
