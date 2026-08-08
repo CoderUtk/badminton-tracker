@@ -1,19 +1,18 @@
 import React, { useEffect } from "react";
-import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Image, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import Animated, {
   Easing, runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withTiming,
 } from "react-native-reanimated";
-import ShuttlecockSvg from "./ShuttlecockSvg";
 import BadmintonRacketSvg from "./BadmintonRacketSvg";
-import { C, F, easing, glow } from "../theme";
+import { C, F, glow } from "../theme";
 
-const ease = (curve: readonly [number, number, number, number]) => Easing.bezier(...curve);
+const RACKET_W = 190;
+const RACKET_H = RACKET_W * 1.2;
 
 /**
  * Boot splash shown over the app while it loads. A racket swings in from the
- * left and recedes, a shuttlecock flies to center and settles, then the
- * wordmark fades up — one continuous beat, not a sequence of separate stings,
- * since this plays on every cold start and has to stay fast.
+ * left and recedes, the shuttlecock (assets/splash.png) flies to center and
+ * settles, then the wordmark fades up.
  */
 export default function AnimatedSplash({ onFinish }: { onFinish: () => void }) {
   const { width, height } = useWindowDimensions();
@@ -32,7 +31,7 @@ export default function AnimatedSplash({ onFinish }: { onFinish: () => void }) {
   const shuttleOpacity = useSharedValue(0);
 
   const textOpacity = useSharedValue(0);
-  const textY = useSharedValue(20);
+  const textY = useSharedValue(24);
 
   const fade = useSharedValue(1);
 
@@ -41,37 +40,42 @@ export default function AnimatedSplash({ onFinish }: { onFinish: () => void }) {
       racketOpacity.value = 0;
       shuttleOpacity.value = 1;
       shuttleX.value = 0;
-      shuttleY.value = -22;
+      shuttleY.value = -28;
       shuttleScale.value = 1;
       shuttleRotate.value = "0deg";
       textOpacity.value = 1;
       textY.value = 0;
-      fade.value = withDelay(500, withTiming(0, { duration: 250 }, (f) => f && runOnJS(onFinish)()));
+      fade.value = withDelay(600, withTiming(0, { duration: 300 }, (f) => f && runOnJS(onFinish)()));
       return;
     }
 
-    // Racket swings in from off-screen, then recedes as the shuttle takes over.
-    racketOpacity.value = withTiming(1, { duration: 120 });
-    racketX.value = withTiming(-width * 0.35, { duration: 300, easing: ease(easing.standard) });
-    racketY.value = withTiming(-height * 0.2, { duration: 300, easing: ease(easing.standard) });
-    racketScale.value = withTiming(1.05, { duration: 300, easing: ease(easing.standard) });
-    racketRotate.value = withTiming("0deg", { duration: 300, easing: ease(easing.standard) });
-    racketOpacity.value = withDelay(300, withTiming(0, { duration: 220, easing: ease(easing.exit) }));
+    // 1. Racket swing sequence
+    racketOpacity.value = withTiming(1, { duration: 150 });
+    racketX.value = withTiming(-width * 0.4, { duration: 400, easing: Easing.out(Easing.quad) });
+    racketY.value = withTiming(-height * 0.22, { duration: 400, easing: Easing.out(Easing.quad) });
+    racketScale.value = withTiming(1.05, { duration: 400 });
+    racketRotate.value = withTiming("0deg", { duration: 400 });
 
-    // Shuttle flies to center — decelerating, physical curve.
-    shuttleOpacity.value = withDelay(40, withTiming(1, { duration: 90 }));
-    shuttleX.value = withDelay(40, withTiming(0, { duration: 560, easing: ease(easing.smooth) }));
-    shuttleY.value = withDelay(40, withTiming(0, { duration: 560, easing: ease(easing.smooth) }));
-    shuttleScale.value = withDelay(40, withTiming(1, { duration: 560, easing: ease(easing.smooth) }));
-    shuttleRotate.value = withDelay(40, withTiming("0deg", { duration: 560, easing: ease(easing.smooth) }));
+    // Racket recedes
+    racketOpacity.value = withDelay(400, withTiming(0, { duration: 300 }));
+    racketX.value = withDelay(400, withTiming(-width * 0.7, { duration: 300 }));
 
-    // Settles into a small float as the wordmark appears — one unbroken curve.
-    shuttleY.value = withDelay(600, withTiming(-22, { duration: 420, easing: ease(easing.smooth) }));
-    textOpacity.value = withDelay(600, withTiming(1, { duration: 420 }));
-    textY.value = withDelay(600, withTiming(0, { duration: 420, easing: ease(easing.standard) }));
+    // 2. Shuttlecock shot sequence (direct into screen center)
+    shuttleOpacity.value = withDelay(100, withTiming(1, { duration: 100 }));
+    shuttleX.value = withDelay(100, withTiming(0, { duration: 900, easing: Easing.bezier(0.16, 1, 0.3, 1) }));
+    shuttleY.value = withDelay(100, withTiming(0, { duration: 900, easing: Easing.bezier(0.16, 1, 0.3, 1) }));
+    shuttleScale.value = withDelay(100, withTiming(1, { duration: 900 }));
+    shuttleRotate.value = withDelay(100, withTiming("0deg", { duration: 900 }));
 
-    // Hold briefly, then hand off to the app underneath.
-    fade.value = withDelay(1280, withTiming(0, { duration: 280, easing: ease(easing.exit) }, (f) => f && runOnJS(onFinish)()));
+    // 3. Smooth upward float for shuttlecock when text appears
+    shuttleY.value = withDelay(1250, withTiming(-28, { duration: 850, easing: Easing.bezier(0.16, 1, 0.3, 1) }));
+
+    // 4. Branding text fade & slide up
+    textOpacity.value = withDelay(1250, withTiming(1, { duration: 800 }));
+    textY.value = withDelay(1250, withTiming(0, { duration: 800, easing: Easing.bezier(0.22, 1, 0.36, 1) }));
+
+    // 5. Hold, then hand off to the app underneath
+    fade.value = withDelay(2350, withTiming(0, { duration: 320 }, (f) => f && runOnJS(onFinish)()));
   }, [reduced]);
 
   const racketStyle = useAnimatedStyle(() => ({
@@ -96,12 +100,12 @@ export default function AnimatedSplash({ onFinish }: { onFinish: () => void }) {
 
   return (
     <Animated.View style={[styles.root, rootStyle]} pointerEvents="none">
-      <Animated.View style={[styles.racket, racketStyle]}>
-        <BadmintonRacketSvg size={190} />
+      <Animated.View style={[styles.centerAnchor, racketStyle]}>
+        <BadmintonRacketSvg size={RACKET_W} />
       </Animated.View>
       <View style={styles.center}>
         <Animated.View style={shuttleStyle}>
-          <ShuttlecockSvg size={110} />
+          <Image source={require("../../assets/splash.png")} style={styles.shuttle} resizeMode="contain" />
         </Animated.View>
         <Animated.View style={[styles.textWrap, textStyle]}>
           <Text style={styles.word}>
@@ -122,8 +126,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     zIndex: 100,
   },
-  racket: { position: "absolute" },
+  // Anchored at screen center via fixed offsets (half of RACKET_W/RACKET_H)
+  // rather than relying on Yoga to center an unsized absolute child — the
+  // animated transform then carries it off-screen and back from that point.
+  centerAnchor: { position: "absolute", top: "50%", left: "50%", marginLeft: -RACKET_W / 2, marginTop: -RACKET_H / 2 },
   center: { alignItems: "center", justifyContent: "center" },
+  shuttle: { width: 150, height: 150 },
   textWrap: { marginTop: 12, alignItems: "center" },
   word: { color: C.text, fontFamily: F.display, fontSize: 40, letterSpacing: 2, ...glow(C.red, 18, 0.5) },
   wordAccent: { color: C.red },
