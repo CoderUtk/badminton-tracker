@@ -431,11 +431,13 @@ export default function Profile() {
       )}
 
       <Pressable style={s.card} onPress={() => router.push("/profile/friends")}>
-        <View style={{ flex: 1 }}>
-          <Text style={s.cardTitle}>Friends</Text>
-          <Text style={s.reminderSub}>Add players by username, manage requests.</Text>
+        <View style={s.reminderRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={s.cardTitle}>Friends</Text>
+            <Text style={s.reminderSub}>Add players by username, manage requests.</Text>
+          </View>
+          <Icon name="chevron-forward" color={C.text2} size={20} />
         </View>
-        <Icon name="chevron-forward" color={C.text2} size={20} />
       </Pressable>
 
       {/* Local inactivity reminders */}
