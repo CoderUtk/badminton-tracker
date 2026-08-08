@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- **Theme is unchanged.** Use only tokens from `src/theme.ts` (`C`, `F`, `GRAD`, `glow`, `press`). No new colours, no new fonts, no raw hex in components.
+- **Theme is unchanged.** Use only tokens from `src/theme.ts` (`C`, `F`, `GRAD`, `glow`, `press`). No new colours and no new fonts. No raw hex for text or surface colours — but low-alpha `rgba()` tints of an existing `C.*` value are allowed for icon-chip backgrounds, matching what the club row already does today (`rgba(255,59,48,0.12)` in `app/(app)/index.tsx`). Do not introduce a tint of a colour that is not already in `C`.
 - **No component render tests exist in this repo.** `package.json` has no `@testing-library/react-native` and no `react-test-renderer`. Every test in `tests/` is pure logic. Do not add a component-testing dependency. Instead, extract logic into pure functions and test those; components are verified on device in Task 6.
 - **Test location and style:** flat files in `tests/`, named `<subject>.test.ts`, importing from `../src/...`. Follow `tests/player.test.ts`.
 - **Threshold constant:** `MIN_MATCHES_FOR_RATES = 5`. It gates both the `—` placeholders in the stat tiles and the visibility of the feature copy. Define it once, in `src/home/dashboard.ts`, and import it. Never inline the literal `5`.
