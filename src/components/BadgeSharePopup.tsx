@@ -1,5 +1,6 @@
 import React, { useRef } from "react";
-import { Dimensions, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import BadgeResultCard from "./share/BadgeResultCard";
 import Icon from "./Icon";
 import type { EarnedBadge } from "../achievements/types";
@@ -8,9 +9,10 @@ import { C, F, radius } from "../theme";
 
 const CARD_W = 1080;
 const CARD_H = 1920;
-const PREVIEW_W = Math.min(Dimensions.get("window").width - 64, 320);
-const PREVIEW_SCALE = PREVIEW_W / CARD_W;
-const PREVIEW_H = CARD_H * PREVIEW_SCALE;
+// Title + share button + close button + gaps + panel padding, roughly —
+// the preview must shrink to leave this much room, or "Close" ends up
+// pushed below the screen with no way to dismiss the popup.
+const CHROME_H = 220;
 
 export default function BadgeSharePopup({
   badge, playerName, onClose,
@@ -20,8 +22,17 @@ export default function BadgeSharePopup({
   onClose: () => void;
 }) {
   const shareCardRef = useRef<View>(null);
+  const { width: screenW, height: screenH } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
 
   if (!badge) return null;
+
+  const availW = screenW - 64;
+  const availH = screenH - insets.top - insets.bottom - CHROME_H;
+  // Scale to fit both width and height (never upscale past a 320pt-wide card).
+  const previewScale = Math.min(availW / CARD_W, availH / CARD_H, 320 / CARD_W);
+  const previewW = CARD_W * previewScale;
+  const previewH = CARD_H * previewScale;
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
@@ -29,8 +40,8 @@ export default function BadgeSharePopup({
       <View style={s.center} pointerEvents="box-none">
         <View style={s.panel}>
           <Text style={s.title}>{badge.title}</Text>
-          <View style={[s.previewClip, { width: PREVIEW_W, height: PREVIEW_H }]}>
-            <View style={{ width: CARD_W, height: CARD_H, transform: [{ scale: PREVIEW_SCALE }], transformOrigin: "0 0", position: "absolute", left: 0, top: 0 }}>
+          <View style={[s.previewClip, { width: previewW, height: previewH }]}>
+            <View style={{ width: CARD_W, height: CARD_H, transform: [{ scale: previewScale }], transformOrigin: "0 0", position: "absolute", left: 0, top: 0 }}>
               <BadgeResultCard badge={badge} playerName={playerName} />
             </View>
           </View>
