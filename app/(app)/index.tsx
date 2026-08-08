@@ -1,209 +1,215 @@
-import React, { useCallback, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import React, { useCallback, useMemo, useState } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Club, createClub, joinClub, listRealClubs, refreshClubs } from "../../src/repos/clubRepo";
 import { LinearGradient } from "expo-linear-gradient";
-import { useSession } from "../../src/stores/session";
+import {
+  Club, listMyClubPlayers, listRealClubs, refreshClubs,
+} from "../../src/repos/clubRepo";
+import { ClubSession, listSessions, refreshSessions } from "../../src/repos/sessionRepo";
 import { getMyProfile } from "../../src/repos/profileRepo";
-import { toast } from "../../src/lib/toast";
-import { validateName } from "../../src/lib/validate";
+import { getPlayerAnalytics, type PlayerAnalytics } from "../../src/repos/statsRepo";
+import {
+  liveClubIds, pickNextSession, resolveMyPlayerName, sessionMetaLabel,
+  shouldShowFeatureCopy, statTileValues,
+} from "../../src/home/dashboard";
 import Icon from "../../src/components/Icon";
 import Logo from "../../src/components/Logo";
-import AnimatedList from "../../src/components/AnimatedList";
-import BusyButton from "../../src/components/BusyButton";
+import StatTile from "../../src/components/StatTile";
+import NextSessionCard from "../../src/components/NextSessionCard";
+import ClubSheet from "../../src/components/ClubSheet";
+import { useSession } from "../../src/stores/session";
 import { C, F, GRAD, glow, press } from "../../src/theme";
 
 export default function Home() {
   const router = useRouter();
   const { session } = useSession();
   const [clubs, setClubs] = useState<Club[]>([]);
-  const [name, setName] = useState("");
-  const [inviteCode, setInviteCode] = useState("");
-  const [nameTouched, setNameTouched] = useState(false);
+  const [sessions, setSessions] = useState<ClubSession[]>([]);
+  const [analytics, setAnalytics] = useState<PlayerAnalytics | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
-  const [showInlineCreate, setShowInlineCreate] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [joining, setJoining] = useState(false);
-
-  const nameError = validateName(name, "Club name");
+  const [sheetOpen, setSheetOpen] = useState(false);
+  // Stamped once per load rather than read during render, so the memos below
+  // actually memoize and "Today" cannot flip mid-render.
+  const [now, setNow] = useState(() => Date.now());
 
   const emailPrefix = session?.user.email?.split("@")[0] ?? null;
   const greetName = displayName || emailPrefix || "Player";
 
   const reload = useCallback(() => {
-    listRealClubs().then(setClubs);
+    setNow(Date.now());
     void refreshClubs().then(() => listRealClubs().then(setClubs));
-    void getMyProfile().then((p) => setDisplayName(p?.displayName ?? null));
+    void listRealClubs().then(setClubs);
+    void refreshSessions().then(() => listSessions().then(setSessions));
+    void listSessions().then(setSessions);
+    void getMyProfile().then(async (profile) => {
+      setDisplayName(profile?.displayName ?? null);
+      const players = await listMyClubPlayers();
+      const name = resolveMyPlayerName(players, profile?.id ?? null, profile?.displayName ?? null);
+      setAnalytics(name ? await getPlayerAnalytics(name) : null);
+    });
   }, []);
   useFocusEffect(reload);
 
-  const onCreate = async () => {
-    if (nameError) { toast(nameError, "error"); return; }
-    setCreating(true);
-    try {
-      await createClub(name.trim());
-      setName("");
-      setNameTouched(false);
-      setShowInlineCreate(false); // collapse the form once the club exists
-      reload();
-    } catch (e) {
-      toast((e as Error).message || "Could not create club", "error");
-    } finally {
-      setCreating(false);
-    }
-  };
-  const onJoin = async () => {
-    setJoining(true);
-    try {
-      await joinClub(inviteCode);
-      setInviteCode("");
-      reload();
-    } catch (e) {
-      toast((e as Error).message || "Could not join club", "error");
-    } finally {
-      setJoining(false);
-    }
-  };
+  const next = useMemo(() => pickNextSession(sessions, now), [sessions, now]);
+  const live = useMemo(() => liveClubIds(sessions), [sessions]);
+  const nextClubName = next
+    ? clubs.find((c) => c.id === next.club_id)?.name ?? "Session"
+    : null;
+  const stats = statTileValues(analytics);
+  const showCopy = shouldShowFeatureCopy(analytics);
 
   return (
-    // The club/invite forms live in the list footer rather than below it: one
-    // scrollable surface lets RN scroll the focused input into view, which with
-    // android.softwareKeyboardLayoutMode "resize" keeps it above the keyboard.
-    // A KeyboardAvoidingView here was a no-op — behavior is undefined on Android.
     <View style={s.root}>
-      <View style={s.greetRow}>
-        <View style={{ flex: 1 }}>
-          <Text style={s.greetEyebrow}>WELCOME BACK</Text>
-          <Text style={s.greetName} numberOfLines={1}>{greetName}</Text>
+      <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+        <View style={s.greetRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={s.greetEyebrow}>WELCOME BACK</Text>
+            <Text style={s.greetName} numberOfLines={1}>{greetName}</Text>
+          </View>
+          <Logo size={34} showWordmark={false} />
         </View>
-        <Logo size={34} showWordmark={false} />
-      </View>
-      <Pressable style={({ pressed }) => [s.ctaWrap, pressed && press]} onPress={() => router.push("/new-match")}>
-        <LinearGradient colors={GRAD.redCTA} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.cta}>
-          <Icon name="play" color={C.text} size={22} />
-          <Text style={s.ctaText}>START A MATCH</Text>
-        </LinearGradient>
-      </Pressable>
 
-      <View style={s.sectionRow}>
-        <Text style={s.h}>Your clubs</Text>
-        {clubs.length > 0 && (
+        <Pressable
+          style={({ pressed }) => [s.ctaWrap, pressed && press]}
+          onPress={() => router.push("/new-match")}
+          accessibilityRole="button"
+          accessibilityLabel="Start a match"
+        >
+          <LinearGradient
+            colors={GRAD.redCTA} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.cta}
+          >
+            <Icon name="play" color={C.text} size={26} />
+            <Text style={s.ctaText}>START A MATCH</Text>
+          </LinearGradient>
+        </Pressable>
+
+        {showCopy && (
+          <Text style={s.featureCopy}>
+            Track points, serve orientation, rally history, and set points — live.
+          </Text>
+        )}
+
+        {next && nextClubName && (
+          <NextSessionCard
+            title={nextClubName}
+            meta={sessionMetaLabel(next, now)}
+            onPress={() => router.push(`/(app)/sessions/${next.id}`)}
+          />
+        )}
+
+        <View style={s.sectionRow}>
+          <Text style={s.h}>Your clubs</Text>
+          {clubs.length > 0 && (
+            <Pressable
+              style={({ pressed }) => [s.plusBtn, pressed && press]}
+              onPress={() => setSheetOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Create or join a club"
+            >
+              <Icon name="add" color={C.text} size={18} />
+            </Pressable>
+          )}
+        </View>
+
+        {clubs.length === 0 ? (
           <Pressable
-            style={({ pressed }) => [s.plusBtn, pressed && press]}
-            onPress={() => setShowInlineCreate((v) => !v)}
-            accessibilityLabel="Create a new club"
+            style={({ pressed }) => [s.emptyCta, pressed && press]}
+            onPress={() => setSheetOpen(true)}
+            accessibilityRole="button"
           >
             <Icon name="add" color={C.text} size={18} />
+            <Text style={s.emptyCtaText}>Create or join a club</Text>
           </Pressable>
-        )}
-      </View>
-      {/* Compact inline create form — visible only when '+' is tapped and clubs exist */}
-      {showInlineCreate && clubs.length > 0 && (
-        <View style={s.inlineCreate}>
-          <View style={s.row}>
-            <TextInput
-              style={s.input} placeholder="New club name" placeholderTextColor={C.text2}
-              value={name} onChangeText={setName} onBlur={() => setNameTouched(true)}
-            />
-            <BusyButton busy={creating} disabled={!!nameError} style={[s.btn, !!nameError && s.btnOff]} onPress={onCreate}>
-              <Icon name="add" color={C.text} size={18} />
-              <Text style={s.btnText}>Create</Text>
-            </BusyButton>
-          </View>
-          {nameTouched && nameError ? <Text style={s.err}>{nameError}</Text> : null}
-        </View>
-      )}
-      <AnimatedList
-        items={clubs.map((club) => club.name)}
-        onItemSelect={(_, index) => router.push(`/(app)/clubs/${clubs[index].id}`)}
-        keyboardShouldPersistTaps={true}
-        contentContainerStyle={{ paddingBottom: 24 }}
-        ListEmptyComponent={
-          <View>
-            <Text style={s.empty}>No clubs yet. Create one below or join with an invite code.</Text>
-            <View style={s.forms}>
-              <View style={s.row}>
-                <TextInput
-                  style={s.input} placeholder="New club name" placeholderTextColor={C.text2}
-                  value={name} onChangeText={setName} onBlur={() => setNameTouched(true)}
-                />
-                <BusyButton busy={creating} disabled={!!nameError} style={[s.btn, !!nameError && s.btnOff]} onPress={onCreate}>
-                  <Icon name="add" color={C.text} size={18} />
-                  <Text style={s.btnText}>Create</Text>
-                </BusyButton>
+        ) : (
+          clubs.map((club) => (
+            <Pressable
+              key={club.id}
+              style={({ pressed }) => [s.club, pressed && press]}
+              onPress={() => router.push(`/(app)/clubs/${club.id}`)}
+            >
+              <View style={s.clubIcon}>
+                <Icon name="account-group" color={C.red} size={22} />
               </View>
-              {nameTouched && nameError ? <Text style={s.err}>{nameError}</Text> : null}
-            </View>
-          </View>
-        }
-        renderItem={(item, index, selected) => (
-          <Pressable style={({ pressed }) => [s.club, pressed && press, selected && s.selectedClub]}
-            onPress={() => router.push(`/(app)/clubs/${clubs[index].id}`)}
-          >
-            <View style={s.clubIcon}>
-              <Icon name="account-group" color={C.red} size={22} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={s.clubName}>{item}</Text>
-              <Text style={s.clubMeta}>
-                {clubs[index].role ?? "member"}
-                {clubs[index].invite_code ? ` · code ${clubs[index].invite_code}` : ""}
-              </Text>
-            </View>
-            <Icon name="chevron-forward" color={C.text2} size={20} />
-          </Pressable>
+              <View style={{ flex: 1 }}>
+                <Text style={s.clubName}>{club.name}</Text>
+                <Text style={s.clubMeta}>
+                  {club.role ?? "member"}
+                  {club.invite_code ? ` · code ${club.invite_code}` : ""}
+                </Text>
+              </View>
+              {live.has(club.id) && (
+                <View style={s.livePill}><Text style={s.livePillText}>LIVE</Text></View>
+              )}
+              <Icon name="chevron-forward" color={C.text2} size={20} />
+            </Pressable>
+          ))
         )}
-        ListFooterComponent={
-          <View style={s.forms}>
-            <View style={s.row}>
-              <TextInput
-                style={s.input} placeholder="Invite code" placeholderTextColor={C.text2}
-                autoCapitalize="characters" value={inviteCode} onChangeText={setInviteCode}
-              />
-              <BusyButton busy={joining} disabled={!inviteCode.trim()} style={[s.btn, !inviteCode.trim() && s.btnOff]} onPress={onJoin}>
-                <Text style={s.btnText}>Join</Text>
-              </BusyButton>
-            </View>
-          </View>
-        }
-      />
+
+        <Text style={[s.h, s.perfHeading]}>Recent performance</Text>
+        <View style={s.statRow}>
+          <StatTile label="Matches" value={stats.matches} />
+          <StatTile
+            label="Win Rate" value={stats.winRate}
+            valueColor={stats.hasRates ? C.green : C.text2}
+          />
+          <StatTile
+            label="Longest Streak" value={stats.streak}
+            valueColor={stats.hasRates ? C.amber : C.text2}
+          />
+        </View>
+      </ScrollView>
+
+      {sheetOpen && (
+        <ClubSheet visible={sheetOpen} onClose={() => setSheetOpen(false)} onChanged={reload} />
+      )}
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg, padding: 16, gap: 12 },
-  greetRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 2, marginBottom: 2 },
+  root: { flex: 1, backgroundColor: C.bg },
+  content: { padding: 16, gap: 12, paddingBottom: 32 },
+  greetRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 2 },
   greetEyebrow: { color: C.text3, fontSize: 11, fontFamily: F.medium, letterSpacing: 1.5 },
   greetName: { color: C.text, fontSize: 24, fontFamily: F.display, letterSpacing: 0.5 },
   ctaWrap: { borderRadius: 16, ...glow(C.red, 18, 0.5) },
-  cta: { flexDirection: "row", gap: 10, borderRadius: 16, minHeight: 62, alignItems: "center", justifyContent: "center" },
-  ctaText: { color: C.text, fontSize: 19, fontFamily: F.display, letterSpacing: 1 },
+  cta: {
+    flexDirection: "row", gap: 12, borderRadius: 16, minHeight: 96,
+    alignItems: "center", justifyContent: "center",
+  },
+  ctaText: { color: C.text, fontSize: 22, fontFamily: F.display, letterSpacing: 1 },
+  featureCopy: {
+    color: C.text2, fontSize: 13, fontFamily: F.body, lineHeight: 19,
+    textAlign: "center", paddingHorizontal: 8, marginTop: -4,
+  },
   h: { color: C.text, fontSize: 17, fontFamily: F.bold, letterSpacing: 0.4 },
-  sectionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 6 },
+  perfHeading: { marginTop: 6 },
+  sectionRow: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 6,
+  },
   plusBtn: {
     width: 32, height: 32, borderRadius: 16,
     backgroundColor: C.red, alignItems: "center", justifyContent: "center",
   },
-  inlineCreate: { gap: 4 },
-  empty: { color: C.text2, fontSize: 15, paddingVertical: 12 },
-  club: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: C.card, borderRadius: 12, padding: 14, marginBottom: 8 },
-  selectedClub: { borderColor: C.red, borderWidth: 1 },
-  clubIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,59,48,0.12)", alignItems: "center", justifyContent: "center" },
+  emptyCta: {
+    flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center",
+    backgroundColor: C.card, borderRadius: 12, borderWidth: 1, borderColor: C.line, height: 56,
+  },
+  emptyCtaText: { color: C.text, fontSize: 16, fontFamily: F.semibold },
+  club: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    backgroundColor: C.card, borderRadius: 12, padding: 14,
+  },
+  clubIcon: {
+    width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,59,48,0.12)",
+    alignItems: "center", justifyContent: "center",
+  },
   clubName: { color: C.text, fontSize: 17, fontWeight: "700" },
   clubMeta: { color: C.text2, fontSize: 13, marginTop: 2 },
-  forms: { gap: 10, marginTop: 4 },
-  row: { flexDirection: "row", gap: 8, alignItems: "center" },
-  input: {
-    flex: 1, backgroundColor: C.card, color: C.text, borderRadius: 12,
-    borderWidth: 1, borderColor: C.line, paddingHorizontal: 14, height: 48, fontSize: 16,
+  livePill: {
+    backgroundColor: "rgba(34,197,94,0.15)", borderRadius: 999,
+    paddingHorizontal: 8, paddingVertical: 3,
   },
-  btn: {
-    flexDirection: "row", gap: 4, backgroundColor: C.red, borderRadius: 12,
-    paddingHorizontal: 16, height: 48, minWidth: 96, alignItems: "center", justifyContent: "center",
-  },
-  btnOff: { opacity: 0.5 },
-  btnText: { color: C.text, fontSize: 16, fontWeight: "700" },
-  err: { color: C.red, fontSize: 12.5, fontFamily: F.body, marginTop: -2 },
-  note: { color: C.text2, fontSize: 13, lineHeight: 19, marginTop: 2 },
+  livePillText: { color: C.green, fontSize: 11, fontFamily: F.bold, letterSpacing: 0.5 },
+  statRow: { flexDirection: "row", gap: 8 },
 });
