@@ -19,7 +19,7 @@
     },
     "android": {
       "package": "com.navalo.courtside",
-      "versionCode": 8,
+      "versionCode": 10,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundImage": "./assets/adaptive-background.png",
