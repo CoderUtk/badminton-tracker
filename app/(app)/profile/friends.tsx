@@ -127,6 +127,7 @@ export default function Friends() {
                 onSubmitEditing={onAdd}
               />
               <PressableScale style={[s.addBtn, sending && s.off]} disabled={sending} onPress={onAdd}>
+                <Icon name="person-add" color={C.text} size={16} />
                 <Text style={s.addBtnText}>Add</Text>
               </PressableScale>
             </View>
@@ -214,7 +215,7 @@ const s = StyleSheet.create({
     flex: 1, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 12,
     paddingHorizontal: 14, paddingVertical: 12, color: C.text, fontFamily: F.body, fontSize: 15,
   },
-  addBtn: { backgroundColor: C.red, borderRadius: 12, paddingHorizontal: 18, alignItems: "center", justifyContent: "center" },
+  addBtn: { flexDirection: "row", gap: 6, backgroundColor: C.red, borderRadius: 12, paddingHorizontal: 18, alignItems: "center", justifyContent: "center" },
   addBtnText: { color: C.text, fontFamily: F.semibold, fontSize: 15 },
   sectionTitle: { color: C.text2, fontFamily: F.medium, fontSize: 12, letterSpacing: 1, marginTop: 12, marginBottom: 4 },
   empty: { color: C.text2, fontSize: 15, lineHeight: 22, padding: 24, textAlign: "center" },

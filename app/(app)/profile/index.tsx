@@ -354,6 +354,7 @@ export default function Profile() {
 
       <Pressable style={s.card} onPress={() => router.push("/profile/friends")}>
         <View style={s.reminderRow}>
+          <Icon name="people-outline" color={C.red} size={22} />
           <View style={{ flex: 1 }}>
             <Text style={s.cardTitle}>Friends</Text>
             <Text style={s.reminderSub}>Add players by username, manage requests.</Text>
