@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import { supabase } from "../../src/lib/supabase";
 import { toast } from "../../src/lib/toast";
+import { useSession } from "../../src/stores/session";
 import GoogleMark from "../../src/components/GoogleMark";
 import Logo from "../../src/components/Logo";
 import FormScreen from "../../src/components/FormScreen";
@@ -14,65 +15,14 @@ import { C, F, GRAD, glow } from "../../src/theme";
 
 WebBrowser.maybeCompleteAuthSession();
 
-/**
- * Turn an OAuth callback URL into a session. Handles the implicit flow (tokens
- * in the hash), PKCE (`?code=`), and provider errors. Returns true when a
- * session was established or an error was reported to the user.
- */
-async function completeAuth(callbackUrl: string, redirectTo: string): Promise<boolean> {
-  if (!supabase) return false;
-  const params = new URL(callbackUrl.replace("#", "?")).searchParams;
-
-  const providerError = params.get("error_description") ?? params.get("error");
-  if (providerError) { toast(providerError, "error"); return true; }
-
-  const access_token = params.get("access_token");
-  const refresh_token = params.get("refresh_token");
-  if (access_token && refresh_token) {
-    const { error } = await supabase.auth.setSession({ access_token, refresh_token });
-    if (error) toast(error.message, "error");
-    return true;
-  }
-
-  const authCode = params.get("code");
-  if (authCode) {
-    const { error } = await supabase.auth.exchangeCodeForSession(authCode);
-    if (error) toast(error.message, "error");
-    return true;
-  }
-
-  // No credentials in the callback — almost always the Supabase redirect
-  // allow-list rejecting `redirectTo` and falling back to the Site URL.
-  toast(`Sign-in returned no session. Allow ${redirectTo} in Supabase redirect URLs.`, "error");
-  return false;
-}
-
 export default function SignIn() {
+  const { completingAuth, handleAuthCallback, beginAuthAttempt, cancelAuthAttempt } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   // Password is the primary path (also the one Play Store review needs a
   // reusable credential for); Google is the secondary option below it.
   const [isSignUp, setIsSignUp] = useState(false);
   const [busy, setBusy] = useState(false);
-  // True from the moment Google sign-in is kicked off (or a stray OAuth deep
-  // link is caught) until completeAuth settles. Without this the screen sits
-  // idle and fully interactive for the few seconds completeAuth needs to
-  // reach Supabase, which reads as "back on the login page" rather than "in
-  // progress" — this is what a signed-in-but-not-yet-navigated gap looks like.
-  const [completingAuth, setCompletingAuth] = useState(false);
-
-  // Android often resumes the app via the deep link instead of resolving the
-  // auth-session promise with a URL, so complete sign-in from the link too.
-  useEffect(() => {
-    const onUrl = ({ url }: { url: string }) => {
-      if (!url.includes("access_token") && !url.includes("code=") && !url.includes("error")) return;
-      setCompletingAuth(true);
-      void completeAuth(url, Linking.createURL("auth")).finally(() => setCompletingAuth(false));
-    };
-    const sub = Linking.addEventListener("url", onUrl);
-    void Linking.getInitialURL().then((url) => { if (url) onUrl({ url }); });
-    return () => sub.remove();
-  }, []);
 
   const passwordSignIn = async () => {
     if (!supabase) return;
@@ -108,6 +58,10 @@ export default function SignIn() {
 
   const googleSignIn = async () => {
     if (!supabase) return;
+    // Show the spinner from the moment of the tap, not from whenever the
+    // callback happens to arrive later — closes the gap where the plain
+    // sign-in form flashes for a moment on return from the browser.
+    beginAuthAttempt();
     const redirectTo = Linking.createURL("auth");
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -115,15 +69,22 @@ export default function SignIn() {
     });
     if (error || !data.url) {
       toast(error?.message ?? "Google sign-in unavailable", "error");
+      cancelAuthAttempt();
       return;
     }
     const res = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-    // On Android the deep link can reopen the app before this resolves, in which
-    // case the result carries no URL — the listener above completes sign-in
-    // instead, and sets its own completingAuth state.
+    // On Android the deep link reopens the app before this resolves, so this
+    // is usually "dismiss" with no url — SessionProvider's own Linking
+    // listener completes sign-in in that case. Handle "success" here too
+    // (some platforms resolve this instead of firing the listener), routed
+    // through the same handleAuthCallback so completingAuth stays centralized.
     if (res.type === "success") {
-      setCompletingAuth(true);
-      await completeAuth(res.url, redirectTo).finally(() => setCompletingAuth(false));
+      handleAuthCallback(res.url);
+    } else {
+      // Not "success" — either a real cancel, or Android's redirect already
+      // landed via the Linking listener. cancelAuthAttempt only clears the
+      // spinner in the former case.
+      cancelAuthAttempt();
     }
   };
 
