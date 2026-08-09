@@ -48,20 +48,17 @@ export default function Home() {
     // whatever is already cached) and once more after the network refresh
     // resolves, so a cold cache never leaves stale-wrong state on screen.
     const loadFromCache = async () => {
-      const clubsNow = await listRealClubs();
+      // Clubs, sessions, profile, and club players are mutually independent —
+      // only analytics depends on the resolved player name. Awaiting them in
+      // series cost four sequential round trips for no ordering benefit.
+      const [clubsNow, sessionsNow, profile, players] = await Promise.all([
+        listRealClubs(), listSessions(), getMyProfile(), listMyClubPlayers(),
+      ]);
       if (epoch !== epochRef.current) return;
       setClubs(clubsNow);
-
-      const sessionsNow = await listSessions();
-      if (epoch !== epochRef.current) return;
       setSessions(sessionsNow);
-
-      const profile = await getMyProfile();
-      if (epoch !== epochRef.current) return;
       setDisplayName(profile?.displayName ?? null);
 
-      const players = await listMyClubPlayers();
-      if (epoch !== epochRef.current) return;
       const name = resolveMyPlayerName(players, profile?.id ?? null, profile?.displayName ?? null);
       const stats = name ? await getPlayerAnalytics(name) : null;
       if (epoch !== epochRef.current) return;
