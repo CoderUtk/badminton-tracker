@@ -21,15 +21,20 @@ test("sends are filtered to recently seen tokens", () => {
 test("push_to is not executable by clients", () => {
   // push_to is SECURITY DEFINER and reads every user's tokens. Without the
   // revoke, any authenticated client can push arbitrary text to anyone.
-  expect(sql).toMatch(/revoke execute on function public\.push_to/i);
-  expect(sql).toMatch(/from public, anon, authenticated/i);
+  // Single regex ensures revoke and target list are in the same statement.
+  expect(sql).toMatch(
+    /revoke execute on function public\.push_to\s*\(\s*uuid\[\]\s*,\s*text\s*,\s*text\s*,\s*jsonb\s*\)\s+from\s+public\s*,\s*anon\s*,\s*authenticated/i
+  );
 });
 
 test("both triggers swallow their own errors", () => {
   // A raising trigger rolls back the insert that fired it: a broken
   // notification would block friend requests entirely.
-  const handlers = sql.match(/exception when others then return new;/gi) ?? [];
-  expect(handlers.length).toBe(2);
+  // Each handler is tied to its function to ensure neither is missing.
+  const friendHandler = /create or replace function public\.notify_friend_request\(\)[\s\S]*?exception when others then return new;/i;
+  const joinHandler = /create or replace function public\.notify_join_request\(\)[\s\S]*?exception when others then return new;/i;
+  expect(friendHandler.test(sql)).toBe(true);
+  expect(joinHandler.test(sql)).toBe(true);
 });
 
 test("the join request trigger excludes the requester", () => {
@@ -37,5 +42,17 @@ test("the join request trigger excludes the requester", () => {
 });
 
 test("row level security is enabled on push_tokens", () => {
+  // RLS enabled check ensures the table is protected.
   expect(sql).toMatch(/alter table public\.push_tokens enable row level security/i);
+});
+
+test("all four RLS policies verify auth.uid() = profile_id ownership", () => {
+  // Each policy must check that the user only accesses their own tokens.
+  // Verifying the policy bodies (not just that RLS is enabled) ensures a
+  // future edit cannot weaken policies to using (true) without failing tests.
+  expect(sql).toMatch(/create policy\s+"[^"]*"\s+on public\.push_tokens for select.*?using\s*\(\s*auth\.uid\(\)\s*=\s*profile_id\s*\)/is);
+  expect(sql).toMatch(/create policy\s+"[^"]*"\s+on public\.push_tokens for insert.*?with check\s*\(\s*auth\.uid\(\)\s*=\s*profile_id/is);
+  expect(sql).toMatch(/create policy\s+"[^"]*"\s+on public\.push_tokens for update.*?using\s*\(\s*auth\.uid\(\)\s*=\s*profile_id\s*\)/is);
+  expect(sql).toMatch(/create policy\s+"[^"]*"\s+on public\.push_tokens for update.*?with check\s*\(\s*auth\.uid\(\)\s*=\s*profile_id\s*\)/is);
+  expect(sql).toMatch(/create policy\s+"[^"]*"\s+on public\.push_tokens for delete.*?using\s*\(\s*auth\.uid\(\)\s*=\s*profile_id\s*\)/is);
 });
