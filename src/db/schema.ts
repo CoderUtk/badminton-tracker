@@ -53,3 +53,25 @@ ALTER TABLE tournaments ADD COLUMN courts INTEGER NOT NULL DEFAULT 4;
 export const CLUBS_PERSONAL_DDL = `
 ALTER TABLE clubs_cache ADD COLUMN personal INTEGER NOT NULL DEFAULT 0;
 `;
+
+// Indexes for the matches table, which migration 0 created with nothing beyond
+// its primary key. It is the fastest-growing table in the app (one row per
+// game) and every list query both filters and sorts over it:
+//   listMatchesForSession  where session_id = ? order by created_at desc
+//   listMatchesForClub     where club_id = ?    order by created_at desc
+//   listMatches            order by created_at desc limit 100
+//   listAllMatches         order by created_at desc
+// A composite (column, created_at desc) satisfies the filter AND the sort from
+// one index, so SQLite skips the sort step rather than scanning and sorting.
+//
+// match_events needs nothing: its primary key (match_id, seq) already serves
+// loadEvents' "where match_id = ? order by seq".
+//
+// A SEPARATE migration entry appended to the list in db.ts — editing an
+// applied migration does not re-run it, so existing installs would never get
+// these.
+export const MATCH_INDEXES_DDL = `
+create index if not exists matches_session_created on matches (session_id, created_at desc);
+create index if not exists matches_club_created on matches (club_id, created_at desc);
+create index if not exists matches_created on matches (created_at desc);
+`;

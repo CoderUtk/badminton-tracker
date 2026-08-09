@@ -1,6 +1,9 @@
 import { Platform } from "react-native";
 import type { SQLiteDatabase } from "expo-sqlite";
-import { TOURNAMENT_DDL, TOURNAMENT_ALTER_DDL, TOURNAMENT_COURTS_DDL, CLUBS_PERSONAL_DDL } from "./schema";
+import {
+  TOURNAMENT_DDL, TOURNAMENT_ALTER_DDL, TOURNAMENT_COURTS_DDL, CLUBS_PERSONAL_DDL,
+  MATCH_INDEXES_DDL,
+} from "./schema";
 import { SETTINGS_DDL } from "./settings";
 import { captureError } from "../lib/observability";
 
@@ -57,6 +60,7 @@ const MIGRATIONS = [
   TOURNAMENT_COURTS_DDL,
   CLUBS_PERSONAL_DDL,
   `alter table sessions_cache add column created_by text;`,
+  MATCH_INDEXES_DDL,
 ];
 
 let dbPromise: Promise<SQLiteDatabase> | null = null;
