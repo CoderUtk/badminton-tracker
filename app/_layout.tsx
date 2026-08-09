@@ -5,6 +5,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Stack, usePathname, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
+import * as Notifications from "expo-notifications";
 import { useFonts } from "expo-font";
 import { RussoOne_400Regular } from "@expo-google-fonts/russo-one";
 import {
@@ -18,6 +19,7 @@ import { getDb } from "../src/db/db";
 import { startSyncListener } from "../src/sync/runner";
 import { scheduleInactivityReminder } from "../src/lib/reminders";
 import { configureNotificationHandling, registerPushToken } from "../src/lib/push";
+import { notificationRoute } from "../src/lib/notificationRoute";
 import AnimatedSplash from "../src/components/AnimatedSplash";
 import Toaster from "../src/components/Toaster";
 import { consumePendingLink, setPendingLink } from "../src/lib/pendingLink";
@@ -116,6 +118,7 @@ function Gate({ children }: { children: React.ReactNode }) {
 }
 
 function RootLayout() {
+  const router = useRouter();
   const [splashDone, setSplashDone] = useState(false);
   const [fontsLoaded] = useFonts({
     RussoOne_400Regular,
@@ -151,6 +154,28 @@ function RootLayout() {
       }
     });
     return () => sub.remove();
+  }, []);
+  // Routes a tapped notification to its destination screen. Both paths are
+  // required: the listener covers a tap while the app is already running,
+  // getLastNotificationResponseAsync() covers a tap that cold-started it —
+  // neither one covers the other case. `cancelled` plus sub.remove() guard
+  // against routing from an unmounted layout if the async call resolves late.
+  useEffect(() => {
+    let cancelled = false;
+
+    const go = (response: Notifications.NotificationResponse | null) => {
+      if (cancelled || !response) return;
+      const path = notificationRoute(response.notification.request.content.data);
+      if (path) router.push(path as never);
+    };
+
+    void Notifications.getLastNotificationResponseAsync().then(go).catch(() => {});
+    const sub = Notifications.addNotificationResponseReceivedListener(go);
+
+    return () => {
+      cancelled = true;
+      sub.remove();
+    };
   }, []);
   useEffect(() => {
     // Hand off from the native splash to the animated one only once the gaming
