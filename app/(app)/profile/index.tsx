@@ -472,7 +472,11 @@ export default function Profile() {
         <Pressable
           style={s.signOut}
           onPress={() => {
-            void unregisterPushToken().finally(() => {
+            // Local reminders are cancelled too: their identifiers are
+            // per-session and the SQLite cache is not cleared on sign-out, so
+            // a leftover `session:<id>` would fire for the next account on
+            // this device, for a session it has no access to.
+            void Promise.all([unregisterPushToken(), cancelReminders()]).finally(() => {
               void supabase?.auth.signOut();
             });
           }}

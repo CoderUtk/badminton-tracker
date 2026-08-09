@@ -8,6 +8,11 @@ export const ONBOARDING_SEEN_KEY = "onboarding_seen";
 // (see src/lib/reminders.ts); absent/anything else means off.
 export const REMINDERS_KEY = "reminders_on";
 
+// The Expo push token last registered from this device (see src/lib/push.ts).
+// Cached so unregistration never depends on a network round-trip to Expo:
+// toggling off in airplane mode must still be able to delete the row.
+export const PUSH_TOKEN_KEY = "push_token";
+
 export async function getSetting(key: string): Promise<string | null> {
   const db = await getDb();
   if (!db) return null;

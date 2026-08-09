@@ -2,7 +2,7 @@ import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import { getSetting, REMINDERS_KEY } from "../repos/settingsRepo";
 import { listSessions } from "../repos/sessionRepo";
-import { INACTIVITY_ID, planSessionReminders } from "./reminderPlan";
+import { INACTIVITY_ID, SESSION_PREFIX, planSessionReminders } from "./reminderPlan";
 
 const SEVEN_DAYS_SECONDS = 7 * 24 * 60 * 60;
 
@@ -123,7 +123,7 @@ export async function cancelReminders(): Promise<void> {
   try {
     const ids = await scheduledIds();
     for (const id of ids) {
-      if (id === INACTIVITY_ID || id.startsWith("session:")) {
+      if (id === INACTIVITY_ID || id.startsWith(SESSION_PREFIX)) {
         await Notifications.cancelScheduledNotificationAsync(id);
       }
     }

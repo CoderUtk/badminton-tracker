@@ -13,7 +13,13 @@ export const MAX_SESSION_REMINDERS = 10;
 /** Identifier for the 7-day inactivity nudge. Never a session reminder. */
 export const INACTIVITY_ID = "inactivity";
 
-const SESSION_PREFIX = "session:";
+/**
+ * Identifier namespace for per-session reminders. Exported because
+ * cancelReminders() in src/lib/reminders.ts matches on it: a second hard-coded
+ * copy would silently stop matching if this ever changed, leaving every
+ * session reminder scheduled after the user toggles notifications off.
+ */
+export const SESSION_PREFIX = "session:";
 
 export const sessionReminderId = (sessionId: string) => `${SESSION_PREFIX}${sessionId}`;
 

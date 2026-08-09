@@ -27,14 +27,67 @@ test("push_to is not executable by clients", () => {
   );
 });
 
+// Splitting on the function header is the same remedy already applied to the
+// RLS policy assertions below. An unanchored `[\s\S]*?` crosses function
+// boundaries, so deleting one handler let the regex reach into the next
+// function's handler and both assertions still passed.
+const functionBlock = (name: string) =>
+  sql
+    .split(/(?=create or replace function)/i)
+    .find((block) => new RegExp(`^create or replace function\\s+public\\.${name}\\s*\\(`, "i").test(block.trim())) ?? "";
+
 test("both triggers swallow their own errors", () => {
   // A raising trigger rolls back the insert that fired it: a broken
   // notification would block friend requests entirely.
-  // Each handler is tied to its function to ensure neither is missing.
-  const friendHandler = /create or replace function public\.notify_friend_request\(\)[\s\S]*?exception when others then return new;/i;
-  const joinHandler = /create or replace function public\.notify_join_request\(\)[\s\S]*?exception when others then return new;/i;
-  expect(friendHandler.test(sql)).toBe(true);
-  expect(joinHandler.test(sql)).toBe(true);
+  const handler = /exception when others then return new;/i;
+  expect(handler.test(functionBlock("notify_friend_request"))).toBe(true);
+  expect(handler.test(functionBlock("notify_join_request"))).toBe(true);
+});
+
+test("registration goes through a security definer RPC, not a client upsert", () => {
+  // `on conflict do update` under RLS is evaluated against the pre-existing
+  // row, which belongs to the previous user after an account switch. Without
+  // this function the device can never re-register.
+  const fn = functionBlock("register_push_token");
+  expect(fn).not.toBe("");
+  expect(/security definer/i.test(fn)).toBe(true);
+  expect(/set search_path\s*=\s*public/i.test(fn)).toBe(true);
+  expect(/on conflict\s*\(\s*token\s*\)\s*do update/i.test(fn)).toBe(true);
+  expect(/profile_id\s*=\s*excluded\.profile_id/i.test(fn)).toBe(true);
+});
+
+test("register_push_token derives the owner from auth.uid(), never a parameter", () => {
+  // A profile_id parameter would let any client bind a token to another user.
+  const fn = functionBlock("register_push_token");
+  const signature = fn.slice(0, fn.indexOf(")"));
+  expect(/profile_id/i.test(signature)).toBe(false);
+  expect(/auth\.uid\(\)/i.test(fn)).toBe(true);
+});
+
+test("register_push_token rejects anonymous sessions and bad platforms", () => {
+  const fn = functionBlock("register_push_token");
+  // Same guard as the insert policy and 0018_anon_rls_restrictions.sql.
+  expect(/auth\.jwt\(\)->>'is_anonymous'/i.test(fn)).toBe(true);
+  expect(/p_platform not in \('ios',\s*'android'\)/i.test(fn)).toBe(true);
+});
+
+test("register_push_token stays callable by clients", () => {
+  // Unlike push_to, this one is the client's only way to register. A revoke
+  // here would disable push entirely.
+  expect(sql).not.toMatch(/revoke execute on function public\.register_push_token/i);
+});
+
+test("every policy is dropped before it is created", () => {
+  // This migration is applied by hand; a partial application followed by a
+  // re-run must not abort on "policy already exists" and leave push_to and
+  // the triggers uncreated.
+  const created = [...sql.matchAll(/create policy\s+"([^"]+)"/gi)].map((m) => m[1]);
+  expect(created.length).toBe(4);
+  for (const name of created) {
+    expect(sql).toMatch(
+      new RegExp(`drop policy if exists\\s+"${name}"\\s+on public\\.push_tokens;`, "i"),
+    );
+  }
 });
 
 test("the join request trigger excludes the requester", () => {

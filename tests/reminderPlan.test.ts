@@ -1,6 +1,7 @@
 import type { ClubSession } from "../src/repos/sessionRepo";
 import {
   INACTIVITY_ID,
+  SESSION_PREFIX,
   MAX_SESSION_REMINDERS,
   SESSION_LEAD_MS,
   planSessionReminders,
@@ -87,4 +88,14 @@ test("sessions arrive newest-first from the cache and are still ordered soonest-
   ];
   const plan = planSessionReminders(sessions, NOW, [], 1);
   expect(plan.toSchedule.map((p) => p.sessionId)).toEqual(["sooner"]);
+});
+
+test("the session identifier namespace is exported, not duplicated", () => {
+  // cancelReminders() in src/lib/reminders.ts matches pending identifiers
+  // against this prefix. It used to hard-code its own copy, so a change here
+  // would have left every session reminder scheduled after toggling
+  // notifications off. Importing the constant is what pins them together.
+  expect(SESSION_PREFIX).toBe("session:");
+  expect(sessionReminderId("abc")).toBe(`${SESSION_PREFIX}abc`);
+  expect(INACTIVITY_ID.startsWith(SESSION_PREFIX)).toBe(false);
 });

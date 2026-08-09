@@ -28,10 +28,14 @@ create index if not exists push_tokens_profile
 
 alter table public.push_tokens enable row level security;
 
+-- Every statement in this file is re-runnable: this migration is applied by
+-- hand, and a partial application followed by a re-run must not abort.
+drop policy if exists "a user reads their own tokens" on public.push_tokens;
 create policy "a user reads their own tokens"
   on public.push_tokens for select to authenticated
   using (auth.uid() = profile_id);
 
+drop policy if exists "a user registers their own token" on public.push_tokens;
 create policy "a user registers their own token"
   on public.push_tokens for insert to authenticated
   with check (
@@ -39,14 +43,69 @@ create policy "a user registers their own token"
     and coalesce((auth.jwt()->>'is_anonymous')::boolean, false) = false
   );
 
+drop policy if exists "a user refreshes their own token" on public.push_tokens;
 create policy "a user refreshes their own token"
   on public.push_tokens for update to authenticated
   using (auth.uid() = profile_id)
   with check (auth.uid() = profile_id);
 
+drop policy if exists "a user removes their own token" on public.push_tokens;
 create policy "a user removes their own token"
   on public.push_tokens for delete to authenticated
   using (auth.uid() = profile_id);
+
+-- ---- registration ----
+
+-- A plain client-side upsert cannot do the account-switch overwrite the
+-- token-as-primary-key design above depends on: `on conflict do update`
+-- evaluates the UPDATE policy's `using` clause against the EXISTING row, which
+-- still carries the previous owner's profile_id, so RLS rejects it and the
+-- device never registers again. This runs the upsert as owner instead.
+--
+-- The owner is taken from auth.uid() and is deliberately NOT a parameter:
+-- accepting one would let any client bind its own token to another user, or
+-- another user's token to itself.
+create or replace function public.register_push_token(
+  p_token    text,
+  p_platform text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare v_profile_id uuid := auth.uid();
+begin
+  if v_profile_id is null then
+    raise exception 'register_push_token: not authenticated';
+  end if;
+
+  -- Matches the insert policy above and the convention in
+  -- 0018_anon_rls_restrictions.sql: guests get no push.
+  if coalesce((auth.jwt()->>'is_anonymous')::boolean, false) then
+    raise exception 'register_push_token: anonymous sessions cannot register';
+  end if;
+
+  if p_token is null or length(btrim(p_token)) = 0 then
+    raise exception 'register_push_token: token required';
+  end if;
+
+  -- Checked here rather than left to the table constraint so the failure names
+  -- the actual problem.
+  if p_platform is null or p_platform not in ('ios', 'android') then
+    raise exception 'register_push_token: unsupported platform %', p_platform;
+  end if;
+
+  insert into push_tokens (token, profile_id, platform, updated_at)
+  values (p_token, v_profile_id, p_platform, now())
+  on conflict (token) do update
+    set profile_id = excluded.profile_id,
+        platform   = excluded.platform,
+        updated_at = excluded.updated_at;
+end $$;
+
+-- Unlike push_to(), this one is meant to be called by the client on every
+-- launch, so its default execute grant stays. It cannot be abused: it only
+-- ever writes a row owned by the caller.
 
 -- ---- send helper ----
 

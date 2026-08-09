@@ -18,7 +18,7 @@ import { getMyProfile, subscribeProfile } from "../src/repos/profileRepo";
 import { getDb } from "../src/db/db";
 import { startSyncListener } from "../src/sync/runner";
 import { scheduleInactivityReminder } from "../src/lib/reminders";
-import { configureNotificationHandling, registerPushToken } from "../src/lib/push";
+import { configureNotificationHandling, syncPushRegistration } from "../src/lib/push";
 import { notificationRoute } from "../src/lib/notificationRoute";
 import AnimatedSplash from "../src/components/AnimatedSplash";
 import Toaster from "../src/components/Toaster";
@@ -120,6 +120,8 @@ function Gate({ children }: { children: React.ReactNode }) {
 function RootLayout() {
   const router = useRouter();
   const [splashDone, setSplashDone] = useState(false);
+  // A notification route resolved before the navigator was mounted.
+  const [notificationRoutePath, setNotificationRoutePath] = useState<string | null>(null);
   const [fontsLoaded] = useFonts({
     RussoOne_400Regular,
     ChakraPetch_400Regular,
@@ -138,45 +140,78 @@ function RootLayout() {
   // no-ops if the setting is off, permission isn't granted, or on web. A
   // warm resume (AppState -> "active") counts as an "open" too, not just
   // the cold-start mount above — otherwise a resident app never reschedules.
-  // registerPushToken() rides along here for the same reason: it's the
+  // syncPushRegistration() rides along here for the same reason: it's the
   // upsert heartbeat push_to()'s 60-day staleness window depends on, so it
   // needs to fire on every open/resume, not just cold start, or a resident
-  // app's token silently ages out. It self-guards on the toggle, sign-in
-  // state, and permission, so calling it unconditionally here is safe.
+  // app's token silently ages out. It also retries a delete that an offline
+  // toggle-off or sign-out failed to complete. It self-guards on the toggle,
+  // sign-in state, and permission, so calling it unconditionally here is safe.
   useEffect(() => {
     void configureNotificationHandling();
     void scheduleInactivityReminder();
-    void registerPushToken();
+    void syncPushRegistration();
     const sub = AppState.addEventListener("change", (state) => {
       if (state === "active") {
         void scheduleInactivityReminder();
-        void registerPushToken();
+        void syncPushRegistration();
       }
     });
     return () => sub.remove();
   }, []);
-  // Routes a tapped notification to its destination screen. Both paths are
+  // Resolves a tapped notification to a route and parks it. Both sources are
   // required: the listener covers a tap while the app is already running,
-  // getLastNotificationResponseAsync() covers a tap that cold-started it —
-  // neither one covers the other case. `cancelled` plus sub.remove() guard
-  // against routing from an unmounted layout if the async call resolves late.
+  // getLastNotificationResponse() covers a tap that cold-started it — neither
+  // one covers the other case.
+  //
+  // Parking rather than navigating is what makes the cold-start path work at
+  // all: this component returns null until the fonts load, so on first render
+  // no navigator is mounted and a router.push() here throws "Attempted to
+  // navigate before mounting the Root Layout component" straight into a
+  // swallowed catch. The replay effect below waits for fontsLoaded.
+  //
+  // clearLastNotificationResponse() stops an in-process re-mount (a Sentry
+  // ErrorBoundary reset, say) from re-reading and re-navigating to a tap that
+  // has already been handled.
   useEffect(() => {
     let cancelled = false;
 
-    const go = (response: Notifications.NotificationResponse | null) => {
+    const take = (response: Notifications.NotificationResponse | null) => {
       if (cancelled || !response) return;
       const path = notificationRoute(response.notification.request.content.data);
-      if (path) router.push(path as never);
+      try {
+        Notifications.clearLastNotificationResponse();
+      } catch {
+        // Clearing is an optimisation, never a precondition for routing.
+      }
+      if (path) setNotificationRoutePath(path);
     };
 
-    void Notifications.getLastNotificationResponseAsync().then(go).catch(() => {});
-    const sub = Notifications.addNotificationResponseReceivedListener(go);
+    try {
+      take(Notifications.getLastNotificationResponse());
+    } catch {
+      // No native module (web/dev client edge cases) — the listener still works.
+    }
+    const sub = Notifications.addNotificationResponseReceivedListener(take);
 
     return () => {
       cancelled = true;
       sub.remove();
     };
   }, []);
+  // Replays the parked route once the navigator exists.
+  //
+  // Signed-out taps are deliberately NOT preserved across sign-in: Gate
+  // redirects to /sign-in and the destination is dropped. A push only reaches
+  // this device while its token is bound to a signed-in profile, so being
+  // signed out at tap time means the session is already gone, and landing on
+  // home after re-authenticating is the honest result. src/lib/pendingLink.ts
+  // is not reused here — Gate replays it only through parseJoinTarget(), which
+  // understands join links and nothing else.
+  useEffect(() => {
+    if (!fontsLoaded || !notificationRoutePath) return;
+    setNotificationRoutePath(null);
+    router.push(notificationRoutePath as never);
+  }, [fontsLoaded, notificationRoutePath, router]);
   useEffect(() => {
     // Hand off from the native splash to the animated one only once the gaming
     // fonts are ready, so no text flashes in a fallback face.
