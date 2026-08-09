@@ -17,6 +17,7 @@ import { supabase } from "../src/lib/supabase";
 import { getMyProfile, subscribeProfile } from "../src/repos/profileRepo";
 import { getDb } from "../src/db/db";
 import { startSyncListener } from "../src/sync/runner";
+import { sweepStaleLiveSessions } from "../src/repos/sessionRepo";
 import { scheduleInactivityReminder } from "../src/lib/reminders";
 import { configureNotificationHandling, syncPushRegistration } from "../src/lib/push";
 import { notificationRoute } from "../src/lib/notificationRoute";
@@ -134,6 +135,10 @@ function RootLayout() {
     void (async () => {
       await getDb(); // Ensure migrations complete first
       startSyncListener();
+      // Persists auto-finish for sessions left live past the window. Runs here
+      // rather than inside listSessions() so a cache read never fires network
+      // calls on a render path.
+      void sweepStaleLiveSessions();
     })();
   }, []);
   // Pushes the 7-day inactivity-reminder clock forward on every app open;

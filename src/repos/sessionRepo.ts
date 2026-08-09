@@ -114,6 +114,16 @@ export async function refreshSessions(): Promise<void> {
   }
 }
 
+/**
+ * Cache-only read. A stale-live session is *reported* as "done" without
+ * persisting that — isStaleLive is a pure local computation over rows already
+ * in hand, so it costs nothing.
+ *
+ * Persisting the auto-finish is sweepStaleLiveSessions' job, which runs once at
+ * app start. It used to happen inline here, which meant a plain cache read
+ * could fire N match replays and N Supabase RPCs before returning — on Home's
+ * critical path (app/(app)/index.tsx).
+ */
 export async function listSessions(clubId?: string): Promise<ClubSession[]> {
   const db = await getDb();
   if (!db) return [];
@@ -123,32 +133,40 @@ export async function listSessions(clubId?: string): Promise<ClubSession[]> {
       )
     : await db.getAllAsync<ClubSession>("select * from sessions_cache order by starts_at desc");
   const now = Date.now();
-  for (const row of rows) {
-    if (!isStaleLive(row, now)) continue;
-    try {
-      await endSession(row.id);
-      row.status = "done";
-    } catch {
-      // Leave this row live; the next read retries it. A failed sweep must
-      // never prevent the rest of the list from loading.
-    }
-  }
-  return rows;
+  return rows.map((row) => (isStaleLive(row, now) ? { ...row, status: "done" as const } : row));
 }
 
 export async function getSession(id: string): Promise<ClubSession | null> {
   const db = await getDb();
   const row = (await db?.getFirstAsync<ClubSession>("select * from sessions_cache where id = ?", id)) ?? null;
-  if (row && isStaleLive(row, Date.now())) {
+  if (row && isStaleLive(row, Date.now())) return { ...row, status: "done" };
+  return row;
+}
+
+/**
+ * Persists the auto-finish of sessions left live past AUTO_FINISH_HOURS.
+ * Fire-and-forget, called once at app start from app/_layout.tsx.
+ *
+ * Failures are swallowed per session: one session that cannot be ended must
+ * not stop the others, and the next app open retries. This is strictly more
+ * reliable than the previous inline sweep, which only ran when someone
+ * happened to open a screen that listed sessions.
+ */
+export async function sweepStaleLiveSessions(): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  const rows = await db.getAllAsync<ClubSession>(
+    "select * from sessions_cache where status = 'live'"
+  );
+  const now = Date.now();
+  for (const row of rows) {
+    if (!isStaleLive(row, now)) continue;
     try {
       await endSession(row.id);
-      row.status = "done";
     } catch {
-      // Leave this row live; the next read retries it. A failed sweep must
-      // never prevent the rest of the list from loading.
+      // Retried on the next app open.
     }
   }
-  return row;
 }
 
 /** Change a session's status. Any club member may call this (RPC-gated, not admin-only). */
