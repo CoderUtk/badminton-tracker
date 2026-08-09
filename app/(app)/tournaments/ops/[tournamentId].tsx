@@ -1,7 +1,7 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
-import { readTournament, refreshTournament, assignBracketMatchCourt, claimBracketMatch } from "../../../../src/repos/tournamentRepo";
+import { getTournament, assignBracketMatchCourt, claimBracketMatch } from "../../../../src/repos/tournamentRepo";
 import { useSession } from "../../../../src/stores/session";
 import type { BracketMatch, Entrant } from "../../../../src/tournament/types";
 import { toast } from "../../../../src/lib/toast";
@@ -19,33 +19,23 @@ export default function TournamentOps() {
 
   const reload = useCallback(async () => {
     if (!tournamentId) return;
-    // Paint from cache first — zero network. Null only on a first-ever open.
-    const cached = await readTournament(tournamentId);
-    if (cached) {
-      setCourts(cached.tournament.courts);
-      setEntrants(cached.entrants);
-      setBracket(cached.bracket);
-      setLoading(false);
-    }
     try {
-      const full = await refreshTournament(tournamentId);
-      if (!full) return;
-      setCourts(full.tournament.courts);
-      setEntrants(full.entrants);
-      setBracket(full.bracket);
+      const { tournament, entrants: e, bracket: b } = await getTournament(tournamentId);
+      setCourts(tournament.courts);
+      setEntrants(e);
+      setBracket(b);
     } catch (e) {
-      // Only surface the error when there is nothing on screen already —
-      // blanking or toasting over good cached data is worse than staying stale.
-      if (!cached) toast((e as Error).message || "Could not load ops dashboard", "error");
+      toast((e as Error).message || "Could not load ops dashboard", "error");
     } finally {
       setLoading(false);
     }
   }, [tournamentId]);
   useFocusEffect(useCallback(() => { void reload(); }, [reload]));
 
-  // A Map, not a linear find per cell per render.
-  const nameById = useMemo(() => new Map(entrants.map((e) => [e.id, e.name])), [entrants]);
-  const getEntrantName = (id: string | null) => (!id ? "TBD" : nameById.get(id) ?? "Unknown");
+  const getEntrantName = (id: string | null) => {
+    if (!id) return "TBD";
+    return entrants.find((e) => e.id === id)?.name || "Unknown";
+  };
 
   const onAssignCourt = async (match: BracketMatch, court: string | null) => {
     try {

@@ -110,15 +110,13 @@ export function rpcToFull(p: FullViewPayload): TournamentFull {
       tournamentId: s.tournament_id as string,
       profileId: s.profile_id as string,
       role: s.role as "admin" | "scorer",
-      // "Player" not "" — matches getTournamentStaff's existing fallback.
-      displayName: (s.display_name as string) || "Player",
+      displayName: (s.display_name as string) ?? "",
     })),
     requests: (p.requests ?? []).map((r) => ({
       id: r.id as string,
       tournamentId: r.tournament_id as string,
       profileId: r.profile_id as string,
-      // "Player" not "" — matches listPendingTournamentRequests' fallback.
-      displayName: (r.display_name as string) || "Player",
+      displayName: (r.display_name as string) ?? "",
       createdAt: (r.created_at as string) ?? "",
       role: r.role as "player" | "scorer",
     })),
