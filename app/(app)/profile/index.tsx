@@ -17,7 +17,7 @@ import type { EarnedBadge } from "../../../src/achievements/types";
 import Sheet from "../../../src/components/Sheet";
 import { evaluateBadges } from "../../../src/achievements/rules";
 import { getSetting, setSetting, REMINDERS_KEY } from "../../../src/repos/settingsRepo";
-import { scheduleInactivityReminder, cancelReminders } from "../../../src/lib/reminders";
+import { scheduleInactivityReminder, syncSessionReminders, cancelReminders } from "../../../src/lib/reminders";
 import { C, F, glow } from "../../../src/theme";
 
 export default function Profile() {
@@ -77,7 +77,9 @@ export default function Profile() {
           setRemindersOn(false);
           await setSetting(REMINDERS_KEY, "0");
           toast("Enable notifications in Settings to get reminders", "error");
+          return;
         }
+        await syncSessionReminders();
       } else {
         await cancelReminders();
       }
@@ -446,8 +448,8 @@ export default function Profile() {
       <View style={s.card}>
         <View style={s.reminderRow}>
           <View style={{ flex: 1 }}>
-            <Text style={s.cardTitle}>Play reminders</Text>
-            <Text style={s.reminderSub}>A nudge on your device if you haven't played in a while.</Text>
+            <Text style={s.cardTitle}>Notifications</Text>
+            <Text style={s.reminderSub}>Match reminders and requests</Text>
           </View>
           <Pressable
             style={[s.toggleChip, remindersOn && s.toggleChipOn, remindersBusy && s.off]}

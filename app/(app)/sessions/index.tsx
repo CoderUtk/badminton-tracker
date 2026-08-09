@@ -5,6 +5,7 @@ import { listSessions, refreshSessions, type ClubSession } from "../../../src/re
 import Icon from "../../../src/components/Icon";
 import { C } from "../../../src/theme";
 import { useHasRealClubs } from "../../../src/hooks/useHasRealClubs";
+import { syncSessionReminders } from "../../../src/lib/reminders";
 
 const STATUS_COLOR: Record<ClubSession["status"], string> = {
   scheduled: C.amber,
@@ -26,7 +27,10 @@ export default function Sessions() {
   const router = useRouter();
   const [sessions, setSessions] = useState<ClubSession[]>([]);
   const reload = useCallback(() => {
-    void refreshSessions().then(() => listSessions().then(setSessions));
+    void refreshSessions().then(() => listSessions().then((list) => {
+      setSessions(list);
+      void syncSessionReminders();
+    }));
   }, []);
   useFocusEffect(reload);
   const hasRealClubs = useHasRealClubs();
