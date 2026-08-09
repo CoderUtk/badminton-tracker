@@ -1,0 +1,175 @@
+### Task 2: Rewrite the local reminder scheduler
+
+**Files:**
+- Modify: `src/lib/reminders.ts` (full rewrite — 61 lines today)
+- Test: none new (Task 1 covers the logic; this file is a thin Expo wrapper that jest cannot reach)
+
+**Interfaces:**
+- Consumes: `planSessionReminders`, `INACTIVITY_ID`, `sessionReminderId` from Task 1. `getSetting`, `REMINDERS_KEY` from `src/repos/settingsRepo.ts`. `listSessions` from `src/repos/sessionRepo.ts`.
+- Produces: `scheduleInactivityReminder(): Promise<boolean>` (unchanged signature — `app/(app)/profile/index.tsx` already calls it), `syncSessionReminders(): Promise<void>`, `cancelReminders(): Promise<void>` (unchanged signature).
+
+**Why a rewrite:** the current file calls `Notifications.cancelAllScheduledNotificationsAsync()` on every reschedule. Adding session reminders alongside it means each inactivity reschedule silently wipes them. Identifier-scoped cancellation replaces it.
+
+- [ ] **Step 1: Replace the file contents**
+
+Rewrite `src/lib/reminders.ts` in full:
+
+```ts
+import { Platform } from "react-native";
+import * as Notifications from "expo-notifications";
+import { getSetting, REMINDERS_KEY } from "../repos/settingsRepo";
+import { listSessions } from "../repos/sessionRepo";
+import { INACTIVITY_ID, planSessionReminders } from "./reminderPlan";
+
+const SEVEN_DAYS_SECONDS = 7 * 24 * 60 * 60;
+
+/**
+ * Local notifications are scheduled with stable identifiers so the two kinds
+ * can coexist: `inactivity` for the nudge, `session:<id>` per session. Nothing
+ * here may call cancelAllScheduledNotificationsAsync() — it would wipe the
+ * other kind.
+ */
+
+async function remindersEnabled(): Promise<boolean> {
+  return (await getSetting(REMINDERS_KEY)) === "1";
+}
+
+async function ensurePermission(): Promise<boolean> {
+  let status = (await Notifications.getPermissionsAsync()).status;
+  if (status !== "granted") {
+    // Only prompt when the user hasn't already decided — re-asking after a
+    // denial is a no-op on most platforms anyway, but avoid it either way.
+    if (status === "undetermined") {
+      status = (await Notifications.requestPermissionsAsync()).status;
+    }
+  }
+  return status === "granted";
+}
+
+async function scheduledIds(): Promise<string[]> {
+  const all = await Notifications.getAllScheduledNotificationsAsync();
+  return all.map((n) => n.identifier);
+}
+
+/**
+ * Local-only inactivity nudge, scheduled ~7 days out and rescheduled from now
+ * on each app open. Returns false (without throwing) when disabled, denied,
+ * or on web.
+ */
+export async function scheduleInactivityReminder(): Promise<boolean> {
+  if (Platform.OS === "web") return false;
+
+  try {
+    if (!(await remindersEnabled())) return false;
+    if (!(await ensurePermission())) return false;
+
+    // Cancel only our own identifier so session reminders survive.
+    await Notifications.cancelScheduledNotificationAsync(INACTIVITY_ID);
+    await Notifications.scheduleNotificationAsync({
+      identifier: INACTIVITY_ID,
+      content: {
+        title: "Miss the court?",
+        body: "It's been a week. Start a match.",
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+        seconds: SEVEN_DAYS_SECONDS,
+      },
+    });
+    return true;
+  } catch {
+    // Never let a notification-scheduling failure crash the app.
+    return false;
+  }
+}
+
+/**
+ * Brings scheduled session reminders in line with the local session cache.
+ * Safe to call repeatedly — planSessionReminders diffs against what is
+ * already pending, so this does no work when nothing has changed.
+ */
+export async function syncSessionReminders(): Promise<void> {
+  if (Platform.OS === "web") return;
+
+  try {
+    if (!(await remindersEnabled())) return;
+    if (!(await ensurePermission())) return;
+
+    const sessions = await listSessions();
+    const plan = planSessionReminders(sessions, Date.now(), await scheduledIds());
+
+    for (const id of plan.toCancel) {
+      await Notifications.cancelScheduledNotificationAsync(id);
+    }
+    for (const p of plan.toSchedule) {
+      const s = sessions.find((x) => x.id === p.sessionId);
+      if (!s) continue;
+      await Notifications.scheduleNotificationAsync({
+        identifier: p.id,
+        content: {
+          title: "Session in an hour",
+          body: sessionReminderBody(s.starts_at),
+          data: { type: "session", sessionId: s.id },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: new Date(p.fireAt),
+        },
+      });
+    }
+  } catch {
+    // Best-effort. A failed sync just means a missing reminder.
+  }
+}
+
+/**
+ * Matches the existing time formatting in app/(app)/sessions/index.tsx:
+ * device locale, no hard-coded English.
+ */
+function sessionReminderBody(startsAt: number): string {
+  const time = new Date(startsAt).toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  return `Starts at ${time}.`;
+}
+
+/** Cancels everything this module owns. Leaves other schedulers alone. */
+export async function cancelReminders(): Promise<void> {
+  if (Platform.OS === "web") return;
+  try {
+    const ids = await scheduledIds();
+    for (const id of ids) {
+      if (id === INACTIVITY_ID || id.startsWith("session:")) {
+        await Notifications.cancelScheduledNotificationAsync(id);
+      }
+    }
+  } catch {
+    // Best-effort cancel; nothing to recover from here.
+  }
+}
+```
+
+`sessionReminderId` is deliberately not imported here: identifiers come back on the plan objects, so this file never constructs one itself.
+
+- [ ] **Step 2: Verify nothing else referenced the removed behaviour**
+
+Run: `npx tsc --noEmit`
+Expected: clean. `app/(app)/profile/index.tsx` imports `scheduleInactivityReminder` and `cancelReminders`; both keep their names and signatures.
+
+- [ ] **Step 3: Run the full suite**
+
+Run: `npx jest`
+Expected: PASS. No existing test imports `src/lib/reminders.ts` (it touches `expo-notifications`, which jest cannot load here) — confirm with `grep -rn "lib/reminders" tests/` returning nothing before assuming it.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/lib/reminders.ts
+git commit -m "feat(notifications): identifier-scoped local reminders"
+```
+
+**Spec deviation to note in your report:** the spec's copy table gives the session body as `{club} at {time}`. The club name is not on `ClubSession` (it has `club_id` only) and resolving it would mean a second repo call inside the scheduler. This uses `Starts at {time}.` with the club omitted, and the title already says "Session in an hour". Flag this for the human — if the club name is wanted, it needs a `listRealClubs()` lookup added here.
+
+---
+

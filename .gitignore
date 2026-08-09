@@ -75,8 +75,10 @@ skills/
 # generated knowledge graph (regenerate with: graphify update .)
 graphify-out/
 
-# Superpowers SDD scratch (ledger, briefs, review packages)
-.superpowers/
+# Superpowers SDD. Ledgers, briefs, and task reports are tracked so progress
+# is visible across machines and people. Review diffs are not: they snapshot
+# commit ranges that already exist in git history, and regenerate on every run.
+.superpowers/**/*.diff
 
 # Agent tooling scaffolding (local only)
 .agent/
