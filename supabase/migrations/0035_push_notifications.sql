@@ -95,17 +95,41 @@ begin
     raise exception 'register_push_token: unsupported platform %', p_platform;
   end if;
 
+  -- Reassignment is deliberately a DELETE, not an UPDATE of profile_id.
+  --
+  -- This function is security definer, so `do update set profile_id =
+  -- excluded.profile_id` would have overwritten the owner of ANY existing row:
+  -- a caller who learned another user's token string could point that device's
+  -- notifications at their own account and read them. The plain RLS update
+  -- policy blocked that, but it also blocked the legitimate account switch,
+  -- which is why this function exists at all.
+  --
+  -- Dropping the foreign row instead keeps the account switch working while
+  -- making interception impossible: the attacker never owns a row for that
+  -- token, so nothing is ever delivered to them. The accepted residual is that
+  -- someone who knows a token can silence that device until it re-registers on
+  -- its next launch. That is tolerated because the app never surfaces another
+  -- user's token to a client — it takes an out-of-band leak to obtain one —
+  -- and losing notifications is recoverable where receiving someone else's is
+  -- not.
+  delete from push_tokens
+   where token = p_token
+     and profile_id <> v_profile_id;
+
+  -- Same-user re-registration is the common path and stays a cheap idempotent
+  -- upsert: the delete above matches nothing, and this refreshes updated_at,
+  -- which is the heartbeat push_to()'s 60-day staleness filter reads.
   insert into push_tokens (token, profile_id, platform, updated_at)
   values (p_token, v_profile_id, p_platform, now())
   on conflict (token) do update
-    set profile_id = excluded.profile_id,
-        platform   = excluded.platform,
+    set platform   = excluded.platform,
         updated_at = excluded.updated_at;
 end $$;
 
 -- Unlike push_to(), this one is meant to be called by the client on every
--- launch, so its default execute grant stays. It cannot be abused: it only
--- ever writes a row owned by the caller.
+-- launch, so its default execute grant stays. Every row it writes is owned by
+-- the caller, and it never takes ownership of a row it did not already own —
+-- see the delete-not-reassign note in the body for the one residual it accepts.
 
 -- ---- send helper ----
 

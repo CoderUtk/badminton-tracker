@@ -53,7 +53,33 @@ test("registration goes through a security definer RPC, not a client upsert", ()
   expect(/security definer/i.test(fn)).toBe(true);
   expect(/set search_path\s*=\s*public/i.test(fn)).toBe(true);
   expect(/on conflict\s*\(\s*token\s*\)\s*do update/i.test(fn)).toBe(true);
-  expect(/profile_id\s*=\s*excluded\.profile_id/i.test(fn)).toBe(true);
+  // The inserted row is owned by the caller and nobody else.
+  expect(/values\s*\(\s*p_token\s*,\s*v_profile_id\s*,/i.test(fn)).toBe(true);
+});
+
+test("register_push_token deletes a foreign row instead of reassigning it", () => {
+  // The function is security definer, so `do update set profile_id =
+  // excluded.profile_id` would overwrite the owner of ANY existing row: a
+  // caller who learned another user's token string could redirect that
+  // device's notifications to their own account and read them. Dropping the
+  // foreign row keeps the account switch working without ever handing the
+  // caller ownership of a row they did not already own.
+  const fn = functionBlock("register_push_token");
+
+  expect(
+    /delete from push_tokens\s+where token\s*=\s*p_token\s+and profile_id\s*<>\s*v_profile_id\s*;/i.test(fn),
+  ).toBe(true);
+
+  // The upsert must NOT touch profile_id. Asserting on the presence of the
+  // delete alone would still pass if the `do update` reassigned as well.
+  const conflictAt = fn.search(/on conflict\s*\(\s*token\s*\)\s*do update/i);
+  expect(conflictAt).toBeGreaterThan(-1);
+  const doUpdate = fn.slice(conflictAt, fn.indexOf(";", conflictAt));
+  expect(/profile_id/i.test(doUpdate)).toBe(false);
+
+  // The delete has to come first, or the conflicting foreign row survives and
+  // the insert fails on the primary key.
+  expect(fn.search(/delete from push_tokens/i)).toBeLessThan(conflictAt);
 });
 
 test("register_push_token derives the owner from auth.uid(), never a parameter", () => {
