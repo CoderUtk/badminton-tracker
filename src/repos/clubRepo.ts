@@ -1,6 +1,7 @@
 import * as Crypto from "expo-crypto";
 import { supabase } from "../lib/supabase";
 import { getDb } from "../db/db";
+import { insertMany } from "../db/batch";
 
 export interface Club {
   id: string;
@@ -73,18 +74,16 @@ export async function refreshClubs(): Promise<void> {
     await db.withTransactionAsync(async () => {
       await db.runAsync("delete from clubs_cache");
       await db.runAsync("delete from club_players_cache");
-      for (const c of clubs.data ?? []) {
-        await db.runAsync(
-          "insert into clubs_cache (id, name, invite_code, role, personal) values (?, ?, ?, ?, ?)",
-          c.id, c.name, c.invite_code, roleByClub.get(c.id) ?? "member", c.personal ? 1 : 0
-        );
-      }
-      for (const p of players.data ?? []) {
-        await db.runAsync(
-          "insert into club_players_cache (id, club_id, profile_id, name) values (?, ?, ?, ?)",
-          p.id, p.club_id, p.profile_id, p.name
-        );
-      }
+      await insertMany(
+        db, "clubs_cache", ["id", "name", "invite_code", "role", "personal"],
+        (clubs.data ?? []).map((c) => [
+          c.id, c.name, c.invite_code, roleByClub.get(c.id) ?? "member", c.personal ? 1 : 0,
+        ]),
+      );
+      await insertMany(
+        db, "club_players_cache", ["id", "club_id", "profile_id", "name"],
+        (players.data ?? []).map((p) => [p.id, p.club_id, p.profile_id, p.name]),
+      );
     });
   } finally {
     refreshing = false;

@@ -1,4 +1,5 @@
 import { getDb } from "../db/db";
+import { insertMany } from "../db/batch";
 import { supabase } from "../lib/supabase";
 import { isStaleLive } from "../session/autoFinish";
 import { listRealClubs, type ClubPlayer } from "./clubRepo";
@@ -87,23 +88,26 @@ export async function refreshSessions(): Promise<void> {
     await db.withTransactionAsync(async () => {
       await db.runAsync("delete from sessions_cache");
       await db.runAsync("delete from attendance_cache");
-      for (const s of sessions ?? []) {
-        await db.runAsync(
-          `insert into sessions_cache
-             (id, club_id, starts_at, ends_at, location, courts, status, created_at, created_by, synced)
-           values (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+      // `synced` was a literal 1 in the old VALUES clause; it becomes an
+      // explicit column here. Column order matches the table definition in
+      // src/db/db.ts.
+      await insertMany(
+        db, "sessions_cache",
+        ["id", "club_id", "starts_at", "ends_at", "location", "courts",
+         "status", "created_at", "created_by", "synced"],
+        (sessions ?? []).map((s) => [
           s.id as string, s.club_id as string, new Date(s.starts_at as string).getTime(),
           s.ends_at ? new Date(s.ends_at as string).getTime() : null,
           s.location as string | null, s.courts as number, s.status as string,
-          new Date(s.created_at as string).getTime(), s.created_by as string,
-        );
-      }
-      for (const a of attendance.data ?? []) {
-        await db.runAsync(
-          "insert into attendance_cache (session_id, club_player_id, status, synced) values (?, ?, ?, 1)",
-          a.session_id as string, a.club_player_id as string, a.status as string,
-        );
-      }
+          new Date(s.created_at as string).getTime(), s.created_by as string, 1,
+        ]),
+      );
+      await insertMany(
+        db, "attendance_cache", ["session_id", "club_player_id", "status", "synced"],
+        (attendance.data ?? []).map((a) => [
+          a.session_id as string, a.club_player_id as string, a.status as string, 1,
+        ]),
+      );
     });
   } finally {
     refreshing = false;
