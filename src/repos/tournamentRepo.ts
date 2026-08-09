@@ -9,6 +9,10 @@ import { buildBracket } from "../tournament/bracket";
 import { drawSizeFor, courtForIndex } from "../tournament/draw";
 import { createMatch } from "./matchRepo";
 import { listClubs, addGuestPlayer, listPlayers } from "./clubRepo";
+import { readTournamentCore, writeTournamentCore } from "./tournamentCache";
+import {
+  rpcToFull, type FullViewPayload, type TournamentCore, type TournamentFull,
+} from "../tournament/bundle";
 
 export { bracketMatchToRow, rowToBracketMatch, changedRows } from "../tournament/rows";
 export type { BracketRow } from "../tournament/rows";
@@ -17,13 +21,6 @@ export type TournamentRow = {
   id: string; clubId: string; name: string; size: number; status: string; createdAt: number;
   matchType: MatchType; bestOf: number; finalsBestOf: number; courts: number;
 };
-
-type EntrantRow = {
-  id: string; club_player_id: string; club_player_id_2: string | null; seed: number;
-  name1: string | null; name2: string | null;
-};
-const entrantName = (r: EntrantRow) =>
-  r.club_player_id_2 ? `${r.name1 ?? "P1"} / ${r.name2 ?? "P2"}` : (r.name1 ?? "Player");
 
 // --- async persistence ------------------------------------------------------
 
@@ -69,7 +66,12 @@ export async function createTournament(
  */
 export async function startTournament(id: string): Promise<void> {
   if (!supabase) throw new Error("Sign in to start a tournament");
-  const { tournament, entrants } = await getTournament(id);
+  // Refresh rather than read: starting a tournament builds the bracket from
+  // the entrant list, and building it from a stale cache would seed the draw
+  // with entrants who have since been removed.
+  const full = await refreshTournament(id);
+  if (!full) throw new Error("Tournament not found");
+  const { tournament, entrants } = full;
   const size = drawSizeFor(entrants.length);
   const bracket = buildBracket(entrants, size, id, () => Crypto.randomUUID());
   // Later rounds stay courtless and are assigned from Live Ops once their
@@ -82,61 +84,6 @@ export async function startTournament(id: string): Promise<void> {
     p_bracket: withCourts.map((m) => bracketMatchToRow(m)),
   });
   if (error) throw new Error(error.message);
-}
-
-async function loadEntrantNames(playerIds: string[]): Promise<Map<string, string>> {
-  if (!supabase || playerIds.length === 0) return new Map();
-  const { data } = await supabase.from("club_players").select("id, name").in("id", playerIds);
-  return new Map((data ?? []).map((p) => [p.id as string, p.name as string]));
-}
-
-async function loadEntrants(tournamentId: string): Promise<Entrant[]> {
-  if (!supabase) return [];
-  const { data } = await supabase
-    .from("tournament_entrants")
-    .select("id, club_player_id, club_player_id_2, seed")
-    .eq("tournament_id", tournamentId)
-    .order("seed");
-  const rows = (data ?? []) as EntrantRow[];
-  const ids = rows.flatMap((r) => [r.club_player_id, r.club_player_id_2].filter((x): x is string => !!x));
-  const names = await loadEntrantNames(ids);
-  return rows.map((r) => ({
-    id: r.id,
-    clubPlayerId: r.club_player_id,
-    name: entrantName({ ...r, name1: names.get(r.club_player_id) ?? null, name2: r.club_player_id_2 ? names.get(r.club_player_id_2) ?? null : null }),
-    seed: r.seed,
-    partnerClubPlayerId: r.club_player_id_2,
-  }));
-}
-
-/** Per-entrant player list (1 for singles, 2 for doubles) for building a MatchConfig. */
-async function loadEntrantSides(tournamentId: string): Promise<Map<string, { club_player_id: string; name: string }[]>> {
-  if (!supabase) return new Map();
-  const { data } = await supabase
-    .from("tournament_entrants")
-    .select("id, club_player_id, club_player_id_2")
-    .eq("tournament_id", tournamentId);
-  const rows = (data ?? []) as EntrantRow[];
-  const ids = rows.flatMap((r) => [r.club_player_id, r.club_player_id_2].filter((x): x is string => !!x));
-  const names = await loadEntrantNames(ids);
-  const map = new Map<string, { club_player_id: string; name: string }[]>();
-  for (const r of rows) {
-    const players = [{ club_player_id: r.club_player_id, name: names.get(r.club_player_id) ?? "Player" }];
-    if (r.club_player_id_2) players.push({ club_player_id: r.club_player_id_2, name: names.get(r.club_player_id_2) ?? "Player" });
-    map.set(r.id, players);
-  }
-  return map;
-}
-
-async function loadBracket(tournamentId: string): Promise<BracketMatch[]> {
-  if (!supabase) return [];
-  const { data } = await supabase
-    .from("bracket_matches")
-    .select("*")
-    .eq("tournament_id", tournamentId)
-    .order("round")
-    .order("idx");
-  return (data ?? []).map((row) => rowToBracketMatch(row as BracketRow));
 }
 
 const toTournamentRow = (r: Record<string, unknown>): TournamentRow => ({
@@ -224,19 +171,51 @@ export async function updateTournament(
   if (!data || data.length === 0) throw new Error("Could not update tournament");
 }
 
-export async function getTournament(
-  id: string,
-): Promise<{ tournament: TournamentRow; entrants: Entrant[]; bracket: BracketMatch[] }> {
-  if (!supabase) return { tournament: toTournamentRow({}), entrants: [], bracket: [] };
-  const { data: row, error } = await supabase.from("tournaments").select("*").eq("id", id).maybeSingle();
-  // Without this the screen renders a blank tournament on any read failure,
-  // which looks like a deleted tournament rather than an error.
-  if (error) throw new Error(error.message);
-  return {
-    tournament: toTournamentRow((row as Record<string, unknown>) ?? {}),
-    entrants: await loadEntrants(id),
-    bracket: await loadBracket(id),
-  };
+/** Cache-only read. Never touches the network. Null when never cached here. */
+export async function readTournament(id: string): Promise<TournamentCore | null> {
+  return readTournamentCore(id);
+}
+
+// One in-flight refresh per tournament id. Two screens (bracket + ops) plus a
+// poll tick can all ask at once; without this they stampede the RPC and race
+// each other's cache writes. Mirrors clubRepo's module-level `refreshing`
+// guard, widened to a per-id map because tournaments are per-entity.
+const inFlight = new Map<string, Promise<TournamentFull | null>>();
+
+/**
+ * One RPC, written through to the local cache.
+ *
+ * Returns the full bundle including staff data, which is deliberately NOT
+ * cached (admin-only, not needed for first paint) — callers hold it in
+ * component state.
+ */
+export async function refreshTournament(id: string): Promise<TournamentFull | null> {
+  const existing = inFlight.get(id);
+  if (existing) return existing;
+
+  const run = (async (): Promise<TournamentFull | null> => {
+    if (!supabase) return null;
+    const { data, error } = await supabase.rpc("tournament_full_view", {
+      p_tournament_id: id,
+    });
+    if (error) throw new Error(error.message);
+    const row = (data as FullViewPayload[] | null)?.[0];
+    if (!row) return null;
+    const full = rpcToFull(row);
+    await writeTournamentCore({
+      tournament: full.tournament,
+      entrants: full.entrants,
+      bracket: full.bracket,
+    });
+    return full;
+  })();
+
+  inFlight.set(id, run);
+  try {
+    return await run;
+  } finally {
+    inFlight.delete(id);
+  }
 }
 
 export async function listTournaments(clubId: string): Promise<TournamentRow[]> {
@@ -285,32 +264,53 @@ export async function listAllTournaments(): Promise<TournamentListRow[]> {
 /** Create a real match for a bracket cell (singles or doubles), link it, return matchId. */
 export async function startBracketMatch(bracketMatchId: string): Promise<string> {
   if (!supabase) throw new Error("Sign in to start a match");
-  const { data: cellRow } = await supabase.from("bracket_matches").select("*").eq("id", bracketMatchId).maybeSingle();
-  const cell = cellRow ? rowToBracketMatch(cellRow as BracketRow) : null;
-  if (!cell || !cell.entrantA || !cell.entrantB) throw new Error("Bracket cell missing an entrant");
 
-  const { data: trow } = await supabase
-    .from("tournaments")
-    .select("club_id, match_type, bestof, finals_bestof")
-    .eq("id", cell.tournamentId)
-    .maybeSingle();
-  if (!trow) throw new Error("Tournament not found");
+  // Everything up to the two writes below comes from cache. This used to be
+  // five serial network reads (cell, tournament row, entrants, entrant names,
+  // full bracket) before the scoring screen could open.
+  const db = await getDb();
+  const cellRow = await db?.getFirstAsync<BracketRow>(
+    "select * from bracket_matches where id = ?", bracketMatchId
+  );
+  if (!cellRow) throw new Error("Bracket cell missing an entrant");
+  const cell = rowToBracketMatch(cellRow);
+  if (!cell.entrantA || !cell.entrantB) throw new Error("Bracket cell missing an entrant");
 
-  const sides = await loadEntrantSides(cell.tournamentId);
-  const a = sides.get(cell.entrantA);
-  const b = sides.get(cell.entrantB);
+  let core = await readTournament(cell.tournamentId);
+  if (!core) {
+    const full = await refreshTournament(cell.tournamentId);
+    if (!full) throw new Error("Tournament not found");
+    core = full;
+  }
+
+  const byId = new Map(core.entrants.map((e) => [e.id, e]));
+  const a = byId.get(cell.entrantA);
+  const b = byId.get(cell.entrantB);
   if (!a || !b) throw new Error("Entrant not found");
 
-  const bracket = await loadBracket(cell.tournamentId);
-  const maxRound = Math.max(...bracket.map((m) => m.round));
-  const matchType = (trow.match_type as MatchType) ?? "singles";
-  const bestOf = pickBestOf(cell.round, maxRound, trow.bestof ?? 3, trow.finals_bestof ?? 3) as 1 | 3 | 5;
-  const sideA = a.map((p) => ({ club_player_id: p.club_player_id, name: p.name }));
-  const sideB = b.map((p) => ({ club_player_id: p.club_player_id, name: p.name }));
+  // An entrant's side is its own player plus, for doubles, its partner.
+  // Entrant.name is the pre-joined "Ana / Bo" display string, so the two names
+  // are recovered by splitting it. Fallbacks match the originals so a cold
+  // roster still produces a startable match.
+  const sideOf = (e: Entrant) => {
+    const parts = e.name.split(" / ");
+    const players = [{ club_player_id: e.clubPlayerId, name: parts[0] ?? "Player" }];
+    if (e.partnerClubPlayerId) {
+      players.push({ club_player_id: e.partnerClubPlayerId, name: parts[1] ?? "Player" });
+    }
+    return players;
+  };
+  const sideA = sideOf(a);
+  const sideB = sideOf(b);
+
+  const maxRound = Math.max(...core.bracket.map((m) => m.round));
+  const bestOf = pickBestOf(
+    cell.round, maxRound, core.tournament.bestOf, core.tournament.finalsBestOf
+  ) as 1 | 3 | 5;
   const config = buildTournamentConfig(
     sideA.map((p) => ({ id: p.club_player_id, name: p.name })),
     sideB.map((p) => ({ id: p.club_player_id, name: p.name })),
-    matchType, bestOf,
+    core.tournament.matchType, bestOf,
   );
 
   // Local row first (offline-capable point scoring once the match exists),
@@ -318,17 +318,16 @@ export async function startBracketMatch(bracketMatchId: string): Promise<string>
   // has a foreign key to matches(id), so it must exist there before it can be
   // linked. Only match_events (points) still queue through the regular
   // offline-first sync path in src/sync/runner.ts.
-  const matchId = await createMatch(config, sideA, sideB, trow.club_id as string, null);
+  const matchId = await createMatch(config, sideA, sideB, core.tournament.clubId, null);
 
   const { data: auth } = await supabase.auth.getUser();
   const uid = auth.user?.id;
   if (!uid) throw new Error("Sign in to start a match");
   const { error: mErr } = await supabase.from("matches").insert({
-    id: matchId, club_id: trow.club_id, session_id: null,
+    id: matchId, club_id: core.tournament.clubId, session_id: null,
     config, side_a: sideA, side_b: sideB, status: "live", created_by: uid,
   });
   if (mErr) throw new Error(mErr.message);
-  const db = await getDb();
   await db?.runAsync("update matches set synced = 1 where id = ?", matchId);
 
   const { data: linkedRow, error: linkErr } = await supabase

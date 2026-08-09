@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { getTournament, updateTournament } from "../../../../src/repos/tournamentRepo";
+import { refreshTournament, updateTournament } from "../../../../src/repos/tournamentRepo";
 import { validateName } from "../../../../src/lib/validate";
 import { toast } from "../../../../src/lib/toast";
 import FormScreen from "../../../../src/components/FormScreen";
@@ -30,7 +30,12 @@ export default function EditTournament() {
     if (!id) return;
     (async () => {
       try {
-        const { tournament } = await getTournament(id);
+        // Deliberately network-only, not cache-first: this is an edit form.
+        // Painting stale values risks the user submitting them back over
+        // another admin's change, or a late refresh clobbering their typing.
+        const full = await refreshTournament(id);
+        if (!full) throw new Error("Tournament not found");
+        const { tournament } = full;
         setName(tournament.name);
         setCourts(tournament.courts);
         setBestOf(tournament.bestOf);
