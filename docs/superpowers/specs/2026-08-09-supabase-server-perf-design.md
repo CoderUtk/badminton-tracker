@@ -10,10 +10,18 @@ No client changes. Independent of P1-P3 and can ship in any order, though it com
 with P1 — a cheaper `tournament_full_view` matters more once it is the only tournament
 query left.
 
-## 1. Apply the already-written FK index migration
+## 1. Commit the FK index migration (already applied)
 
-`supabase/migrations/0036_missing_fk_indexes.sql` exists in the working tree, is
-**untracked in git**, and has **not been pushed to production**. It adds:
+**Corrected 2026-08-09.** An earlier draft of this spec claimed `0036_missing_fk_indexes.sql`
+was unapplied. It is not. `npx supabase migration list` shows local and remote both at
+0036, and `db push --dry-run` reports "Remote database is up to date". The file is
+untracked *in git*, but the Supabase CLI reads `supabase/migrations/` from disk, so
+git status never gated the push — it was applied in a prior session.
+
+**The indexes are live in production.** The only outstanding work in this section is
+committing the file so the repository matches the database.
+
+For reference, the migration adds:
 
 ```sql
 create index if not exists matches_club_id on public.matches (club_id);
@@ -28,17 +36,18 @@ Its own comment states the rationale correctly: Postgres indexes primary keys
 automatically but not foreign keys, and every RLS policy in this schema filters on
 exactly these columns.
 
-**Actions:** commit the file, then `npx supabase db push`.
+**Action:** `git add supabase/migrations/0036_missing_fk_indexes.sql` and commit. Nothing
+to push.
 
-**Verification before push:** confirm against the production database which of these
-indexes already exist. `create index if not exists` is safe either way, but knowing the
-starting state is what makes the after-measurement meaningful.
+**Consequence for the rest of this spec:** the "before" state for any measurement in §2
+and §3 is *with* these indexes already in place. Any remaining slowness is therefore not
+attributable to unindexed foreign keys, which removes the most likely explanation and
+makes §2 correspondingly less likely to be worth its risk.
 
-**Non-blocking builds:** these run as plain `create index`, which takes an `ACCESS
-EXCLUSIVE`-adjacent lock that blocks writes to the table for the duration. On tables this
-size that is milliseconds. If `matches` has grown large enough to matter by the time this
-ships, switch to `create index concurrently` — which cannot run inside a transaction
-block and therefore needs its own migration file with no other statements in it.
+**Process note worth carrying forward.** A migration reached production while its file
+was untracked in git. Nothing in the tooling prevents that, because the CLI reads the
+filesystem and git does not gate it. Worth a habit of `git status supabase/migrations/`
+before any `db push`.
 
 ## 2. RLS policy shape
 
@@ -176,9 +185,12 @@ select tablename from pg_publication_tables where pubname = 'supabase_realtime';
 
 ## Verification
 
-- Every index in `0036` exists in production after push (`\di` or `pg_indexes`).
+- Every index in `0036` exists in production (`select indexname from pg_indexes where
+  schemaname = 'public'`). Confirms the applied-migration record matches reality.
 - `explain (analyze)` on the four client queries shows index scans, not sequential scans,
-  with before/after timings recorded in the plan document.
+  with timings recorded in the plan document. Note this is a *verification* that the
+  already-applied indexes are being used, not a before/after comparison — the "before"
+  state no longer exists.
 - For each rewritten policy: identical row counts as a member, a non-member, and an admin,
   before and after.
 - Existing test suite passes — none of it covers RLS, which is itself worth noting as a
