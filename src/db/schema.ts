@@ -75,3 +75,36 @@ create index if not exists matches_session_created on matches (session_id, creat
 create index if not exists matches_club_created on matches (club_id, created_at desc);
 create index if not exists matches_created on matches (created_at desc);
 `;
+
+// Profile and analytics caches.
+//
+// profile_cache: getMyProfile() previously made two network calls (auth.getUser
+// then a profiles select) on EVERY call, from five call sites — including Gate,
+// which blocks routing on it, and Home, which calls it twice per reload.
+// Single row: only the signed-in user's profile is ever cached here, and
+// sign-out clears it.
+//
+// analytics_cache: getPlayerAnalytics() read every match on the device and
+// recomputed ~25 lifetime aggregates on every Home focus. `payload` is the
+// serialised PlayerAnalytics (see src/analytics/serialize.ts — it carries a
+// Set, which raw JSON.stringify would silently drop). `fingerprint` is a cheap
+// aggregate over the completed-match rows the computation actually reads.
+//
+// A SEPARATE migration entry appended to the list in db.ts.
+export const PROFILE_ANALYTICS_CACHE_DDL = `
+create table if not exists profile_cache (
+  id text primary key,
+  display_name text not null default '',
+  display_name_set integer not null default 0,
+  age integer,
+  hand text,
+  avatar_url text,
+  username text not null default ''
+);
+create table if not exists analytics_cache (
+  name text primary key,
+  fingerprint text not null,
+  payload text not null,
+  computed_at integer not null
+);
+`;
