@@ -19,6 +19,7 @@
     },
     "android": {
       "package": "com.navalo.courtside",
+      "googleServicesFile": "./google-services.json",
       "versionCode": 11,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
