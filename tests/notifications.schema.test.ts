@@ -50,9 +50,30 @@ test("all four RLS policies verify auth.uid() = profile_id ownership", () => {
   // Each policy must check that the user only accesses their own tokens.
   // Verifying the policy bodies (not just that RLS is enabled) ensures a
   // future edit cannot weaken policies to using (true) without failing tests.
-  expect(sql).toMatch(/create policy\s+"[^"]*"\s+on public\.push_tokens for select.*?using\s*\(\s*auth\.uid\(\)\s*=\s*profile_id\s*\)/is);
-  expect(sql).toMatch(/create policy\s+"[^"]*"\s+on public\.push_tokens for insert.*?with check\s*\(\s*auth\.uid\(\)\s*=\s*profile_id/is);
-  expect(sql).toMatch(/create policy\s+"[^"]*"\s+on public\.push_tokens for update.*?using\s*\(\s*auth\.uid\(\)\s*=\s*profile_id\s*\)/is);
-  expect(sql).toMatch(/create policy\s+"[^"]*"\s+on public\.push_tokens for update.*?with check\s*\(\s*auth\.uid\(\)\s*=\s*profile_id\s*\)/is);
-  expect(sql).toMatch(/create policy\s+"[^"]*"\s+on public\.push_tokens for delete.*?using\s*\(\s*auth\.uid\(\)\s*=\s*profile_id\s*\)/is);
+  // Extract each policy block separately to prevent regex from matching
+  // across policy boundaries (e.g., a weakened select policy could match
+  // the update policy's correct ownership clause).
+  const getPolicyBlock = (operation: string) => {
+    const policies = sql.split(/(?=create policy)/);
+    return policies.find((p) => p.toLowerCase().includes(`for ${operation}`)) || "";
+  };
+
+  const selectBlock = getPolicyBlock("select");
+  const insertBlock = getPolicyBlock("insert");
+  const updateBlock = getPolicyBlock("update");
+  const deleteBlock = getPolicyBlock("delete");
+
+  // SELECT: check using clause has ownership
+  expect(/using\s*\(\s*auth\.uid\(\)\s*=\s*profile_id\s*\)/i.test(selectBlock)).toBe(true);
+
+  // INSERT: check with check clause has ownership
+  expect(/with check\s*\([^)]*auth\.uid\(\)\s*=\s*profile_id/i.test(insertBlock)).toBe(true);
+
+  // UPDATE: must have ownership in BOTH using and with check clauses
+  // Testing separately ensures neither can be individually weakened
+  expect(/using\s*\(\s*auth\.uid\(\)\s*=\s*profile_id\s*\)/i.test(updateBlock)).toBe(true);
+  expect(/with check\s*\([^)]*auth\.uid\(\)\s*=\s*profile_id[^)]*\)/i.test(updateBlock)).toBe(true);
+
+  // DELETE: check using clause has ownership
+  expect(/using\s*\(\s*auth\.uid\(\)\s*=\s*profile_id\s*\)/i.test(deleteBlock)).toBe(true);
 });
