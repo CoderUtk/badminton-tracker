@@ -108,8 +108,25 @@ the upsert overwrites `profile_id` in place rather than leaving a second row
 behind; without this, the previous user's friend requests keep arriving on a
 phone they no longer own.
 
-RLS restricts every operation to `profile_id = auth.uid()` and blocks anonymous
-JWTs, consistent with `0018_anon_rls_restrictions.sql`.
+RLS restricts select, update and delete to `profile_id = auth.uid()` and blocks
+anonymous JWTs, consistent with `0018_anon_rls_restrictions.sql`.
+
+Registration is the one exception and does not go through the table. A client
+upsert cannot perform the account switch above: `on conflict do update`
+evaluates the update policy against the *existing* row, which still carries the
+previous owner's `profile_id`, so RLS rejects it and the device never registers
+again. Writes therefore go through `register_push_token(p_token, p_platform)`,
+a `security definer` function that takes the owner from `auth.uid()` — never a
+parameter — and applies the same anonymous-JWT and platform checks.
+
+Because it runs as owner, reassignment is a **delete, not an update**: a row for
+that token belonging to another profile is removed and a fresh one inserted, and
+the `on conflict` branch never writes `profile_id`. Same-user re-registration
+stays a cheap upsert that refreshes `updated_at`. The accepted trade-off is that
+a caller who somehow learns another user's token string can drop that row and
+silence the device until its next launch; they can never take ownership of it,
+so notifications are never intercepted. The app never surfaces another user's
+token to a client, so obtaining one requires an out-of-band leak.
 
 There is no preferences table and no preferences column. With a single master
 toggle, **the presence of a token row is the setting**: on registers, off

@@ -17,7 +17,8 @@ import type { EarnedBadge } from "../../../src/achievements/types";
 import Sheet from "../../../src/components/Sheet";
 import { evaluateBadges } from "../../../src/achievements/rules";
 import { getSetting, setSetting, REMINDERS_KEY } from "../../../src/repos/settingsRepo";
-import { scheduleInactivityReminder, cancelReminders } from "../../../src/lib/reminders";
+import { scheduleInactivityReminder, syncSessionReminders, cancelReminders } from "../../../src/lib/reminders";
+import { registerPushToken, unregisterPushToken } from "../../../src/lib/push";
 import { C, F, glow } from "../../../src/theme";
 
 export default function Profile() {
@@ -77,9 +78,13 @@ export default function Profile() {
           setRemindersOn(false);
           await setSetting(REMINDERS_KEY, "0");
           toast("Enable notifications in Settings to get reminders", "error");
+          return;
         }
+        await syncSessionReminders();
+        void registerPushToken();
       } else {
         await cancelReminders();
+        void unregisterPushToken();
       }
     } finally {
       setRemindersBusy(false);
@@ -446,8 +451,8 @@ export default function Profile() {
       <View style={s.card}>
         <View style={s.reminderRow}>
           <View style={{ flex: 1 }}>
-            <Text style={s.cardTitle}>Play reminders</Text>
-            <Text style={s.reminderSub}>A nudge on your device if you haven't played in a while.</Text>
+            <Text style={s.cardTitle}>Notifications</Text>
+            <Text style={s.reminderSub}>Match reminders and requests</Text>
           </View>
           <Pressable
             style={[s.toggleChip, remindersOn && s.toggleChipOn, remindersBusy && s.off]}
@@ -464,7 +469,18 @@ export default function Profile() {
       </View>
 
       {session && (
-        <Pressable style={s.signOut} onPress={() => supabase?.auth.signOut()}>
+        <Pressable
+          style={s.signOut}
+          onPress={() => {
+            // Local reminders are cancelled too: their identifiers are
+            // per-session and the SQLite cache is not cleared on sign-out, so
+            // a leftover `session:<id>` would fire for the next account on
+            // this device, for a session it has no access to.
+            void Promise.all([unregisterPushToken(), cancelReminders()]).finally(() => {
+              void supabase?.auth.signOut();
+            });
+          }}
+        >
           <Icon name="log-out-outline" color={C.red} size={18} />
           <Text style={s.signOutText}>Sign out</Text>
         </Pressable>

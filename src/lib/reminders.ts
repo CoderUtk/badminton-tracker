@@ -1,42 +1,58 @@
 import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import { getSetting, REMINDERS_KEY } from "../repos/settingsRepo";
+import { listSessions } from "../repos/sessionRepo";
+import { INACTIVITY_ID, SESSION_PREFIX, planSessionReminders } from "./reminderPlan";
 
 const SEVEN_DAYS_SECONDS = 7 * 24 * 60 * 60;
 
 /**
- * Local-only inactivity nudge: "Haven't played in a while? Start a match."
- * scheduled ~7 days out. No server/push infra — everything here is
- * on-device via expo-notifications' local scheduler.
- *
- * No-ops on web (expo-notifications' scheduling APIs aren't supported
- * there) and never throws — a denied/undetermined permission just means
- * nothing gets scheduled.
+ * Local notifications are scheduled with stable identifiers so the two kinds
+ * can coexist: `inactivity` for the nudge, `session:<id>` per session. Nothing
+ * here may call cancelAllScheduledNotificationsAsync() — it would wipe the
+ * other kind.
+ */
+
+async function remindersEnabled(): Promise<boolean> {
+  return (await getSetting(REMINDERS_KEY)) === "1";
+}
+
+async function ensurePermission(): Promise<boolean> {
+  let status = (await Notifications.getPermissionsAsync()).status;
+  if (status !== "granted") {
+    // Only prompt when the user hasn't already decided — re-asking after a
+    // denial is a no-op on most platforms anyway, but avoid it either way.
+    if (status === "undetermined") {
+      status = (await Notifications.requestPermissionsAsync()).status;
+    }
+  }
+  return status === "granted";
+}
+
+async function scheduledIds(): Promise<string[]> {
+  const all = await Notifications.getAllScheduledNotificationsAsync();
+  return all.map((n) => n.identifier);
+}
+
+/**
+ * Local-only inactivity nudge, scheduled ~7 days out and rescheduled from now
+ * on each app open. Returns false (without throwing) when disabled, denied,
+ * or on web.
  */
 export async function scheduleInactivityReminder(): Promise<boolean> {
   if (Platform.OS === "web") return false;
 
   try {
-    const on = (await getSetting(REMINDERS_KEY)) === "1";
-    if (!on) return false;
+    if (!(await remindersEnabled())) return false;
+    if (!(await ensurePermission())) return false;
 
-    let status = (await Notifications.getPermissionsAsync()).status;
-    if (status !== "granted") {
-      // Only prompt when the user hasn't already decided — re-asking after
-      // a denial is a no-op on most platforms anyway, but avoid it either way.
-      if (status === "undetermined") {
-        status = (await Notifications.requestPermissionsAsync()).status;
-      }
-      if (status !== "granted") return false;
-    }
-
-    // Always reschedule from now — cancel any pending reminder first so
-    // toggling or reopening the app doesn't stack up duplicate notifications.
-    await Notifications.cancelAllScheduledNotificationsAsync();
+    // Cancel only our own identifier so session reminders survive.
+    await Notifications.cancelScheduledNotificationAsync(INACTIVITY_ID);
     await Notifications.scheduleNotificationAsync({
+      identifier: INACTIVITY_ID,
       content: {
         title: "Miss the court?",
-        body: "Haven't played in a while? Start a match.",
+        body: "It's been a week. Start a match.",
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
@@ -50,10 +66,67 @@ export async function scheduleInactivityReminder(): Promise<boolean> {
   }
 }
 
+/**
+ * Brings scheduled session reminders in line with the local session cache.
+ * Safe to call repeatedly — planSessionReminders diffs against what is
+ * already pending, so this does no work when nothing has changed.
+ */
+export async function syncSessionReminders(): Promise<void> {
+  if (Platform.OS === "web") return;
+
+  try {
+    if (!(await remindersEnabled())) return;
+    if (!(await ensurePermission())) return;
+
+    const sessions = await listSessions();
+    const plan = planSessionReminders(sessions, Date.now(), await scheduledIds());
+
+    for (const id of plan.toCancel) {
+      await Notifications.cancelScheduledNotificationAsync(id);
+    }
+    for (const p of plan.toSchedule) {
+      const s = sessions.find((x) => x.id === p.sessionId);
+      if (!s) continue;
+      await Notifications.scheduleNotificationAsync({
+        identifier: p.id,
+        content: {
+          title: "Session in an hour",
+          body: sessionReminderBody(s.starts_at),
+          data: { type: "session", sessionId: s.id },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: new Date(p.fireAt),
+        },
+      });
+    }
+  } catch {
+    // Best-effort. A failed sync just means a missing reminder.
+  }
+}
+
+/**
+ * Matches the existing time formatting in app/(app)/sessions/index.tsx:
+ * device locale, no hard-coded English.
+ */
+function sessionReminderBody(startsAt: number): string {
+  const time = new Date(startsAt).toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  return `Starts at ${time}.`;
+}
+
+/** Cancels everything this module owns. Leaves other schedulers alone. */
 export async function cancelReminders(): Promise<void> {
   if (Platform.OS === "web") return;
   try {
-    await Notifications.cancelAllScheduledNotificationsAsync();
+    const ids = await scheduledIds();
+    for (const id of ids) {
+      if (id === INACTIVITY_ID || id.startsWith(SESSION_PREFIX)) {
+        await Notifications.cancelScheduledNotificationAsync(id);
+      }
+    }
   } catch {
     // Best-effort cancel; nothing to recover from here.
   }
