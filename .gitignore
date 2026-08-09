@@ -87,6 +87,12 @@ keystore.txt
 *.keystore
 *.jks
 
+# Firebase service-account keys for FCM V1. These are real credentials and
+# reach EAS through `eas credentials`, never through git. The download is named
+# <project>-firebase-adminsdk-<hash>.json, which the google-service-account*
+# pattern above does not catch.
+*firebase-adminsdk*.json
+
 # Personal scratch notes (kept locally, not project docs)
 bugs.txt
 features.txt
