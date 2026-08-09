@@ -1,8 +1,10 @@
 name: Build release APK
 
+# Manual only. Auto-build on every push to master burned CI minutes on
+# doc-only and refactor commits that produce an identical APK. Trigger from
+# Actions -> "Build release APK" -> "Run workflow", picking the branch there.
 on:
-  push:
-    branches: [master]
+  workflow_dispatch:
 
 jobs:
   build:
