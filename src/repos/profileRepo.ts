@@ -15,8 +15,80 @@ export function subscribeProfile(cb: () => void): () => void {
   return () => { listeners.delete(cb); };
 }
 
-/** The signed-in user's profile row, or null when offline / not configured. */
-export async function getMyProfile(): Promise<Profile | null> {
+// In-memory memo. Home calls getMyProfile twice per reload by design, and Gate
+// re-reads on every auth tick; without this each one is a fresh pair of network
+// round trips (auth.getUser + a profiles select).
+let memo: Profile | null = null;
+
+/** Announce a profile write: drop the memo so the next read re-fetches. */
+function announceProfileWrite(): void {
+  memo = null;
+  listeners.forEach((l) => l());
+}
+
+/**
+ * The local database, or null when there isn't one. Null on web (by design),
+ * on an open failure, and in the node test environment where importing db.ts
+ * pulls in react-native. Caching is an optimisation — losing it must degrade
+ * to a network read, never to a thrown error.
+ */
+async function cacheDb() {
+  try {
+    const { getDb } = await import("../db/db");
+    return await getDb();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Drops both the memo and the cached row. MUST be called on sign-out: without
+ * it, the next user to sign in on this device sees the previous user's name
+ * and username for a frame.
+ */
+export function clearProfileCache(): void {
+  memo = null;
+  void (async () => {
+    const db = await cacheDb();
+    await db?.runAsync("delete from profile_cache");
+  })();
+}
+
+async function readCachedProfile(): Promise<Profile | null> {
+  if (memo) return memo;
+  const db = await cacheDb();
+  if (!db) return null;
+  const r = await db.getFirstAsync<Record<string, unknown>>(
+    "select * from profile_cache limit 1"
+  );
+  if (!r) return null;
+  memo = {
+    id: r.id as string,
+    displayName: (r.display_name as string) ?? "",
+    displayNameSet: !!(r.display_name_set as number),
+    age: (r.age as number | null) ?? null,
+    hand: (r.hand as Hand | null) ?? null,
+    avatarUrl: (r.avatar_url as string | null) ?? null,
+    username: (r.username as string) ?? "",
+  };
+  return memo;
+}
+
+async function writeCachedProfile(p: Profile): Promise<void> {
+  memo = p;
+  const db = await cacheDb();
+  if (!db) return;
+  await db.runAsync("delete from profile_cache");
+  await db.runAsync(
+    `insert into profile_cache
+       (id, display_name, display_name_set, age, hand, avatar_url, username)
+     values (?, ?, ?, ?, ?, ?, ?)`,
+    p.id, p.displayName, p.displayNameSet ? 1 : 0, p.age, p.hand, p.avatarUrl, p.username
+  );
+}
+
+/** Network fetch of the signed-in user's profile, written through to cache. */
+export async function refreshMyProfile(): Promise<Profile | null> {
   if (!supabase) return null;
   const { data: auth } = await supabase.auth.getUser();
   const uid = auth.user?.id;
@@ -29,7 +101,7 @@ export async function getMyProfile(): Promise<Profile | null> {
     .maybeSingle();
   if (error || !data) return null;
 
-  return {
+  const profile: Profile = {
     id: data.id as string,
     displayName: (data.display_name as string | null) ?? "",
     displayNameSet: Boolean(data.display_name_set),
@@ -38,6 +110,26 @@ export async function getMyProfile(): Promise<Profile | null> {
     avatarUrl: (data.avatar_url as string | null) ?? null,
     username: (data.username as string | null) ?? "",
   };
+  await writeCachedProfile(profile);
+  return profile;
+}
+
+/**
+ * The signed-in user's profile row, or null when offline / not configured.
+ *
+ * Cache-first: returns immediately from the memo or the local table when warm
+ * and refreshes in the background; awaits the network only on a cold cache.
+ * Signature is unchanged so all five existing call sites keep working.
+ */
+export async function getMyProfile(): Promise<Profile | null> {
+  const cached = await readCachedProfile();
+  if (cached) {
+    void refreshMyProfile().catch(() => {
+      // Background refresh. The cached value stays valid and on screen.
+    });
+    return cached;
+  }
+  return refreshMyProfile();
 }
 
 /** Persist the user's chosen name and mark it as explicitly set. */
@@ -52,7 +144,7 @@ export async function setDisplayName(name: string): Promise<void> {
     .update({ display_name: name.trim(), display_name_set: true })
     .eq("id", uid);
   if (error) throw new Error(error.message);
-  listeners.forEach((l) => l());
+  announceProfileWrite();
 }
 
 /**
@@ -71,7 +163,7 @@ export async function completeOnboarding(name: string, age: number | null, hand:
     .update({ display_name: name.trim(), display_name_set: true, age, hand })
     .eq("id", uid);
   if (error) throw new Error(error.message);
-  listeners.forEach((l) => l());
+  announceProfileWrite();
 }
 
 /** Update age and playing hand after onboarding — used by the profile screen's edit flow. */
@@ -86,7 +178,7 @@ export async function setProfileDetails(age: number | null, hand: Hand): Promise
     .update({ age, hand })
     .eq("id", uid);
   if (error) throw new Error(error.message);
-  listeners.forEach((l) => l());
+  announceProfileWrite();
 }
 
 export async function uploadAvatar(localUri: string): Promise<string> {
@@ -106,7 +198,7 @@ export async function uploadAvatar(localUri: string): Promise<string> {
 
   const { error: dbErr } = await supabase.from("profiles").update({ avatar_url: url }).eq("id", uid);
   if (dbErr) throw new Error(dbErr.message);
-  listeners.forEach((l) => l());
+  announceProfileWrite();
   return url;
 }
 
@@ -118,7 +210,7 @@ export async function removeAvatar(): Promise<void> {
   await supabase.storage.from("avatars").remove([`${uid}/avatar.jpg`]);
   const { error } = await supabase.from("profiles").update({ avatar_url: null }).eq("id", uid);
   if (error) throw new Error(error.message);
-  listeners.forEach((l) => l());
+  announceProfileWrite();
 }
 
 /**
@@ -136,6 +228,6 @@ export async function setUsername(username: string): Promise<string> {
     p_username: username.trim().toLowerCase(),
   });
   if (error) throw new Error(error.message);
-  listeners.forEach((l) => l());
+  announceProfileWrite();
   return data as string;
 }

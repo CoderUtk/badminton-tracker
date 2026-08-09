@@ -3,6 +3,7 @@ import * as Linking from "expo-linking";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 import { completeAuth, isAuthCallbackUrl } from "../lib/authCallback";
+import { clearProfileCache } from "../repos/profileRepo";
 
 interface SessionCtx {
   session: Session | null;
@@ -71,6 +72,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         // in…" spinner with no way out.
         setCompletingAuth(false);
         handledUrl.current = null;
+        // Load-bearing: the profile cache is keyed to the user who just signed
+        // out. Without this the next account to sign in on this device renders
+        // the previous user's name and username until its first refresh lands.
+        clearProfileCache();
       }
     });
 
