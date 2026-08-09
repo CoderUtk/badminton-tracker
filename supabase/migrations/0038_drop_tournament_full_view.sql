@@ -1,0 +1,26 @@
+-- Drops tournament_full_view, added in 0037.
+--
+-- 0037 reached the remote database without its authorisation cases having been
+-- verified by a human. It is a `security definer` function that returns
+-- tournament_staff rows and pending join requests, and its access checks
+-- (club member OR tournament staff; staff/requests admin-only) were never
+-- exercised against a real non-member.
+--
+-- An unverified security-definer function that reads privileged rows is not
+-- something to leave live on the assumption it is correct. Dropping is the
+-- safe direction: the worst case is that tournament screens fail to refresh,
+-- which is visible and harmless, versus a silent data leak, which is neither.
+--
+-- 0037 is retained in the repository. To restore, verify these cases first:
+--   1. plain club member      -> rows returned, staff = [], requests = []
+--   2. club owner/admin       -> staff populated, requests = pending only
+--   3. tournament_staff scorer
+--      in a club they are not
+--      a member of             -> rows returned, my_staff_role = 'scorer'
+--   4. authenticated user with
+--      no relationship         -> RAISES 'not authorised for this tournament'
+--   5. random uuid             -> RAISES 'tournament not found'
+-- Case 4 is the gate. If it returns rows rather than raising, the function
+-- leaks and must not be restored until it does.
+
+drop function if exists public.tournament_full_view(uuid);
