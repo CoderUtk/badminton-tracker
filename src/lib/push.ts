@@ -3,6 +3,7 @@ import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
 import { supabase } from "./supabase";
 import { pushTokenRow } from "./pushToken";
+import { getSetting, REMINDERS_KEY } from "../repos/settingsRepo";
 
 export { pushTokenRow } from "./pushToken";
 export type { PushTokenRow } from "./pushToken";
@@ -51,6 +52,10 @@ export async function registerPushToken(): Promise<boolean> {
   if (Platform.OS === "web") return false;
 
   try {
+    // The presence of a token row IS the setting: registering here would
+    // silently re-enable push for a user who explicitly turned it off.
+    if ((await getSetting(REMINDERS_KEY)) !== "1") return false;
+
     const user = (await supabase?.auth.getUser())?.data.user;
     if (!user) return false;
 

@@ -17,6 +17,7 @@ import { getMyProfile, subscribeProfile } from "../src/repos/profileRepo";
 import { getDb } from "../src/db/db";
 import { startSyncListener } from "../src/sync/runner";
 import { scheduleInactivityReminder } from "../src/lib/reminders";
+import { configureNotificationHandling, registerPushToken } from "../src/lib/push";
 import AnimatedSplash from "../src/components/AnimatedSplash";
 import Toaster from "../src/components/Toaster";
 import { consumePendingLink, setPendingLink } from "../src/lib/pendingLink";
@@ -134,10 +135,20 @@ function RootLayout() {
   // no-ops if the setting is off, permission isn't granted, or on web. A
   // warm resume (AppState -> "active") counts as an "open" too, not just
   // the cold-start mount above — otherwise a resident app never reschedules.
+  // registerPushToken() rides along here for the same reason: it's the
+  // upsert heartbeat push_to()'s 60-day staleness window depends on, so it
+  // needs to fire on every open/resume, not just cold start, or a resident
+  // app's token silently ages out. It self-guards on the toggle, sign-in
+  // state, and permission, so calling it unconditionally here is safe.
   useEffect(() => {
+    void configureNotificationHandling();
     void scheduleInactivityReminder();
+    void registerPushToken();
     const sub = AppState.addEventListener("change", (state) => {
-      if (state === "active") void scheduleInactivityReminder();
+      if (state === "active") {
+        void scheduleInactivityReminder();
+        void registerPushToken();
+      }
     });
     return () => sub.remove();
   }, []);
