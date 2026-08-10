@@ -218,21 +218,28 @@ alter publication supabase_realtime add table public.match_events;
 guessing which tables are in it and writing a migration from the guess would either fail
 or, worse, silently add a table that was deliberately excluded.
 
-**Status 2026-08-09: still blocked.** Two read-only routes were tried and neither
-returns publication membership:
+**Status 2026-08-09: DONE.** Membership confirmed as `public.matches` and
+`public.match_events`, recorded in `supabase/migrations/0039_realtime_publication.sql`
+and applied.
 
-- `supabase inspect db <subcommand>` has no publication subcommand.
-- `supabase db dump --schema public` omits publications entirely — they are
-  cluster-level objects, not part of a schema dump.
+Neither read-only CLI route could retrieve this — `supabase inspect db` has no
+publication subcommand, and `supabase db dump --schema public` omits publications
+because they are cluster-level objects. The list came from the dashboard.
 
-The one thing needed is the output of this, run in the Supabase SQL editor:
+The migration guards each table with a `pg_publication_tables` existence check
+rather than a bare `alter publication ... add table`, which errors on an existing
+member. Against the current production database it is a no-op; on a fresh project
+it reproduces the real configuration.
 
-```sql
-select tablename from pg_publication_tables where pubname = 'supabase_realtime';
-```
-
-Given that list, the migration writes itself. Until then this stays open, and the
-production database cannot be rebuilt from this repository with working realtime.
+**Replica identity deliberately not changed.** `onLiveMatchesChange` subscribes to
+`matches` with `event: '*'` filtered on `club_id`. DELETE payloads carry only
+replica-identity columns, and `matches`' replica identity is its primary key,
+which excludes `club_id` — so a DELETE can fail the filter and be missed. The
+callback only refetches the live list, so the visible symptom is a finished match
+lingering on the club live screen until the next event. `replica identity full`
+would fix it at the cost of writing every column of every row to the WAL, forever,
+on the fastest-growing table in the schema. Not justified by a transient display
+artefact. Reasoning is recorded inline in the migration.
 
 ## States and failure modes
 
