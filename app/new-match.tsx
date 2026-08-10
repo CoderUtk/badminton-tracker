@@ -42,6 +42,7 @@ export default function NewMatch() {
   const [editing, setEditing] = useState<ZoneKey | null>(null);
   const [pulse, setPulse] = useState<{ zone: ZoneKey; key: number } | null>(null);
   const [starting, setStarting] = useState(false);
+  const [lineupRestored, setLineupRestored] = useState(false);
   const pulseSeq = useRef(0);
 
   const names = doubles ? namesDoubles : namesSingles;
@@ -62,6 +63,7 @@ export default function NewMatch() {
       setPoints(init.points);
       setBestOf(init.bestOf);
       setClubId(init.clubId);
+      setLineupRestored(true);
     });
     return () => { cancelled = true; };
     // Mount only: later param changes would fight the user's edits.
@@ -72,11 +74,19 @@ export default function NewMatch() {
     // Guests never save to a club — skip the fetch so a stale local clubs_cache
     // from a previous signed-in account on this device can't leak through.
     if (isGuest) return;
-    listRealClubs().then((cs) => {
-      setClubs(cs);
-      if (cs.length === 1) setClubId((prev) => prev ?? cs[0].id);
-    });
+    listRealClubs().then(setClubs);
   }, [isGuest]);
+
+  // Auto-select the user's only club, but only once the lineup restore has
+  // applied its own clubId (a params clubId or a persisted one): listRealClubs
+  // and loadLastLineup race, and applying this before the restore lands would
+  // let the restore's unconditional setClubId(init.clubId) silently overwrite
+  // the auto-selected club with null. The `prev ?? ...` guard then also keeps
+  // this from overriding whatever the restore actually chose.
+  useEffect(() => {
+    if (!lineupRestored || clubs.length !== 1) return;
+    setClubId((prev) => prev ?? clubs[0].id);
+  }, [clubs, lineupRestored]);
 
   // Roster for the selected club: powers the suggestion strip and fills any
   // name slot still empty.
