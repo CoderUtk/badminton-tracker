@@ -51,6 +51,17 @@ test("singles: at 0-0 both players stand in their right court, left boxes are em
   expect(zone(s, "B", "bottom").playerIdx).toBeNull();
 });
 
+test("doubles: a rally won by the serving team swaps its players between right and left court", () => {
+  const events = start({ firstServer: { team: "A", playerIndex: 1 } });
+  const before = replay(events);
+  expect(zone(before, "A", "bottom")).toMatchObject({ playerIdx: 1, isRightCourt: true });
+  expect(zone(before, "A", "top")).toMatchObject({ playerIdx: 0, isRightCourt: false });
+
+  const after = replay(rally(events, "A"));
+  expect(zone(after, "A", "bottom")).toMatchObject({ playerIdx: 0, isRightCourt: true });
+  expect(zone(after, "A", "top")).toMatchObject({ playerIdx: 1, isRightCourt: false });
+});
+
 test("singles: an odd server score moves both players to their left court", () => {
   const s = replay(rally(start({ matchType: "singles" }), "A"));
   expect(zone(s, "A", "top").playerIdx).toBe(0);

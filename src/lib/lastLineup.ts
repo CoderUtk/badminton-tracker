@@ -51,7 +51,9 @@ function isLineup(x: unknown): x is LastLineup {
     !!l &&
     typeof l.doubles === "boolean" &&
     Array.isArray(l.namesDoubles) && l.namesDoubles.length === 4 &&
+    l.namesDoubles.every((n) => typeof n === "string") &&
     Array.isArray(l.namesSingles) && l.namesSingles.length === 2 &&
+    l.namesSingles.every((n) => typeof n === "string") &&
     [11, 15, 21].includes(l.points) &&
     [1, 3, 5].includes(l.bestOf) &&
     (l.clubId === null || typeof l.clubId === "string")

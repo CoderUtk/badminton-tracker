@@ -20,6 +20,8 @@ export type CourtBoxEdit = {
   onZonePress: () => void;
   /** Increments each time a serve pick is rejected and this box is the valid one. */
   pulseKey: number;
+  /** True when this is the last editable slot, so Enter should dismiss the keyboard. */
+  isLast: boolean;
 };
 
 /**
@@ -69,6 +71,7 @@ export default function CourtBox({
       ]}
       onPress={edit?.onZonePress}
       disabled={!edit}
+      accessible={!!edit}
     >
       {isServer && <View style={[s.dot, { backgroundColor: servingColor, shadowColor: servingColor }]} />}
 
@@ -85,12 +88,18 @@ export default function CourtBox({
           onChangeText={edit.onChangeText}
           onSubmitEditing={edit.onSubmit}
           onBlur={edit.onEndEdit}
-          returnKeyType="next"
+          returnKeyType={edit.isLast ? "done" : "next"}
           autoCapitalize="words"
           autoCorrect={false}
         />
       ) : zone.playerIdx !== null && label !== null ? (
-        <Pressable style={s.player} onPress={edit?.onNamePress} disabled={!edit} hitSlop={8}>
+        <Pressable
+          style={s.player}
+          onPress={edit?.onNamePress}
+          disabled={!edit}
+          hitSlop={8}
+          accessible={!!edit}
+        >
           <Icon name="person" color={color} size={15} />
           <Text
             style={[s.name, { color: usesPlaceholder ? C.text2 : color }]}

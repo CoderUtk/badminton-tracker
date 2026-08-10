@@ -43,6 +43,7 @@ export default function NewMatch() {
   const [pulse, setPulse] = useState<{ zone: ZoneKey; key: number } | null>(null);
   const [starting, setStarting] = useState(false);
   const [lineupRestored, setLineupRestored] = useState(false);
+  const [clubsLoaded, setClubsLoaded] = useState(false);
   const pulseSeq = useRef(0);
 
   const names = doubles ? namesDoubles : namesSingles;
@@ -73,8 +74,11 @@ export default function NewMatch() {
   useEffect(() => {
     // Guests never save to a club — skip the fetch so a stale local clubs_cache
     // from a previous signed-in account on this device can't leak through.
-    if (isGuest) return;
-    listRealClubs().then(setClubs);
+    if (isGuest) { setClubsLoaded(true); return; }
+    listRealClubs()
+      .then(setClubs)
+      .catch(() => setClubs([]))
+      .finally(() => setClubsLoaded(true));
   }, [isGuest]);
 
   // Auto-select the user's only club, but only once the lineup restore has
@@ -88,14 +92,32 @@ export default function NewMatch() {
     setClubId((prev) => prev ?? clubs[0].id);
   }, [clubs, lineupRestored]);
 
+  // A restored (or param) clubId may belong to a club the current account no
+  // longer has — a shared device switching accounts, or a deleted club. Once
+  // the real club list has actually finished loading (clubsLoaded, not just a
+  // non-empty array — an account can genuinely have zero clubs), drop a
+  // clubId that isn't in it so the picker and the saved match never silently
+  // disagree. Guarded on lineupRestored so this can't race the initial
+  // restore above.
+  useEffect(() => {
+    if (!lineupRestored || !clubsLoaded) return;
+    setClubId((prev) => (prev && !clubs.some((c) => c.id === prev) ? null : prev));
+  }, [clubs, clubsLoaded, lineupRestored]);
+
   // Roster for the selected club: powers the suggestion strip and fills any
-  // name slot still empty.
+  // name slot still empty. Cancelled on cleanup so a slower response from a
+  // club/format that's no longer current can't overwrite a newer one.
   useEffect(() => {
     if (!clubId) { setRoster([]); return; }
-    listPlayers(clubId).then((players) => {
-      setRoster(players);
-      setNames((prev) => prev.map((n, i) => (n.trim() ? n : players[i]?.name ?? "")));
-    });
+    let cancelled = false;
+    listPlayers(clubId)
+      .then((players) => {
+        if (cancelled) return;
+        setRoster(players);
+        setNames((prev) => prev.map((n, i) => (n.trim() ? n : players[i]?.name ?? "")));
+      })
+      .catch(() => { if (!cancelled) setRoster([]); });
+    return () => { cancelled = true; };
     // setNames is derived from `doubles`; the roster prefill only ever targets
     // the arrangement visible when the club was chosen.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -179,6 +201,13 @@ export default function NewMatch() {
     setFirstServerIdx(index);
   };
 
+  /** Whether an occupied slot follows this one, in name-index order. */
+  const hasNextSlot = (zone: CourtZone): boolean => {
+    const index = nameIndexOf(zone);
+    if (index === null || !preview) return false;
+    return !!courtZones(preview).find((z) => nameIndexOf(z) === index + 1);
+  };
+
   /** Move editing to the next occupied slot, or stop when this was the last. */
   const editNext = (zone: CourtZone) => {
     const index = nameIndexOf(zone);
@@ -202,6 +231,7 @@ export default function NewMatch() {
       onEndEdit: () => setEditing((e) => (sameZone(e, key) ? null : e)),
       onZonePress: () => pickServer(zone),
       pulseKey: pulse && sameZone(pulse.zone, key) ? pulse.key : 0,
+      isLast: !hasNextSlot(zone),
     };
   };
 

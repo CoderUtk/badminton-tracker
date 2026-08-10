@@ -51,6 +51,11 @@ test("a stored value of the wrong shape reads as null", async () => {
   expect(await loadLastLineup()).toBeNull();
 });
 
+test("a stored value with non-string names reads as null instead of crashing later", async () => {
+  store.set("last_lineup_v1", JSON.stringify({ ...lineup(), namesDoubles: [1, 2, 3, 4] }));
+  expect(await loadLastLineup()).toBeNull();
+});
+
 test("falls back to empty defaults with no params and nothing persisted", () => {
   expect(resolveInitialLineup({}, null, false)).toEqual(EMPTY_LINEUP);
 });

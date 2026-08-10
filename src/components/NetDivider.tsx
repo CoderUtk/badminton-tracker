@@ -12,7 +12,10 @@ export default function NetDivider({ color = "rgba(255,255,255,0.5)" }: { color?
   const [height, setHeight] = useState(0);
 
   return (
-    <View style={{ width: WIDTH }} onLayout={(e: LayoutChangeEvent) => setHeight(e.nativeEvent.layout.height)}>
+    <View
+      style={{ width: WIDTH, flex: 1 }}
+      onLayout={(e: LayoutChangeEvent) => setHeight(e.nativeEvent.layout.height)}
+    >
       {height > 0 && (
         <Svg width={WIDTH} height={height}>
           <Defs>

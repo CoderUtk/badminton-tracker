@@ -86,7 +86,7 @@ export default function Court({ state, edit }: { state: MatchState; edit?: Court
   return (
     <View style={s.court}>
       <Half state={state} team="A" zones={half("A")} edit={edit} />
-      <View style={s.net}>
+      <View style={[s.net, edit && s.netEdit]}>
         <NetDivider />
         {edit && (
           <Pressable
@@ -115,7 +115,12 @@ const s = StyleSheet.create({
     overflow: "hidden",
   },
   half: { flex: 1 },
-  net: { justifyContent: "center", zIndex: 2 },
+  net: { justifyContent: "center", alignItems: "center", zIndex: 2 },
+  // Widen the net column's touch surface to match the 40px swap button so
+  // Android delivers touches across the whole button, not just the 8px net
+  // strip. Only applied in edit mode so the read-only court's width is
+  // unchanged (Critical 1 / MatchScreen parity).
+  netEdit: { width: 40 },
   sideSwap: {
     position: "absolute", alignSelf: "center",
     width: 40, height: 40, borderRadius: 20,
