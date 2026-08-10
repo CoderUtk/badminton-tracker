@@ -3,6 +3,7 @@ import { Linking, Platform, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { supabase } from "../src/lib/supabase";
 import { clearGuestMatchIds } from "../src/lib/guestMatches";
+import { clearLastLineup } from "../src/lib/lastLineup";
 import Icon from "../src/components/Icon";
 import Logo from "../src/components/Logo";
 import PressableScale from "../src/components/PressableScale";
@@ -19,6 +20,7 @@ export default function GuestHome() {
       return;
     }
     await clearGuestMatchIds();
+    await clearLastLineup();
     await supabase?.auth.signOut();
     router.replace("/sign-in");
   };
