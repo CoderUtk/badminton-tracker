@@ -2,14 +2,14 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
-  deleteTournament, finishBracketMatch, getTournament, startBracketMatch, startTournament,
+  deleteTournament, finishBracketMatch, readTournament, refreshTournament,
+  startBracketMatch, startTournament,
   type MatchType, type TournamentRow,
 } from "../../../src/repos/tournamentRepo";
 import { getMatch, type MatchRecord } from "../../../src/repos/matchRepo";
 import { getClub } from "../../../src/repos/clubRepo";
-import {
-  getTournamentStaff, listPendingTournamentRequests, myStaffRole,
-  type TournamentJoinRequest, type TournamentStaff,
+import type {
+  TournamentJoinRequest, TournamentStaff,
 } from "../../../src/repos/tournamentStaffRepo";
 import { bracketStatus } from "../../../src/tournament/bracket";
 import { startBlocker } from "../../../src/tournament/draw";
@@ -59,10 +59,30 @@ export default function TournamentBracket() {
   const liveMatchesRef = useRef<Map<string, MatchRecord>>(new Map());
   const [liveMatches, setLiveMatches] = useState<Map<string, MatchRecord>>(new Map());
 
+  // Guards every setState against a chain that resolves after a newer focus
+  // (or after unmount) has already started.
+  const epochRef = useRef(0);
+
   const reload = useCallback(async () => {
     if (!id) return;
+    const epoch = ++epochRef.current;
+
+    // Paint from cache first — zero network. Null only on a first-ever open,
+    // where the existing loading state still applies.
+    const cached = await readTournament(id);
+    if (cached && epoch === epochRef.current) {
+      setTournament(cached.tournament);
+      setEntrants(cached.entrants);
+      setBracket(cached.bracket);
+    }
+
     try {
-      const { tournament: t, entrants: ents, bracket: b0 } = await getTournament(id);
+      const full = await refreshTournament(id);
+      if (!full || epoch !== epochRef.current) return;
+      const { tournament: t, entrants: ents, bracket: b0 } = full;
+      setStaff(full.staff);
+      setRequests(full.requests);
+      setIsTournamentAdmin(full.myStaffRole === "admin");
 
       // Fetch every cell that either (a) is still unresolved — it might have
       // just finished, or its live score changed — or (b) just finished and
@@ -96,32 +116,29 @@ export default function TournamentBracket() {
         }
       }));
 
-      // Only re-fetch the full tournament if reconciliation actually
-      // changed something — the common case (nothing to advance) skips a
-      // second redundant getTournament call entirely.
+      // Only re-fetch if reconciliation actually advanced something — the
+      // common case (nothing to advance) skips a second redundant RPC.
       if (changed) {
-        const fresh = await getTournament(id);
-        setTournament(fresh.tournament);
-        setEntrants(fresh.entrants);
-        setBracket(fresh.bracket);
-      } else {
+        const fresh = await refreshTournament(id);
+        if (fresh && epoch === epochRef.current) {
+          setTournament(fresh.tournament);
+          setEntrants(fresh.entrants);
+          setBracket(fresh.bracket);
+        }
+      } else if (epoch === epochRef.current) {
         setTournament(t);
         setEntrants(ents);
         setBracket(b0);
       }
 
-      const [club, staffRole] = await Promise.all([getClub(t.clubId), myStaffRole(id)]);
+      // getClub is a local cache read, so this costs no network.
+      const club = await getClub(t.clubId);
+      if (epoch !== epochRef.current) return;
       setClubRole(club?.role ?? null);
-      setIsTournamentAdmin(staffRole === "admin");
-      const isAdmin = club?.role === "owner" || club?.role === "admin" || staffRole === "admin";
-      const [staffList, reqs] = await Promise.all([
-        getTournamentStaff(id),
-        isAdmin ? listPendingTournamentRequests(id) : Promise.resolve([]),
-      ]);
-      setStaff(staffList);
-      setRequests(reqs);
     } catch (e) {
-      toast((e as Error).message || "Could not load the tournament", "error");
+      // Cached data stays on screen. Silent on the automatic refresh —
+      // tournaments/index.tsx sets the precedent that a failed read must not
+      // blank data already showing. onRefresh below toasts explicitly.
     }
   }, [id]);
 
@@ -129,14 +146,31 @@ export default function TournamentBracket() {
     useCallback(() => {
       void reload();
       const interval = setInterval(() => { void reload(); }, POLL_MS);
-      return () => clearInterval(interval);
+      return () => {
+        clearInterval(interval);
+        epochRef.current += 1;
+      };
     }, [reload])
   );
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await reload();
-    setRefreshing(false);
+    try {
+      const full = await refreshTournament(id!);
+      if (full) {
+        setTournament(full.tournament);
+        setEntrants(full.entrants);
+        setBracket(full.bracket);
+        setStaff(full.staff);
+        setRequests(full.requests);
+        setIsTournamentAdmin(full.myStaffRole === "admin");
+      }
+    } catch (e) {
+      // Explicit user action, so unlike the automatic refresh this one reports.
+      toast((e as Error).message || "Could not refresh", "error");
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const liveScores = useMemo(
@@ -168,14 +202,23 @@ export default function TournamentBracket() {
     }
   };
 
-  const champ = bracketStatus(bracket).champion;
-  const champName = champ ? entrants.find((e) => e.id === champ)?.name : null;
-  const maxRound = bracket.length ? Math.max(...bracket.map((m) => m.round)) : 0;
-  const finalMatch = bracket.find((m) => m.round === maxRound && m.index === 0);
-  const runnerUpId = finalMatch && champ
-    ? (finalMatch.entrantA === champ ? finalMatch.entrantB : finalMatch.entrantA)
-    : null;
-  const runnerUpName = runnerUpId ? entrants.find((e) => e.id === runnerUpId)?.name ?? "Runner-up" : "TBD";
+  // Memoised together: these ran on every render, including two more Math.max
+  // sweeps and two linear finds over the entrant list, and the 15s poll made
+  // that a timer-driven cost even when nothing had changed.
+  const { champ, champName, runnerUpName } = useMemo(() => {
+    const c = bracketStatus(bracket).champion;
+    const maxR = bracket.length ? Math.max(...bracket.map((m) => m.round)) : 0;
+    const finalMatch = bracket.find((m) => m.round === maxR && m.index === 0);
+    const runnerUpId = finalMatch && c
+      ? (finalMatch.entrantA === c ? finalMatch.entrantB : finalMatch.entrantA)
+      : null;
+    const nameOf = new Map(entrants.map((e) => [e.id, e.name]));
+    return {
+      champ: c,
+      champName: c ? nameOf.get(c) ?? null : null,
+      runnerUpName: runnerUpId ? nameOf.get(runnerUpId) ?? "Runner-up" : "TBD",
+    };
+  }, [bracket, entrants]);
   const isAdmin = clubRole === "owner" || clubRole === "admin" || isTournamentAdmin;
   // A legacy draft created before the two-phase split can already hold a
   // full bracket (status flipped to "live" only on the first finished
@@ -210,7 +253,14 @@ export default function TournamentBracket() {
 
   if (!tournament) return <View style={{ flex: 1, backgroundColor: C.bg }} />;
 
-  const tabContent =
+  // Built the active tab's entire element tree on every render, so
+  // TournamentPlayersTab and friends were reconstructed on every 15s poll tick
+  // even with the bottom sheet closed.
+  //
+  // The gate is `panelOpen || isDraft`, NOT `panelOpen` alone: the draft branch
+  // renders this inline in a ScrollView with no panel at all, so gating on
+  // panelOpen would blank the entire pre-start setup screen.
+  const tabContent = !(panelOpen || isDraft) ? null :
     tab === "config" ? (
       <TournamentConfigTab
         tournament={tournament}
