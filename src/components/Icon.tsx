@@ -28,7 +28,7 @@ export type IconName =
   | "play" | "pause" | "stop" | "flag"
   | "time-outline"
   | "arrow-undo" | "arrow-redo"
-  | "chevron-forward" | "chevron-back" | "add" | "close"
+  | "chevron-forward" | "chevron-back" | "chevron-down" | "add" | "close"
   | "log-out-outline" | "swap-horizontal" | "swap-vertical"
   | "share-social-outline" | "create-outline"
   | "ellipse" | "trash-outline"
