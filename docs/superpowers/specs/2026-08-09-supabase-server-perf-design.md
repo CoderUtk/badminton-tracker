@@ -128,7 +128,56 @@ looks like data loss. Two consequences for the plan:
 2. If any policy cannot be shown equivalent, it keeps the function call. Being slow is
    strictly better than being wrong.
 
-## 3. Measurement first
+## 3. Measurement — DONE, and it closes §2
+
+**Measured 2026-08-09 against production** via `supabase inspect db`. The numbers
+are decisive enough that §2 is withdrawn rather than deferred.
+
+### Database size
+
+```
+database_size        13 MB
+total_table_size     320 kB      <-- all application data, every table
+total_index_size     560 kB
+total_toast_size     0 bytes
+index_hit_rate       1.00
+table_hit_rate       1.00
+stats window         8 days 19h
+```
+
+**320 kB of table data in total.** The indexes are larger than the data they
+index. Both hit rates are 1.00, meaning every read is already served from
+shared buffers with zero disk I/O.
+
+### Query outliers
+
+`supabase inspect db outliers` (ordered by total execution time, same 8.8-day
+window) returns 10 rows. **Zero of them touch an application table.** Every one
+is Studio/CLI introspection against `pg_catalog` — the top entry alone is 66.6%
+of all execution time and is the dashboard's `pg_available_extensions` query.
+
+Not one query against `matches`, `sessions`, `tournaments`, `bracket_matches`,
+`club_players`, `attendance`, `match_events`, `profiles`, or `clubs` is slow
+enough or frequent enough to register.
+
+### Conclusion: §2 is withdrawn
+
+The premise of §2 was that per-row `is_club_member()` calls under RLS would
+accumulate as row counts grew. At 320 kB total, with a 1.00 buffer hit rate and
+no app query appearing in the outlier list, that cost is unmeasurable.
+
+Rewriting 27 working security policies — each requiring a proven-equivalent
+row-count comparison across member, non-member, and admin, with a silent
+under-fetch turning a performance change into an access-control bug — cannot be
+justified by a saving that does not currently exist.
+
+**§2 does not ship.** Revisit only if a future measurement puts an application
+query in the outlier list. The trigger is evidence, not row count.
+
+That leaves §1 (done — indexes applied and now committed) and §4 (below) as the
+whole of P4.
+
+## Appendix: original measurement plan
 
 Neither section should be planned in detail before there are numbers. The measurement
 step is part of the work, not a precondition for starting it:
@@ -167,11 +216,23 @@ alter publication supabase_realtime add table public.match_events;
 
 **This requires reading the current publication membership from production first** —
 guessing which tables are in it and writing a migration from the guess would either fail
-or, worse, silently add a table that was deliberately excluded:
+or, worse, silently add a table that was deliberately excluded.
+
+**Status 2026-08-09: still blocked.** Two read-only routes were tried and neither
+returns publication membership:
+
+- `supabase inspect db <subcommand>` has no publication subcommand.
+- `supabase db dump --schema public` omits publications entirely — they are
+  cluster-level objects, not part of a schema dump.
+
+The one thing needed is the output of this, run in the Supabase SQL editor:
 
 ```sql
 select tablename from pg_publication_tables where pubname = 'supabase_realtime';
 ```
+
+Given that list, the migration writes itself. Until then this stays open, and the
+production database cannot be rebuilt from this repository with working realtime.
 
 ## States and failure modes
 

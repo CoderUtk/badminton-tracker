@@ -2,6 +2,23 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **STATUS 2026-08-09: Tasks 3-7 were implemented, then reverted.** Migration
+> `0037` reached production without its authorisation cases being verified, so it
+> was dropped (`0038`) and the client reverted (`a8d5334`). Tasks 1 and 2 remain
+> on master, dormant. Before re-running Tasks 3-7, read the "Implementation
+> history" section of the spec and verify the five cases in
+> `supabase/migrations/0038_drop_tournament_full_view.sql`'s header on a scratch
+> database first. Case 4 (non-member must RAISE) is the gate.
+>
+> Two corrections found while implementing, not yet folded into the task text
+> below:
+>   * There is a THIRD `getTournament` call site the plan missed:
+>     `app/(app)/tournaments/edit/[id].tsx`. It is a form, so it should read
+>     network-only, never cache-first.
+>   * Task 7 Step 5's `tabContent` gate must be `panelOpen || isDraft`, NOT
+>     `panelOpen` alone. The draft branch renders `tabContent` inline with no
+>     panel, so gating on `panelOpen` blanks the entire pre-start setup screen.
+
 **Goal:** Make the tournament bracket and ops screens paint instantly from local SQLite instead of waiting on ~7 serial network round trips, and stop re-rendering the whole bracket every 15 seconds.
 
 **Architecture:** Adopt the read/refresh split that `src/repos/clubRepo.ts` already uses everywhere else in the app. Local tournament tables already exist and are migrated (`src/db/schema.ts:3`) — they are simply unused. Add a `tournament_full_view` Postgres RPC that collapses 4-7 serial queries into one, write its result through to those tables, and memoise the bracket renderer.

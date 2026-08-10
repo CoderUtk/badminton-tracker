@@ -1,7 +1,45 @@
 # Tournament Read Performance — design
 
 **Date:** 2026-08-09
-**Status:** Design approved (planning only; no implementation yet)
+**Status:** Implemented, then REVERTED. See "Implementation history" below before
+restarting this work.
+
+## Implementation history
+
+| Commit | What |
+|---|---|
+| `0eca806` | Task 1 — pure mappers (`src/tournament/bundle.ts`) + 9 tests. **Still on master.** |
+| `f3052f5` | Task 2 — local cache (`src/repos/tournamentCache.ts`). **Still on master.** |
+| `31b28d2` | Tasks 3-7 — RPC, read/refresh split, `startBracketMatch`, `BracketView`, screens |
+| `d3dced2` | `0038` dropped `tournament_full_view` from production |
+| `a8d5334` | Reverted `31b28d2` |
+
+**What happened.** Migration `0037` reached the production database without its
+authorisation cases having been verified by a human — notably the case where an
+authenticated user with no relationship to the club must be *refused* rather than
+served tournament data. It is a `security definer` function returning
+`tournament_staff` rows and pending join requests. Rather than leave an unverified
+privileged function live, it was dropped (`0038`). That left the client calling an
+RPC that no longer existed, so the client was reverted too.
+
+**Current state:** tournaments are back on the original `getTournament` path —
+correct, and as slow as before this work started. `bundle.ts` and
+`tournamentCache.ts` remain on master, dormant and unreferenced.
+
+**To re-land**, in order:
+1. Recreate the function on a scratch/branch database, not production.
+2. Run the five cases in `supabase/migrations/0038_drop_tournament_full_view.sql`'s
+   header. **Case 4 is the gate**: a non-member must raise
+   `not authorised for this tournament`, not return rows.
+3. Only once case 4 passes, add `0039` recreating it, and revert the revert
+   (`git revert a8d5334`) to restore Tasks 3-7.
+
+The design below is unchanged and still correct. Nothing in it was found wrong —
+the failure was one of process, not design.
+
+---
+
+**Original status:** Design approved (planning only; no implementation yet)
 
 The tournament bracket and ops screens take ~7 serial network round trips to paint,
 show nothing at all until the last one lands, and repeat the whole sequence every 15
