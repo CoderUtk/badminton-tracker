@@ -57,16 +57,21 @@ already render `<Court state={...} />` are unaffected.
 
 ### Zone model
 
-Export a pure helper from `Court.tsx`:
+The zone maths lives in a pure module, `src/lib/courtZones.ts`, so it can be unit
+tested — the Jest setup runs in a `node` environment that cannot parse React
+Native components. `Court.tsx` consumes the same helper, so the rule exists once:
 
 ```ts
+export type CourtRow = "top" | "bottom";
+
 export type CourtZone = {
   team: TeamId;              // "A" (left half) | "B" (right half)
-  row: "top" | "bottom";
+  row: CourtRow;
   playerIdx: number | null;  // index into state.config.teams[team], null when empty
   isRightCourt: boolean;     // this zone is that team's RIGHT service court
 };
 
+export function rightRow(team: TeamId): CourtRow;
 export function courtZones(state: MatchState): CourtZone[]; // always 4, reading order
 ```
 
@@ -75,10 +80,17 @@ Team A occupies the left half and faces right, so its right service court is the
 the `rightRow()` logic already inside `Court.tsx`, lifted out so the new-match
 screen can hit-test with it instead of duplicating the rule.
 
-Name-slot mapping is deterministic: `nameIndex = (team === "A" ? 0 : 2) + playerIdx`,
-because `buildConfig` fills `teams.A` from `names[0..1]` and `teams.B` from
-`names[2..3]`. The screen always resolves the occupant from the live preview
-state — it never assumes which slot stands in which box.
+Name-slot mapping is deterministic, because `buildConfig` fills `teams.A` from
+`names[0..1]` and `teams.B` from `names[2..3]` in doubles, and from `names[0]` /
+`names[1]` in singles:
+
+```
+doubles: nameIndex = (team === "A" ? 0 : 2) + playerIdx
+singles: nameIndex = team === "A" ? 0 : 1
+```
+
+The screen always resolves the occupant from the live preview state — it never
+assumes which slot stands in which box.
 
 ### Tap on the player name
 
@@ -162,8 +174,12 @@ export function resolveInitialLineup(
   params: { clubId?: string; teamA?: string; teamB?: string },
   persisted: LastLineup | null,
   isGuest: boolean,
-): { doubles: boolean; names: [string, string, string, string]; points: 11 | 15 | 21; bestOf: 1 | 3 | 5; clubId: string | null };
+): LastLineup;
 ```
+
+Both name arrays are returned, and the screen holds them as separate state, so
+toggling Doubles/Singles restores the right group instead of the two modes
+fighting over the same slots.
 
 Singles and doubles names are stored separately, so switching the toggle restores
 the right group instead of reshuffling four names into two slots.
@@ -190,8 +206,11 @@ existing `clubs_cache` comment in `new-match.tsx` documents.
 
 | File | Change |
 | --- | --- |
-| `src/components/Court.tsx` | Export `courtZones(state)`. Add optional props: `onZonePress`, `onNamePress`, `editingZone`, `onEditingChange`, `onSwapSides`, `onSwapTeam`, `pulseZone`. Read-only rendering path unchanged. |
+| `src/lib/courtZones.ts` | New. Pure zone maths lifted out of `Court.tsx`. |
+| `src/components/CourtBox.tsx` | New. One service box: name text, inline field, serve dot, invalid-pick pulse. |
+| `src/components/Court.tsx` | Consumes `courtZones`; takes one optional `edit` prop carrying the interaction callbacks and renders the in-court swap buttons. Read-only rendering path unchanged. |
 | `src/components/ClubPicker.tsx` | New. Button + selection sheet. |
+| `src/components/Icon.tsx` | Add `"chevron-down"` to `IconName`. |
 | `src/lib/lastLineup.ts` | New. Storage + `resolveInitialLineup`. |
 | `app/new-match.tsx` | Rewritten layout; the removed sections make it shorter than today's 273 lines. |
 
