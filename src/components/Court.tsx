@@ -2,6 +2,7 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import type { MatchState, TeamId } from "../engine";
 import { serviceCourt } from "../engine";
+import { courtZones, type CourtZone } from "../lib/courtZones";
 import Icon from "./Icon";
 import NetDivider from "./NetDivider";
 import { C } from "../theme";
@@ -16,54 +17,28 @@ import { C } from "../theme";
  */
 const LINE = "rgba(255,255,255,0.45)";
 
-/** Which stacked row is a team's right service court, given the half it sits in. */
-function rightRow(left: boolean): "top" | "bottom" {
-  return left ? "bottom" : "top";
-}
-
-function Half({ state, team }: { state: MatchState; team: TeamId }) {
+function Half({ state, team, zones }: { state: MatchState; team: TeamId; zones: CourtZone[] }) {
   const serving = state.servingTeam === team;
-  const singles = state.config.matchType === "singles";
   const left = team === "A";
   const color = left ? C.red : C.blue;
   // Use the SERVING team's color for serve highlights so neither team has a visual advantage.
   const servingColor = state.servingTeam === "A" ? C.red : C.blue;
 
-  // The row (top/bottom) of this team's right vs left service court.
-  const rowOf = (court: "right" | "left"): "top" | "bottom" =>
-    court === "right" ? rightRow(left) : rightRow(left) === "top" ? "bottom" : "top";
-
   // Server's occupied row (only the serving team draws a highlighted box).
-  const serveRow = serving ? rowOf(serviceCourt(state)) : null;
-
-  // Compute the player index (or null) standing in each row.
-  let topIdx: number | null;
-  let bottomIdx: number | null;
-  if (singles) {
-    // Singles: both players' courts are governed by the SERVER's score parity
-    // (server serves from right when even, left when odd); the receiver stands
-    // diagonally opposite, which carries the same left/right label. So both
-    // switch sides together whenever the server's point changes.
-    const row = rowOf(serviceCourt(state));
-    topIdx = row === "top" ? 0 : null;
-    bottomIdx = row === "bottom" ? 0 : null;
-  } else {
-    const pos = state.positions[team];
-    topIdx = left ? pos.left : pos.right;
-    bottomIdx = left ? pos.right : pos.left;
-  }
+  const serveRow = serving
+    ? zones.find((z) => z.isRightCourt === (serviceCourt(state) === "right"))!.row
+    : null;
 
   return (
     <View style={s.half}>
-      {(["top", "bottom"] as const).map((row) => {
-        const idx = row === "top" ? topIdx : bottomIdx;
-        const isServer = serveRow === row;
+      {zones.map((zone) => {
+        const isServer = serveRow === zone.row;
         return (
           <View
-            key={row}
+            key={zone.row}
             style={[
               s.box,
-              row === "top" && s.boxDivider,
+              zone.row === "top" && s.boxDivider,
               isServer && [
                 s.boxServing,
                 {
@@ -76,11 +51,11 @@ function Half({ state, team }: { state: MatchState; team: TeamId }) {
             ]}
           >
             {isServer && <View style={[s.dot, { backgroundColor: servingColor, shadowColor: servingColor }]} />}
-            {idx !== null && (
+            {zone.playerIdx !== null && (
               <View style={s.player}>
                 <Icon name="person" color={color} size={15} />
                 <Text style={[s.name, { color }]} numberOfLines={1}>
-                  {state.config.teams[team][idx].name}
+                  {state.config.teams[team][zone.playerIdx].name}
                 </Text>
               </View>
             )}
@@ -92,11 +67,13 @@ function Half({ state, team }: { state: MatchState; team: TeamId }) {
 }
 
 export default function Court({ state }: { state: MatchState }) {
+  const zones = courtZones(state);
+  const half = (team: TeamId) => zones.filter((z) => z.team === team);
   return (
     <View style={s.court}>
-      <Half state={state} team="A" />
+      <Half state={state} team="A" zones={half("A")} />
       <NetDivider />
-      <Half state={state} team="B" />
+      <Half state={state} team="B" zones={half("B")} />
     </View>
   );
 }
