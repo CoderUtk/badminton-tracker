@@ -1,8 +1,7 @@
 # Tournament Read Performance — design
 
 **Date:** 2026-08-09
-**Status:** Implemented, then REVERTED. See "Implementation history" below before
-restarting this work.
+**Status:** SHIPPED. Reverted once, verified, re-landed. History below.
 
 ## Implementation history
 
@@ -13,6 +12,8 @@ restarting this work.
 | `31b28d2` | Tasks 3-7 — RPC, read/refresh split, `startBracketMatch`, `BracketView`, screens |
 | `d3dced2` | `0038` dropped `tournament_full_view` from production |
 | `a8d5334` | Reverted `31b28d2` |
+| `0040` | Restored the function, after verification |
+| `669609e` | Reapplied `31b28d2` |
 
 **What happened.** Migration `0037` reached the production database without its
 authorisation cases having been verified by a human — notably the case where an
@@ -22,20 +23,39 @@ served tournament data. It is a `security definer` function returning
 privileged function live, it was dropped (`0038`). That left the client calling an
 RPC that no longer existed, so the client was reverted too.
 
-**Current state:** tournaments are back on the original `getTournament` path —
-correct, and as slow as before this work started. `bundle.ts` and
-`tournamentCache.ts` remain on master, dormant and unreferenced.
+**Verification, then re-land.** The function was recreated on a **local**
+database (`supabase start`, all migrations applied) and each actor impersonated
+by setting `request.jwt.claims`, which is what `auth.uid()` reads. All six cases
+passed:
 
-**To re-land**, in order:
-1. Recreate the function on a scratch/branch database, not production.
-2. Run the five cases in `supabase/migrations/0038_drop_tournament_full_view.sql`'s
-   header. **Case 4 is the gate**: a non-member must raise
-   `not authorised for this tournament`, not return rows.
-3. Only once case 4 passes, add `0039` recreating it, and revert the revert
-   (`git revert a8d5334`) to restore Tasks 3-7.
+| Case | Expected | Result |
+|---|---|---|
+| plain club member | rows; `staff=[]`, `requests=[]` | rows; 0, 0 |
+| club owner | staff and requests populated | `staff=2`, `requests=1` |
+| scorer, NOT a club member | rows; `my_staff_role='scorer'`; staff/requests withheld | as expected |
+| **outsider (THE GATE)** | **RAISES `not authorised for this tournament`** | **raises** |
+| unknown tournament id | RAISES `tournament not found` | raises |
+| unauthenticated | RAISES `not authenticated` | raises |
 
-The design below is unchanged and still correct. Nothing in it was found wrong —
-the failure was one of process, not design.
+Case 4 is the one that mattered — an authenticated user with no relationship to
+the club is refused rather than served tournament data. Case 3 confirms the
+separate property that a scorer invited into a club they do not belong to can
+read the tournament without being treated as an admin.
+
+`0040` restored the function with a body byte-identical to `0037`, and
+`669609e` reapplied the client. **Nothing in the design or the SQL was found
+wrong.** The original failure was purely that it shipped unverified.
+
+Two implementation bugs *were* found and fixed while building, both recorded in
+the plan's status banner: a third `getTournament` call site the plan missed
+(`tournaments/edit/[id].tsx`, which must read network-only because it is a
+form), and a `tabContent` gate that must be `panelOpen || isDraft` rather than
+`panelOpen` alone.
+
+**Still unverified: device behaviour.** Nothing below has been exercised on a
+real device — instant second paint, offline cached render, `startBracketMatch`
+at 2 round trips, and the two-admins-tap-Start concurrency case all remain
+manual checks.
 
 ---
 
