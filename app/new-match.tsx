@@ -1,72 +1,102 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+  KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View,
+} from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { defaultConfig, GAME_FORMATS, MatchConfig, replay } from "../src/engine";
 import { createMatch } from "../src/repos/matchRepo";
-import { Club, listRealClubs, listPlayers } from "../src/repos/clubRepo";
-import Court from "../src/components/Court";
-import Icon from "../src/components/Icon";
-import FormScreen from "../src/components/FormScreen";
+import { Club, listRealClubs, listPlayers, ClubPlayer } from "../src/repos/clubRepo";
+import Court, { type CourtEdit } from "../src/components/Court";
+import type { CourtBoxEdit } from "../src/components/CourtBox";
+import ClubPicker from "../src/components/ClubPicker";
 import PressableScale from "../src/components/PressableScale";
 import BusyButton from "../src/components/BusyButton";
+import { courtZones, rightRow, type CourtRow, type CourtZone } from "../src/lib/courtZones";
+import { loadLastLineup, resolveInitialLineup, saveLastLineup } from "../src/lib/lastLineup";
 import { toast } from "../src/lib/toast";
 import { useSession } from "../src/stores/session";
 import { recordGuestMatch } from "../src/lib/guestMatches";
 import { C } from "../src/theme";
 
+type ZoneKey = { team: "A" | "B"; row: CourtRow };
+const sameZone = (a: ZoneKey | null, b: ZoneKey) => !!a && a.team === b.team && a.row === b.row;
+
+const DOUBLES_LABELS = ["Player 1", "Player 2", "Player 3", "Player 4"];
+const SINGLES_LABELS = ["Player A", "Player B"];
+
 export default function NewMatch() {
   const router = useRouter();
   const { session } = useSession();
+  const isGuest = !!session?.user.is_anonymous;
   const params = useLocalSearchParams<{ clubId?: string; sessionId?: string; teamA?: string; teamB?: string }>();
+
   const [doubles, setDoubles] = useState(true);
+  const [namesDoubles, setNamesDoubles] = useState<string[]>(["", "", "", ""]);
+  const [namesSingles, setNamesSingles] = useState<string[]>(["", ""]);
   const [clubs, setClubs] = useState<Club[]>([]);
+  const [roster, setRoster] = useState<ClubPlayer[]>([]);
   const [clubId, setClubId] = useState<string | null>(null);
-  const [names, setNames] = useState(["", "", "", ""]);
   const [points, setPoints] = useState<11 | 15 | 21>(21);
   const [bestOf, setBestOf] = useState<1 | 3 | 5>(3);
-  const [firstServerIdx, setFirstServerIdx] = useState(0); // index into name fields
+  const [firstServerIdx, setFirstServerIdx] = useState(0); // index into the active names array
+  const [editing, setEditing] = useState<ZoneKey | null>(null);
+  const [pulse, setPulse] = useState<{ zone: ZoneKey; key: number } | null>(null);
   const [starting, setStarting] = useState(false);
+  const pulseSeq = useRef(0);
+
+  const names = doubles ? namesDoubles : namesSingles;
+  const setNames = doubles ? setNamesDoubles : setNamesSingles;
+  const labels = doubles ? DOUBLES_LABELS : SINGLES_LABELS;
+  const filled = names.every((n) => n.trim());
+
+  // Restore the previous lineup once on mount. Route params (a session or
+  // tournament deep link) win over anything remembered.
+  useEffect(() => {
+    let cancelled = false;
+    loadLastLineup().then((persisted) => {
+      if (cancelled) return;
+      const init = resolveInitialLineup(params, persisted, isGuest);
+      setDoubles(init.doubles);
+      setNamesDoubles(init.namesDoubles);
+      setNamesSingles(init.namesSingles);
+      setPoints(init.points);
+      setBestOf(init.bestOf);
+      setClubId(init.clubId);
+    });
+    return () => { cancelled = true; };
+    // Mount only: later param changes would fight the user's edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     // Guests never save to a club — skip the fetch so a stale local clubs_cache
     // from a previous signed-in account on this device can't leak through.
-    if (session?.user.is_anonymous) return;
+    if (isGuest) return;
     listRealClubs().then((cs) => {
       setClubs(cs);
-      if (cs.length === 1) setClubId(cs[0].id);
+      if (cs.length === 1) setClubId((prev) => prev ?? cs[0].id);
     });
-  }, [session]);
+  }, [isGuest]);
 
+  // Roster for the selected club: powers the suggestion strip and fills any
+  // name slot still empty.
   useEffect(() => {
-    if (params.clubId) setClubId(params.clubId);
-    const fromSession = [...(params.teamA?.split(",") ?? []), ...(params.teamB?.split(",") ?? [])]
-      .map((name) => name.trim())
-      .filter(Boolean);
-    if (fromSession.length) {
-      setDoubles(fromSession.length > 2);
-      setNames((previous) => previous.map((name, index) => fromSession[index] ?? name));
-    }
-  }, [params.clubId, params.teamA, params.teamB]);
-
-  // Prefill empty name fields from the selected club's roster.
-  useEffect(() => {
-    if (!clubId) return;
+    if (!clubId) { setRoster([]); return; }
     listPlayers(clubId).then((players) => {
-      setNames((prev) =>
-        prev.map((n, i) => (n.trim() ? n : players[i]?.name ?? ""))
-      );
+      setRoster(players);
+      setNames((prev) => prev.map((n, i) => (n.trim() ? n : players[i]?.name ?? "")));
     });
+    // setNames is derived from `doubles`; the roster prefill only ever targets
+    // the arrangement visible when the club was chosen.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clubId]);
 
-  const needed = doubles ? 4 : 2;
-  const filled = names.slice(0, needed).every((n) => n.trim());
-
   const buildConfig = (): MatchConfig => {
-    const n = names.map((x, i) => x.trim() || `Player ${i + 1}`);
+    const n = names.map((x, i) => x.trim() || labels[i]);
     const teams = doubles
       ? { A: [{ id: "a0", name: n[0] }, { id: "a1", name: n[1] }], B: [{ id: "b0", name: n[2] }, { id: "b1", name: n[3] }] }
       : { A: [{ id: "a0", name: n[0] }], B: [{ id: "b0", name: n[1] }] };
-    const serverTeam = firstServerIdx < needed / 2 ? "A" : "B";
+    const serverTeam = firstServerIdx < names.length / 2 ? "A" : "B";
     const serverPlayer = doubles ? firstServerIdx % 2 : 0;
     return defaultConfig({
       matchType: doubles ? "doubles" : "singles",
@@ -79,8 +109,8 @@ export default function NewMatch() {
     });
   };
 
-  // Live preview of the starting arrangement (score 0–0), so players can see
-  // where they'll stand and adjust before the match begins.
+  // Live preview of the starting arrangement (score 0–0). It is also the input
+  // surface: every zone/name interaction below is resolved against this state.
   const preview = useMemo(() => {
     try {
       return replay([{ type: "MATCH_STARTED", config: buildConfig(), at: 0 }]);
@@ -88,17 +118,27 @@ export default function NewMatch() {
       return null;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [names, doubles, points, bestOf, firstServerIdx]);
+  }, [namesDoubles, namesSingles, doubles, points, bestOf, firstServerIdx]);
+
+  /** Slot in the active names array for the player standing in a zone. */
+  const nameIndexOf = (zone: CourtZone): number | null => {
+    if (zone.playerIdx === null) return null;
+    return doubles ? (zone.team === "A" ? 0 : 2) + zone.playerIdx : zone.team === "A" ? 0 : 1;
+  };
+
+  const setNameAt = (index: number, text: string) =>
+    setNames((prev) => prev.map((n, i) => (i === index ? text : n)));
 
   /** Swap left/right halves (team A ↔ team B). */
   const swapSides = () => {
     if (doubles) {
-      setNames((p) => [p[2], p[3], p[0], p[1]]);
+      setNamesDoubles((p) => [p[2], p[3], p[0], p[1]]);
       setFirstServerIdx((i) => (i + 2) % 4);
     } else {
-      setNames((p) => [p[1], p[0], p[2], p[3]]);
+      setNamesSingles((p) => [p[1], p[0]]);
       setFirstServerIdx((i) => (i === 0 ? 1 : 0));
     }
+    setEditing(null);
   };
 
   /**
@@ -109,7 +149,85 @@ export default function NewMatch() {
    */
   const swapTeam = (team: "A" | "B") => {
     const [x, y] = team === "A" ? [0, 1] : [2, 3];
-    setNames((p) => p.map((n, i) => (i === x ? p[y] : i === y ? p[x] : n)));
+    setNamesDoubles((p) => p.map((n, i) => (i === x ? p[y] : i === y ? p[x] : n)));
+    setEditing(null);
+  };
+
+  const rejectServe = (team: "A" | "B") => {
+    pulseSeq.current += 1;
+    setPulse({ zone: { team, row: rightRow(team) }, key: pulseSeq.current });
+    toast("Service must start from the right service court.", "error");
+  };
+
+  const pickServer = (zone: CourtZone) => {
+    const index = nameIndexOf(zone);
+    if (!zone.isRightCourt || index === null) {
+      rejectServe(zone.team);
+      return;
+    }
+    setEditing(null);
+    setFirstServerIdx(index);
+  };
+
+  /** Move editing to the next occupied slot, or stop when this was the last. */
+  const editNext = (zone: CourtZone) => {
+    const index = nameIndexOf(zone);
+    if (index === null || !preview) { setEditing(null); return; }
+    const next = courtZones(preview).find((z) => nameIndexOf(z) === index + 1);
+    setEditing(next ? { team: next.team, row: next.row } : null);
+  };
+
+  const zoneEdit = (zone: CourtZone): CourtBoxEdit => {
+    const index = nameIndexOf(zone);
+    const key: ZoneKey = { team: zone.team, row: zone.row };
+    return {
+      value: index === null ? "" : names[index],
+      placeholder: index === null ? "" : labels[index],
+      editing: sameZone(editing, key),
+      onNamePress: () => index !== null && setEditing(key),
+      onChangeText: (text) => index !== null && setNameAt(index, text),
+      onSubmit: () => editNext(zone),
+      // Only clear if this box is still the active one: onSubmitEditing runs
+      // first and may already have moved editing to the next slot.
+      onEndEdit: () => setEditing((e) => (sameZone(e, key) ? null : e)),
+      onZonePress: () => pickServer(zone),
+      pulseKey: pulse && sameZone(pulse.zone, key) ? pulse.key : 0,
+    };
+  };
+
+  const edit: CourtEdit = {
+    zoneEdit,
+    onSwapSides: swapSides,
+    onSwapTeam: swapTeam,
+    showTeamSwap: doubles,
+  };
+
+  const suggestions = useMemo(() => {
+    if (!editing || !preview || roster.length === 0) return [];
+    const zone = courtZones(preview).find((z) => sameZone(editing, { team: z.team, row: z.row }));
+    const index = zone ? nameIndexOf(zone) : null;
+    const typed = index === null ? "" : names[index].trim().toLowerCase();
+    const taken = new Set(names.map((n) => n.trim().toLowerCase()).filter(Boolean));
+    return roster
+      .filter((p) => !typed || p.name.toLowerCase().includes(typed))
+      .filter((p) => !taken.has(p.name.toLowerCase()) || p.name.toLowerCase() === typed)
+      .slice(0, 12);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing, preview, roster, namesDoubles, namesSingles, doubles]);
+
+  const applySuggestion = (name: string) => {
+    if (!editing || !preview) return;
+    const zone = courtZones(preview).find((z) => sameZone(editing, { team: z.team, row: z.row }));
+    const index = zone ? nameIndexOf(zone) : null;
+    if (index === null || !zone) return;
+    setNameAt(index, name);
+    editNext(zone);
+  };
+
+  const toggleFormat = (next: boolean) => {
+    setDoubles(next);
+    setFirstServerIdx(0);
+    setEditing(null);
   };
 
   const start = async () => {
@@ -118,7 +236,8 @@ export default function NewMatch() {
       const config = buildConfig();
       const side = (t: "A" | "B") => config.teams[t].map((p) => ({ club_player_id: null, name: p.name }));
       const id = await createMatch(config, side("A"), side("B"), clubId, params.sessionId ?? null);
-      if (session?.user.is_anonymous) await recordGuestMatch(id);
+      await saveLastLineup({ doubles, namesDoubles, namesSingles, points, bestOf, clubId });
+      if (isGuest) await recordGuestMatch(id);
       router.replace(`/score/${id}`);
     } catch (e) {
       toast((e as Error).message || "Could not start the match", "error");
@@ -126,148 +245,101 @@ export default function NewMatch() {
     }
   };
 
-  const label = (i: number) =>
-    doubles ? ["Team A — player 1", "Team A — player 2", "Team B — player 1", "Team B — player 2"][i]
-            : ["Player A", "Player B"][i];
-
   return (
-    <FormScreen contentContainerStyle={{ padding: 16, gap: 12 }}>
-      <View style={s.seg}>
-        {[true, false].map((d) => (
-          <PressableScale
-            key={String(d)}
-            style={[s.segBtn, doubles === d && s.segOn]}
-            onPress={() => { setDoubles(d); setFirstServerIdx(0); }}
-            scaleTo={0.96}
-          >
-            <Text style={[s.segText, doubles === d && s.segTextOn]}>{d ? "Doubles" : "Singles"}</Text>
-          </PressableScale>
-        ))}
+    <KeyboardAvoidingView
+      style={s.root}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <View style={s.topRow}>
+        <View style={s.seg}>
+          {[true, false].map((d) => (
+            <PressableScale
+              key={String(d)}
+              style={[s.segBtn, doubles === d && s.segOn]}
+              onPress={() => toggleFormat(d)}
+              scaleTo={0.96}
+            >
+              <Text style={[s.segText, doubles === d && s.segTextOn]}>{d ? "Doubles" : "Singles"}</Text>
+            </PressableScale>
+          ))}
+        </View>
+        {!isGuest && <ClubPicker clubs={clubs} clubId={clubId} onChange={setClubId} />}
       </View>
 
-      {Array.from({ length: needed }, (_, i) => (
-        <TextInput
-          key={i}
-          style={s.input}
-          placeholder={label(i)}
-          placeholderTextColor={C.text2}
-          value={names[i]}
-          onChangeText={(t) => setNames((p) => p.map((x, j) => (j === i ? t : x)))}
-        />
-      ))}
+      <View style={s.courtWrap}>{preview && <Court state={preview} edit={edit} />}</View>
 
-      {/* Live court preview + position swaps */}
-      <Text style={s.h}>Starting positions</Text>
-      <View style={s.previewWrap}>
-        {preview && <Court state={preview} />}
-      </View>
+      {/* One row, swapped for roster suggestions while a name is being edited,
+          so the page height never changes. */}
       <View style={s.swapRow}>
-        {doubles && (
-          <PressableScale style={s.swapBtn} onPress={() => swapTeam("A")} scaleTo={0.95}>
-            <Icon name="swap-vertical" color={C.text} size={16} />
-            <Text style={s.swapText}>Team A</Text>
-          </PressableScale>
-        )}
-        <PressableScale style={[s.swapBtn, s.swapSides]} onPress={swapSides} scaleTo={0.95}>
-          <Icon name="swap-horizontal" color={C.text} size={16} />
-          <Text style={s.swapText}>Swap sides</Text>
-        </PressableScale>
-        {doubles && (
-          <PressableScale style={s.swapBtn} onPress={() => swapTeam("B")} scaleTo={0.95}>
-            <Icon name="swap-vertical" color={C.text} size={16} />
-            <Text style={s.swapText}>Team B</Text>
-          </PressableScale>
-        )}
-      </View>
-
-      <Text style={s.h}>Points per game</Text>
-      <View style={s.seg}>
-        {([11, 15, 21] as const).map((p) => (
-          <Pressable key={p} style={[s.segBtn, points === p && s.segOn]} onPress={() => setPoints(p)}>
-            <Text style={[s.segText, points === p && s.segTextOn]}>{p}</Text>
-          </Pressable>
-        ))}
-      </View>
-
-      <Text style={s.h}>Games to win</Text>
-      <View style={s.seg}>
-        {([[1, 1], [2, 3], [3, 5]] as const).map(([win, bo]) => (
-          <Pressable key={bo} style={[s.segBtn, bestOf === bo && s.segOn]} onPress={() => setBestOf(bo)}>
-            <Text style={[s.segText, bestOf === bo && s.segTextOn]}>{win}</Text>
-          </Pressable>
-        ))}
-      </View>
-      <Text style={s.hint}>First to {Math.floor(bestOf / 2) + 1} {bestOf === 1 ? "game" : "games"} · best of {bestOf}</Text>
-
-      <Text style={s.h}>First serve</Text>
-      <Text style={s.hint}>Service always starts from the right court.</Text>
-      <View style={s.clubRow}>
-        {/* Doubles: only the right-court player of each team (slots 0 and 2)
-            can serve first — the laws of badminton require the first serve
-            of a game to come from the right service court. Use "Swap
-            Team A/B" above to change who stands on the right before picking.
-            Singles has no left/right player distinction, so both slots stay. */}
-        {(doubles ? [0, 2] : Array.from({ length: needed }, (_, i) => i)).map((i) => (
-          <Pressable
-            key={i}
-            style={[s.chip, firstServerIdx === i && s.chipOn]}
-            onPress={() => setFirstServerIdx(i)}
-          >
-            <Text style={s.chipText}>
-              {names[i].trim() || label(i)}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      {clubs.length > 0 && (
-        <>
-          <Text style={s.h}>Save to club (optional)</Text>
-          <View style={s.clubRow}>
-            <Pressable style={[s.chip, clubId === null && s.chipOn]} onPress={() => setClubId(null)}>
-              <Text style={s.chipText}>None</Text>
-            </Pressable>
-            {clubs.map((c) => (
-              <Pressable key={c.id} style={[s.chip, clubId === c.id && s.chipOn]} onPress={() => setClubId(c.id)}>
-                <Text style={s.chipText}>{c.name}</Text>
-              </Pressable>
-            ))}
+        {editing && suggestions.length > 0 ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <View style={s.chipRow}>
+              {suggestions.map((p) => (
+                <Pressable key={p.id} style={s.chip} onPress={() => applySuggestion(p.name)}>
+                  <Text style={s.chipText} numberOfLines={1}>{p.name}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </ScrollView>
+        ) : (
+          <View style={s.formatRow}>
+            <View style={s.formatGroup}>
+              <Text style={s.caption}>Points</Text>
+              <View style={s.seg}>
+                {([11, 15, 21] as const).map((p) => (
+                  <Pressable key={p} style={[s.segBtn, points === p && s.segOn]} onPress={() => setPoints(p)}>
+                    <Text style={[s.segText, points === p && s.segTextOn]}>{p}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+            <View style={s.formatGroup}>
+              <Text style={s.caption}>Games</Text>
+              <View style={s.seg}>
+                {([[1, 1], [2, 3], [3, 5]] as const).map(([win, bo]) => (
+                  <Pressable key={bo} style={[s.segBtn, bestOf === bo && s.segOn]} onPress={() => setBestOf(bo)}>
+                    <Text style={[s.segText, bestOf === bo && s.segTextOn]}>{win}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
           </View>
-        </>
-      )}
+        )}
+      </View>
+
+      <Text style={s.hint}>
+        First to {Math.floor(bestOf / 2) + 1} {bestOf === 1 ? "game" : "games"} · best of {bestOf} ·
+        tap a right-hand court to set the first serve
+      </Text>
 
       <BusyButton busy={starting} disabled={!filled} style={[s.cta, !filled && { opacity: 0.5 }]} onPress={start}>
         <Text style={s.ctaText}>Start scoring</Text>
       </BusyButton>
-    </FormScreen>
+    </KeyboardAvoidingView>
   );
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
-  seg: { flexDirection: "row", backgroundColor: C.card, borderRadius: 12, padding: 4, gap: 4 },
-  segBtn: { flex: 1, borderRadius: 9, minHeight: 44, alignItems: "center", justifyContent: "center" },
+  root: { flex: 1, backgroundColor: C.bg, padding: 16, gap: 12 },
+  topRow: { flexDirection: "row", gap: 8, alignItems: "center" },
+  seg: { flexDirection: "row", backgroundColor: C.card, borderRadius: 12, padding: 4, gap: 4, flex: 1 },
+  segBtn: { flex: 1, borderRadius: 9, minHeight: 40, alignItems: "center", justifyContent: "center" },
   segOn: { backgroundColor: C.red },
-  segText: { color: C.text2, fontSize: 16, fontWeight: "600" },
+  segText: { color: C.text2, fontSize: 15, fontWeight: "600" },
   segTextOn: { color: C.text },
-  input: {
-    backgroundColor: C.card, color: C.text, borderRadius: 12, borderWidth: 1,
-    borderColor: C.line, padding: 14, fontSize: 16,
+  courtWrap: { flex: 1, minHeight: 200 },
+  swapRow: { minHeight: 62, justifyContent: "center" },
+  formatRow: { flexDirection: "row", gap: 12 },
+  formatGroup: { flex: 1, gap: 2 },
+  caption: { color: C.text2, fontSize: 12, fontWeight: "700" },
+  chipRow: { flexDirection: "row", gap: 8, paddingVertical: 4 },
+  chip: {
+    backgroundColor: C.card, borderRadius: 999, paddingHorizontal: 14,
+    minHeight: 40, justifyContent: "center",
+    borderWidth: 1, borderColor: C.line, maxWidth: 160,
   },
-  h: { color: C.text, fontSize: 16, fontWeight: "700" },
-  hint: { color: C.text2, fontSize: 13, marginTop: -4 },
-  previewWrap: { height: 150 },
-  swapRow: { flexDirection: "row", gap: 8 },
-  swapBtn: {
-    flex: 1, flexDirection: "row", gap: 5, backgroundColor: C.card, borderRadius: 10, minHeight: 44,
-    alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: C.line,
-  },
-  swapSides: { backgroundColor: C.cardHi },
-  swapText: { color: C.text, fontSize: 14, fontWeight: "700" },
-  clubRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: { backgroundColor: C.card, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10 },
-  chipOn: { backgroundColor: C.red },
   chipText: { color: C.text, fontSize: 14, fontWeight: "600" },
-  cta: { backgroundColor: C.red, borderRadius: 14, minHeight: 56, alignItems: "center", justifyContent: "center", marginTop: 8 },
+  hint: { color: C.text2, fontSize: 12 },
+  cta: { backgroundColor: C.red, borderRadius: 14, minHeight: 56, alignItems: "center", justifyContent: "center" },
   ctaText: { color: C.text, fontSize: 18, fontWeight: "800" },
 });
