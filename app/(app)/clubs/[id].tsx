@@ -123,14 +123,16 @@ export default function ClubDetail() {
                 <Text style={s.secondaryText}>Pending requests</Text>
               </Pressable>
             ) : null}
-            {isAdmin ? (
-              <Pressable
-                style={s.secondary}
-                onPress={() => router.push(`/(app)/clubs/players/${club.id}`)}
-              >
-                <Text style={s.secondaryText}>Manage players</Text>
-              </Pressable>
-            ) : null}
+            {/* Every member reaches the roster — a plain member otherwise has no
+                screen anywhere that lists who else is in the club, because the
+                board below is built from local match history they don't have.
+                The roster screen keeps add/remove admin-only on its own. */}
+            <Pressable
+              style={s.secondary}
+              onPress={() => router.push(`/(app)/clubs/players/${club.id}`)}
+            >
+              <Text style={s.secondaryText}>{isAdmin ? "Manage players" : "Players"}</Text>
+            </Pressable>
           </View>
           <View style={s.boardHeadRow}>
             <Text style={s.rank}>#</Text>
