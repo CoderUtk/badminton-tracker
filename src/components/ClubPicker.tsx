@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { Club } from "../repos/clubRepo";
 import Icon from "./Icon";
 import PressableScale from "./PressableScale";
@@ -17,6 +18,7 @@ export default function ClubPicker({
   onChange: (clubId: string | null) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const insets = useSafeAreaInsets();
   if (clubs.length === 0) return null;
 
   const current = clubs.find((c) => c.id === clubId);
@@ -24,15 +26,27 @@ export default function ClubPicker({
 
   return (
     <>
-      <PressableScale style={s.button} onPress={() => setOpen(true)} scaleTo={0.96}>
+      <PressableScale
+        style={s.button}
+        onPress={() => setOpen(true)}
+        scaleTo={0.96}
+        accessibilityRole="button"
+        accessibilityLabel={`Save this match to ${current?.name ?? "Personal"}. Change`}
+      >
         <Icon name={current ? "account-group" : "person-outline"} color={C.text2} size={16} />
         <Text style={s.buttonText} numberOfLines={1}>{current?.name ?? "Personal"}</Text>
-        <Icon name="chevron-down" color={C.text2} size={14} />
+        <Icon name="chevron-down" color={C.text} size={16} />
       </PressableScale>
 
-      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+      <Modal
+        visible={open}
+        transparent
+        statusBarTranslucent
+        animationType="fade"
+        onRequestClose={() => setOpen(false)}
+      >
         <Pressable style={s.backdrop} onPress={() => setOpen(false)}>
-          <Pressable style={s.sheet} onPress={() => {}}>
+          <Pressable style={[s.sheet, { paddingBottom: 16 + insets.bottom }]} onPress={() => {}}>
             <Text style={s.title}>Save this match to</Text>
 
             <Pressable style={[s.row, clubId === null && s.rowOn]} onPress={() => pick(null)}>

@@ -86,20 +86,23 @@ export default function Court({ state, edit }: { state: MatchState; edit?: Court
   return (
     <View style={s.court}>
       <Half state={state} team="A" zones={half("A")} edit={edit} />
-      <View style={[s.net, edit && s.netEdit]}>
+      <View style={s.net}>
         <NetDivider />
-        {edit && (
-          <Pressable
-            style={s.sideSwap}
-            onPress={edit.onSwapSides}
-            hitSlop={8}
-            accessibilityLabel="Swap sides"
-          >
-            <Icon name="swap-horizontal" color={C.text} size={18} />
-          </Pressable>
-        )}
       </View>
       <Half state={state} team="B" zones={half("B")} edit={edit} />
+      {/* Centred on the court itself, not inside the 8px net column: a child
+          rendered outside its parent's bounds gets no touches on Android, and
+          widening the net column instead would push the halves apart so the
+          serve highlight no longer reaches the net. */}
+      {edit && (
+        <Pressable
+          style={s.sideSwap}
+          onPress={edit.onSwapSides}
+          accessibilityLabel="Swap sides"
+        >
+          <Icon name="swap-horizontal" color={C.text} size={18} />
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -116,21 +119,18 @@ const s = StyleSheet.create({
   },
   half: { flex: 1 },
   net: { justifyContent: "center", alignItems: "center", zIndex: 2 },
-  // Widen the net column's touch surface to match the 40px swap button so
-  // Android delivers touches across the whole button, not just the 8px net
-  // strip. Only applied in edit mode so the read-only court's width is
-  // unchanged (Critical 1 / MatchScreen parity).
-  netEdit: { width: 40 },
   sideSwap: {
-    position: "absolute", alignSelf: "center",
-    width: 40, height: 40, borderRadius: 20,
+    position: "absolute", top: "50%", left: "50%",
+    marginTop: -22, marginLeft: -22,
+    width: 44, height: 44, borderRadius: 22,
     alignItems: "center", justifyContent: "center",
     backgroundColor: "rgba(20,24,28,0.92)",
     borderWidth: 1, borderColor: LINE,
+    zIndex: 3,
   },
   teamSwap: {
-    position: "absolute", top: "50%", marginTop: -16, alignSelf: "center",
-    width: 32, height: 32, borderRadius: 16,
+    position: "absolute", top: "50%", marginTop: -20, alignSelf: "center",
+    width: 40, height: 40, borderRadius: 20,
     alignItems: "center", justifyContent: "center",
     backgroundColor: "rgba(20,24,28,0.92)",
     borderWidth: 1, borderColor: LINE,

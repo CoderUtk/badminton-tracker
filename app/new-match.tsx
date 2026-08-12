@@ -63,7 +63,11 @@ export default function NewMatch() {
       setNamesSingles(init.namesSingles);
       setPoints(init.points);
       setBestOf(init.bestOf);
-      setClubId(init.clubId);
+      // Names and format are restored, the club deliberately is not: a quick
+      // match defaults to Personal, and only an explicit deep-link param
+      // preselects a club. Otherwise one club choice would silently stick to
+      // every later match.
+      setClubId(params.clubId ?? null);
       setLineupRestored(true);
     });
     return () => { cancelled = true; };
@@ -81,18 +85,7 @@ export default function NewMatch() {
       .finally(() => setClubsLoaded(true));
   }, [isGuest]);
 
-  // Auto-select the user's only club, but only once the lineup restore has
-  // applied its own clubId (a params clubId or a persisted one): listRealClubs
-  // and loadLastLineup race, and applying this before the restore lands would
-  // let the restore's unconditional setClubId(init.clubId) silently overwrite
-  // the auto-selected club with null. The `prev ?? ...` guard then also keeps
-  // this from overriding whatever the restore actually chose.
-  useEffect(() => {
-    if (!lineupRestored || clubs.length !== 1) return;
-    setClubId((prev) => prev ?? clubs[0].id);
-  }, [clubs, lineupRestored]);
-
-  // A restored (or param) clubId may belong to a club the current account no
+  // A param clubId may belong to a club the current account no
   // longer has — a shared device switching accounts, or a deleted club. Once
   // the real club list has actually finished loading (clubsLoaded, not just a
   // non-empty array — an account can genuinely have zero clubs), drop a
@@ -291,7 +284,7 @@ export default function NewMatch() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={s.topRow}>
-        <View style={s.seg}>
+        <View style={[s.seg, s.segFill]}>
           {[true, false].map((d) => (
             <PressableScale
               key={String(d)}
@@ -334,11 +327,11 @@ export default function NewMatch() {
               </View>
             </View>
             <View style={s.formatGroup}>
-              <Text style={s.caption}>Games</Text>
+              <Text style={s.caption}>Games (best of)</Text>
               <View style={s.seg}>
-                {([[1, 1], [2, 3], [3, 5]] as const).map(([win, bo]) => (
+                {([1, 3, 5] as const).map((bo) => (
                   <Pressable key={bo} style={[s.segBtn, bestOf === bo && s.segOn]} onPress={() => setBestOf(bo)}>
-                    <Text style={[s.segText, bestOf === bo && s.segTextOn]}>{win}</Text>
+                    <Text style={[s.segText, bestOf === bo && s.segTextOn]}>{bo}</Text>
                   </Pressable>
                 ))}
               </View>
@@ -347,9 +340,8 @@ export default function NewMatch() {
         )}
       </View>
 
-      <Text style={s.hint}>
-        First to {Math.floor(bestOf / 2) + 1} {bestOf === 1 ? "game" : "games"} · best of {bestOf} ·
-        tap a right-hand court to set the first serve
+      <Text style={s.hint} numberOfLines={1}>
+        First to {Math.floor(bestOf / 2) + 1} {bestOf === 1 ? "game" : "games"} · best of {bestOf}
       </Text>
 
       <BusyButton busy={starting} disabled={!filled} style={[s.cta, !filled && { opacity: 0.5 }]} onPress={start}>
@@ -362,13 +354,18 @@ export default function NewMatch() {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg, padding: 16, gap: 12 },
   topRow: { flexDirection: "row", gap: 8, alignItems: "center" },
-  seg: { flexDirection: "row", backgroundColor: C.card, borderRadius: 12, padding: 4, gap: 4, flex: 1 },
+  // No flex here: inside the column-laid-out format groups it would stretch the
+  // pill row past the card background. The top row opts in with segFill.
+  seg: { flexDirection: "row", backgroundColor: C.card, borderRadius: 12, padding: 4, gap: 4 },
+  segFill: { flex: 1 },
   segBtn: { flex: 1, borderRadius: 9, minHeight: 40, alignItems: "center", justifyContent: "center" },
   segOn: { backgroundColor: C.red },
   segText: { color: C.text2, fontSize: 15, fontWeight: "600" },
   segTextOn: { color: C.text },
   courtWrap: { flex: 1, minHeight: 200 },
-  swapRow: { minHeight: 62, justifyContent: "center" },
+  // Tall enough for the caption plus a 48px pill row, so the selected pill
+  // never overflows the card behind it.
+  swapRow: { minHeight: 70, justifyContent: "center" },
   formatRow: { flexDirection: "row", gap: 12 },
   formatGroup: { flex: 1, gap: 2 },
   caption: { color: C.text2, fontSize: 12, fontWeight: "700" },
