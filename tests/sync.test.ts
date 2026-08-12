@@ -1,8 +1,11 @@
 import { pushAll, SyncClient, SyncMatchRow, SyncRow, SyncStore } from "../src/sync/sync";
 
+const MATCH_TIME = Date.parse("2026-08-01T10:00:00.000Z");
+
 function makeMatch(id: string): SyncMatchRow {
   return {
     id,
+    created_at: MATCH_TIME,
     club_id: "club1",
     session_id: null,
     config: JSON.stringify({ matchType: "doubles" }),
@@ -75,6 +78,17 @@ describe("pushAll", () => {
     const seqs = (client.eventCalls[0] as { seq: number }[]).map((r) => r.seq);
     expect(seqs).toEqual([0, 1, 2, 3, 4]);
     expect((client.matchCalls[0] as { created_by: string }).created_by).toBe("user1");
+  });
+
+  // Without this the server row gets `default now()` from whenever the push
+  // landed, and the pull writes that back over the true local match time.
+  test("pushes the local match time so the server does not stamp its own", async () => {
+    const { store } = memoryStore([makeMatch("m1")], { m1: [] });
+    const client = okClient();
+    await pushAll(store, client, "user1");
+
+    expect((client.matchCalls[0] as { created_at: string }).created_at)
+      .toBe("2026-08-01T10:00:00.000Z");
   });
 
   test("re-running after success pushes nothing (idempotent)", async () => {
