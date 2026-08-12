@@ -230,13 +230,11 @@ export default function NewMatch() {
     };
   };
 
-  const edit: CourtEdit = {
-    zoneEdit,
-    onSwapSides: swapSides,
-    onSwapTeam: swapTeam,
-    showTeamSwap: doubles,
-  };
-
+  /**
+   * The roster picker, drawn inside the court over the other box of the half
+   * being edited. Rendering it here (rather than in a row under the court)
+   * keeps it beside the field it fills and leaves Points/Games reachable.
+   */
   /**
    * The roster strip shown while a name is being edited: the club players still
    * worth offering, plus whether what has been typed is a name the club doesn't
@@ -300,6 +298,38 @@ export default function NewMatch() {
     }
   };
 
+  const panelNode = (
+    <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      {picker.canAdd && (
+        <Pressable
+          style={[s.pickRow, adding && { opacity: 0.5 }]}
+          onPress={addTypedToClub}
+          disabled={adding}
+        >
+          <Icon name="account-plus" color={C.red} size={16} />
+          <Text style={[s.pickText, s.pickAddText]} numberOfLines={1}>Add {picker.typed}</Text>
+        </Pressable>
+      )}
+      {picker.players.map((p) => (
+        <Pressable key={p.id} style={s.pickRow} onPress={() => applySuggestion(p.name)}>
+          <Icon name="person-outline" color={C.text2} size={16} />
+          <Text style={s.pickText} numberOfLines={1}>{p.name}</Text>
+        </Pressable>
+      ))}
+    </ScrollView>
+  );
+
+  const edit: CourtEdit = {
+    zoneEdit,
+    onSwapSides: swapSides,
+    onSwapTeam: swapTeam,
+    showTeamSwap: doubles,
+    panel:
+      editing && (picker.players.length > 0 || picker.canAdd)
+        ? { team: editing.team, row: editing.row, node: panelNode }
+        : undefined,
+  };
+
   const toggleFormat = (next: boolean) => {
     setDoubles(next);
     setFirstServerIdx(0);
@@ -344,55 +374,27 @@ export default function NewMatch() {
 
       <View style={s.courtWrap}>{preview && <Court state={preview} edit={edit} />}</View>
 
-      {/* One row, swapped for roster suggestions while a name is being edited,
-          so the page height never changes. */}
-      <View style={s.swapRow}>
-        {editing && (picker.players.length > 0 || picker.canAdd) ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-            <View style={s.chipRow}>
-              {picker.canAdd && (
-                <Pressable
-                  style={[s.chip, s.chipAdd, adding && { opacity: 0.5 }]}
-                  onPress={addTypedToClub}
-                  disabled={adding}
-                >
-                  <Icon name="account-plus" color={C.red} size={16} />
-                  <Text style={[s.chipText, s.chipAddText]} numberOfLines={1}>
-                    Add {picker.typed}
-                  </Text>
-                </Pressable>
-              )}
-              {picker.players.map((p) => (
-                <Pressable key={p.id} style={s.chip} onPress={() => applySuggestion(p.name)}>
-                  <Text style={s.chipText} numberOfLines={1}>{p.name}</Text>
-                </Pressable>
-              ))}
-            </View>
-          </ScrollView>
-        ) : (
-          <View style={s.formatRow}>
-            <View style={s.formatGroup}>
-              <Text style={s.caption}>Points</Text>
-              <View style={s.seg}>
-                {([11, 15, 21] as const).map((p) => (
-                  <Pressable key={p} style={[s.segBtn, points === p && s.segOn]} onPress={() => setPoints(p)}>
-                    <Text style={[s.segText, points === p && s.segTextOn]}>{p}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-            <View style={s.formatGroup}>
-              <Text style={s.caption}>Games (best of)</Text>
-              <View style={s.seg}>
-                {([1, 3, 5] as const).map((bo) => (
-                  <Pressable key={bo} style={[s.segBtn, bestOf === bo && s.segOn]} onPress={() => setBestOf(bo)}>
-                    <Text style={[s.segText, bestOf === bo && s.segTextOn]}>{bo}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
+      <View style={s.formatRow}>
+        <View style={s.formatGroup}>
+          <Text style={s.caption}>Points</Text>
+          <View style={s.seg}>
+            {([11, 15, 21] as const).map((p) => (
+              <Pressable key={p} style={[s.segBtn, points === p && s.segOn]} onPress={() => setPoints(p)}>
+                <Text style={[s.segText, points === p && s.segTextOn]}>{p}</Text>
+              </Pressable>
+            ))}
           </View>
-        )}
+        </View>
+        <View style={s.formatGroup}>
+          <Text style={s.caption}>Games (best of)</Text>
+          <View style={s.seg}>
+            {([1, 3, 5] as const).map((bo) => (
+              <Pressable key={bo} style={[s.segBtn, bestOf === bo && s.segOn]} onPress={() => setBestOf(bo)}>
+                <Text style={[s.segText, bestOf === bo && s.segTextOn]}>{bo}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
       </View>
 
       <Text style={s.hint} numberOfLines={1}>
@@ -418,21 +420,15 @@ const s = StyleSheet.create({
   segText: { color: C.text2, fontSize: 15, fontWeight: "600" },
   segTextOn: { color: C.text },
   courtWrap: { flex: 1, minHeight: 200 },
-  // Tall enough for the caption plus a 48px pill row, so the selected pill
-  // never overflows the card behind it.
-  swapRow: { minHeight: 70, justifyContent: "center" },
   formatRow: { flexDirection: "row", gap: 12 },
   formatGroup: { flex: 1, gap: 2 },
   caption: { color: C.text2, fontSize: 12, fontWeight: "700" },
-  chipRow: { flexDirection: "row", gap: 8, paddingVertical: 4 },
-  chip: {
-    backgroundColor: C.card, borderRadius: 999, paddingHorizontal: 14,
-    minHeight: 44, justifyContent: "center",
-    borderWidth: 1, borderColor: C.line, maxWidth: 180,
+  pickRow: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    minHeight: 40, paddingHorizontal: 12,
   },
-  chipText: { color: C.text, fontSize: 14, fontWeight: "600" },
-  chipAdd: { flexDirection: "row", alignItems: "center", gap: 6, borderColor: C.red },
-  chipAddText: { color: C.red },
+  pickText: { color: C.text, fontSize: 14, fontWeight: "600", flexShrink: 1 },
+  pickAddText: { color: C.red },
   hint: { color: C.text2, fontSize: 12 },
   cta: { backgroundColor: C.red, borderRadius: 14, minHeight: 56, alignItems: "center", justifyContent: "center" },
   ctaText: { color: C.text, fontSize: 18, fontWeight: "800" },

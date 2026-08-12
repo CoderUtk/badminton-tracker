@@ -2,7 +2,7 @@ import React from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import type { MatchState, TeamId } from "../engine";
 import { serviceCourt } from "../engine";
-import { courtZones, type CourtZone } from "../lib/courtZones";
+import { courtZones, type CourtRow, type CourtZone } from "../lib/courtZones";
 import CourtBox, { type CourtBoxEdit } from "./CourtBox";
 import Icon from "./Icon";
 import NetDivider from "./NetDivider";
@@ -30,6 +30,12 @@ export type CourtEdit = {
   onSwapTeam: (team: TeamId) => void;
   /** False in singles, where a team has only one player. */
   showTeamSwap: boolean;
+  /**
+   * Panel drawn inside the half of the box being edited, over the OTHER box of
+   * that half, so a name picker sits next to its field instead of below the
+   * court. `row` is the row being edited, not the row the panel covers.
+   */
+  panel?: { team: TeamId; row: CourtRow; node: React.ReactNode };
 };
 
 function Half({
@@ -64,6 +70,14 @@ function Half({
           edit={edit?.zoneEdit(zone)}
         />
       ))}
+
+      {edit?.panel?.team === team && (
+        <View
+          style={[s.panel, edit.panel.row === "top" ? s.panelLower : s.panelUpper]}
+        >
+          {edit.panel.node}
+        </View>
+      )}
 
       {edit?.showTeamSwap && (
         <Pressable
@@ -128,6 +142,15 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: LINE,
     zIndex: 3,
   },
+  // Covers the half's other box: editing the top box drops the panel into the
+  // bottom one and vice versa, so the field being typed into stays visible.
+  panel: {
+    position: "absolute", left: 0, right: 0,
+    backgroundColor: "rgba(16,19,22,0.97)",
+    zIndex: 4,
+  },
+  panelLower: { top: "50%", bottom: 0, borderTopWidth: 1, borderColor: LINE },
+  panelUpper: { top: 0, bottom: "50%", borderBottomWidth: 1, borderColor: LINE },
   teamSwap: {
     position: "absolute", top: "50%", marginTop: -20, alignSelf: "center",
     width: 40, height: 40, borderRadius: 20,
