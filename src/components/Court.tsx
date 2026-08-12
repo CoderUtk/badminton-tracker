@@ -142,15 +142,25 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: LINE,
     zIndex: 3,
   },
-  // Covers the half's other box: editing the top box drops the panel into the
-  // bottom one and vice versa, so the field being typed into stays visible.
+  // A floating menu over the half's other box: editing the top box drops it
+  // into the bottom one and vice versa, so the field being typed into stays
+  // visible. Opaque and elevated — a translucent panel over the court reads as
+  // a rendering glitch. Height follows the content up to the box it covers.
   panel: {
-    position: "absolute", left: 0, right: 0,
-    backgroundColor: "rgba(16,19,22,0.97)",
-    zIndex: 4,
+    position: "absolute", left: 8, right: 8,
+    backgroundColor: C.card,
+    borderRadius: 12,
+    borderWidth: 1, borderColor: C.line,
+    paddingVertical: 4,
+    overflow: "hidden",
+    maxHeight: "44%",
+    // zIndex alone does not lift a view above the swap buttons on Android.
+    zIndex: 6, elevation: 12,
+    shadowColor: "#000", shadowOpacity: 0.4, shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
   },
-  panelLower: { top: "50%", bottom: 0, borderTopWidth: 1, borderColor: LINE },
-  panelUpper: { top: 0, bottom: "50%", borderBottomWidth: 1, borderColor: LINE },
+  panelLower: { top: "50%", marginTop: 8 },
+  panelUpper: { bottom: "50%", marginBottom: 8 },
   teamSwap: {
     position: "absolute", top: "50%", marginTop: -20, alignSelf: "center",
     width: 40, height: 40, borderRadius: 20,

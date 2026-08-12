@@ -252,7 +252,10 @@ export default function NewMatch() {
     const taken = new Set(names.map((n) => n.trim().toLowerCase()).filter(Boolean));
     const players = roster
       .filter((p) => !lower || p.name.toLowerCase().includes(lower))
-      .filter((p) => !taken.has(p.name.toLowerCase()) || p.name.toLowerCase() === lower)
+      // `taken` includes this slot's own text, so a name that is already fully
+      // typed drops out — picking it would be a no-op, and the panel closes
+      // once there is nothing left to choose.
+      .filter((p) => !taken.has(p.name.toLowerCase()))
       .slice(0, 12);
 
     return {
@@ -425,7 +428,7 @@ const s = StyleSheet.create({
   caption: { color: C.text2, fontSize: 12, fontWeight: "700" },
   pickRow: {
     flexDirection: "row", alignItems: "center", gap: 8,
-    minHeight: 40, paddingHorizontal: 12,
+    minHeight: 44, paddingHorizontal: 12,
   },
   pickText: { color: C.text, fontSize: 14, fontWeight: "600", flexShrink: 1 },
   pickAddText: { color: C.red },
