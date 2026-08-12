@@ -103,3 +103,23 @@ export function statTileValues(analytics: PlayerAnalytics | null): {
 export function shouldShowFeatureCopy(analytics: PlayerAnalytics | null): boolean {
   return (analytics?.played ?? 0) < MIN_MATCHES_FOR_RATES;
 }
+
+/**
+ * The account has nothing yet: no completed match and no club. Home swaps its
+ * dashboard blocks — which would all be empty — for content that names the
+ * next step.
+ *
+ * The threshold is zero, not MIN_MATCHES_FOR_RATES: one club or one match
+ * gives the account a shape, and the dashboard is true for it from then on.
+ *
+ * `loaded` is the caller's "the first cache read has resolved" flag. Without
+ * it, analytics starting as null would render the first-run state for a frame
+ * on every focus, for every user.
+ */
+export function isFirstRun(
+  analytics: PlayerAnalytics | null,
+  clubs: Club[],
+  loaded: boolean
+): boolean {
+  return loaded && (analytics?.played ?? 0) === 0 && clubs.length === 0;
+}
