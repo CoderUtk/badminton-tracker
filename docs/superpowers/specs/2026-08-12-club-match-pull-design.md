@@ -56,8 +56,11 @@ Add `pullMatches()` to `src/sync/`, called from `syncNow` after `pushAll` and be
 2. **Write rule.** For each pulled row: insert if absent; if present and local
    `synced = 1`, replace; if present and local `synced = 0`, **skip** — the local copy is
    newer and still owed to the server.
-3. **Events.** For each pulled match id, `select seq, event from match_events where
-   match_id = ? and seq > <max local seq>`. Insert with `synced = 1`. Never delete.
+3. **Events.** For each pulled match id, `select match_id, seq, event from match_events
+   where match_id in (...)`. Insert locally with `synced = 1` and **`insert or ignore`**, so
+   an existing local row at the same `(match_id, seq)` always wins — that covers the
+   unsynced-local-event case without a max-seq calculation, and it also fills gaps below
+   the local max seq. Never update, never delete.
 4. **Batching.** Reuse `insertMany` from `src/db/batch.ts` — same variable budget and
    single-transaction shape as `refreshClubs`.
 5. **Failure mode.** A failed pull leaves the watermark unmoved and returns; the device
@@ -78,7 +81,7 @@ injected the way `SyncStore`/`SyncClient` already are in `pushAll`. Cover:
 - pulled row absent locally → inserted
 - pulled row present, `synced = 1` → replaced
 - pulled row present, `synced = 0` → left alone
-- events pulled only above the local max `seq`
+- events inserted with `or ignore`, so a local row at the same `(match_id, seq)` survives
 - `club_id is null` local rows untouched
 
 Device check: sign in on a second account, join a club with history, confirm the
