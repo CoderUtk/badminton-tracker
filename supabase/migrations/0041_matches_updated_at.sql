@@ -23,5 +23,8 @@ create trigger matches_touch_updated_at
   before update on public.matches
   for each row execute function public.touch_updated_at();
 
--- The pull's only query is: updated_at > watermark, ordered by (updated_at, id).
-create index if not exists matches_updated_at on public.matches (updated_at);
+-- The pull pages on a keyset over the composite key: rows strictly after
+-- (updated_at, id), ordered by (updated_at, id). The index must carry both
+-- columns -- `add column ... default now()` above stamps EVERY pre-existing row
+-- with the same updated_at, so id is what actually separates them.
+create index if not exists matches_updated_at_id on public.matches (updated_at, id);

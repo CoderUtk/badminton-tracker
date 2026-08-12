@@ -15,6 +15,25 @@
  *     so an unsynced local event at some (match_id, seq) always wins over the
  *     server's row at the same key. `match_events` is append-only on both sides.
  *
+ * ONLY FINISHED MATCHES ARE PULLED. The client query filters
+ * `status in ('completed', 'forfeited')` (see runner.ts). The local `matches`
+ * table is the device's own scoring state: app/(app)/matches/index.tsx offers
+ * Resume and End match for any `status = 'live'` row. A live match pulled from
+ * another device would therefore be resumable here, appending events at
+ * `seq = events.length` and forking the log against the owning device, and
+ * ending it would set `synced = 0` on a row this user did not create, which
+ * `pushAll` then upserts with `created_by = userId` — rejected forever by the
+ * "creator updates own match" RLS policy. Excluding live rows removes the
+ * hazard entirely; a match that finishes later is pulled when its `updated_at`
+ * bumps.
+ *
+ * Paging uses a keyset cursor on the composite key `(updated_at, id)`, not a
+ * bare `updated_at > since`. Rows can share a timestamp — in fact every row
+ * that existed when 0041_matches_updated_at.sql ran shares one, because
+ * `add column ... default now()` stores a single value for all of them — so a
+ * timestamp-only watermark drops every row past the page cut at that timestamp,
+ * permanently. See PullCursor.
+ *
  * Pure by construction: every read and write arrives through the two interfaces
  * below, because the Jest environment is node and can load neither expo-sqlite
  * nor react-native.
@@ -61,10 +80,43 @@ export interface LocalEventWrite {
   event: string;
 }
 
+/**
+ * Where the last pull stopped, as a point in the total order `(updated_at, id)`.
+ * The next page is everything strictly after it:
+ *
+ *   updated_at > updatedAt or (updated_at = updatedAt and id > id)
+ *
+ * Stored as one settings string, `${updatedAt}|${id}` — see encodeCursor. The
+ * split is on the FIRST "|", which is unambiguous because neither an ISO 8601
+ * timestamp nor a uuid can contain that character.
+ */
+export interface PullCursor {
+  /** ISO 8601 value of matches.updated_at for the last row written. */
+  updatedAt: string;
+  /** matches.id of that row — the tiebreak within one updated_at. */
+  id: string;
+}
+
 export interface PullClient {
-  /** Rows with updated_at > since, ordered by (updated_at, id), at most `limit`. */
-  matchesSince(since: string | null, limit: number): Promise<{ data: PullMatchRow[] | null; error: unknown }>;
-  eventsFor(matchIds: string[]): Promise<{ data: PullEventRow[] | null; error: unknown }>;
+  /**
+   * Finished matches strictly after `cursor` in `(updated_at, id)` order,
+   * ordered the same way, at most `limit`. A null cursor means "from the start".
+   */
+  matchesSince(
+    cursor: PullCursor | null,
+    limit: number,
+  ): Promise<{ data: PullMatchRow[] | null; error: unknown }>;
+  /**
+   * Events for the given match ids, ordered by `(match_id, seq)`, skipping the
+   * first `offset` rows and returning at most `limit`. The ordering must be by
+   * the composite key: ordering by `seq` alone interleaves matches, so a capped
+   * response returns the low seqs of every match and truncates each log.
+   */
+  eventsFor(
+    matchIds: string[],
+    offset: number,
+    limit: number,
+  ): Promise<{ data: PullEventRow[] | null; error: unknown }>;
 }
 
 export interface PullStore {
@@ -74,8 +126,9 @@ export interface PullStore {
   replaceMatches(rows: LocalMatchWrite[]): Promise<void>;
   /** Insert-or-ignore, so a local row at the same (match_id, seq) survives. */
   insertEvents(rows: LocalEventWrite[]): Promise<void>;
+  /** The encoded cursor from the last completed page, or null on a fresh device. */
   getWatermark(): Promise<string | null>;
-  setWatermark(iso: string): Promise<void>;
+  setWatermark(encodedCursor: string): Promise<void>;
 }
 
 export interface PullResult {
@@ -83,9 +136,36 @@ export interface PullResult {
   pulledEvents: number;
   /** Remote rows left alone because the local copy was still unsynced. */
   skipped: number;
+  /**
+   * Set when the pull stopped early because a query failed. pull.ts has no
+   * imports and so cannot report it; runner.ts routes this into captureError.
+   */
+  error?: unknown;
 }
 
 const DEFAULT_PAGE = 200;
+/**
+ * Hosted Supabase caps a response at 1000 rows by default, and a capped page is
+ * indistinguishable from a complete one, so the event fetch pages explicitly.
+ */
+const DEFAULT_EVENT_PAGE = 500;
+
+/** `${updatedAt}|${id}` — see PullCursor for why the separator is unambiguous. */
+export function encodeCursor(cursor: PullCursor): string {
+  return `${cursor.updatedAt}|${cursor.id}`;
+}
+
+/**
+ * Inverse of encodeCursor. A stored value with no "|" is a pre-keyset watermark
+ * (a bare timestamp); it decodes with an empty id, which sorts before every
+ * uuid, so the rows at that timestamp are re-read rather than skipped.
+ */
+export function decodeCursor(raw: string | null): PullCursor | null {
+  if (raw === null || raw === "") return null;
+  const cut = raw.indexOf("|");
+  if (cut < 0) return { updatedAt: raw, id: "" };
+  return { updatedAt: raw.slice(0, cut), id: raw.slice(cut + 1) };
+}
 
 function toLocal(row: PullMatchRow): LocalMatchWrite {
   return {
@@ -108,10 +188,28 @@ function toLocal(row: PullMatchRow): LocalMatchWrite {
 }
 
 /**
- * Reads every match the caller can see that changed since the stored watermark,
- * writes it and its events locally, then advances the watermark.
+ * Every event for `ids`, paging until a short page comes back. Returns null on
+ * the first error, so the caller can leave the watermark where it is.
+ */
+async function fetchAllEvents(
+  client: PullClient,
+  ids: string[],
+  eventPageSize: number,
+): Promise<{ rows: PullEventRow[] | null; error: unknown }> {
+  const all: PullEventRow[] = [];
+  for (let offset = 0; ; offset += eventPageSize) {
+    const { data, error } = await client.eventsFor(ids, offset, eventPageSize);
+    if (error || !data) return { rows: null, error: error ?? new Error("pull: no event data") };
+    all.push(...data);
+    if (data.length < eventPageSize) return { rows: all, error: null };
+  }
+}
+
+/**
+ * Reads every finished match the caller can see that changed since the stored
+ * cursor, writes it and its events locally, then advances the cursor.
  *
- * The watermark only moves after a page has been fully written, so any failure
+ * The cursor only moves after a page has been fully written, so any failure
  * leaves it where it was and the next run re-reads that page. Re-reading is
  * harmless: replaceMatches is idempotent and insertEvents ignores conflicts.
  */
@@ -119,13 +217,17 @@ export async function pullAll(
   store: PullStore,
   client: PullClient,
   pageSize: number = DEFAULT_PAGE,
+  eventPageSize: number = DEFAULT_EVENT_PAGE,
 ): Promise<PullResult> {
   const result: PullResult = { pulledMatches: 0, pulledEvents: 0, skipped: 0 };
-  let since = await store.getWatermark();
+  let cursor = decodeCursor(await store.getWatermark());
 
   for (;;) {
-    const { data, error } = await client.matchesSince(since, pageSize);
-    if (error || !data) return result;
+    const { data, error } = await client.matchesSince(cursor, pageSize);
+    if (error || !data) {
+      result.error = error ?? new Error("pull: no match data");
+      return result;
+    }
     if (data.length === 0) return result;
 
     const ids = data.map((r) => r.id);
@@ -136,11 +238,16 @@ export async function pullAll(
     if (writable.length) {
       await store.replaceMatches(writable.map(toLocal));
 
-      const { data: events, error: eErr } = await client.eventsFor(writable.map((r) => r.id));
-      // Stop without advancing the watermark: the match rows just written are
+      const { rows: events, error: eErr } = await fetchAllEvents(
+        client, writable.map((r) => r.id), eventPageSize,
+      );
+      // Stop without advancing the cursor: the match rows just written are
       // idempotent, but their events are not there yet, and a replay against a
       // partial log would be wrong. The next run redoes this page.
-      if (eErr || !events) return result;
+      if (eErr || !events) {
+        result.error = eErr;
+        return result;
+      }
       if (events.length) {
         await store.insertEvents(events.map((e) => ({
           match_id: e.match_id,
@@ -152,11 +259,13 @@ export async function pullAll(
       result.pulledMatches += writable.length;
     }
 
-    // data is ordered by updated_at, so the last row carries the page's high
-    // water mark. Advance even when every row was skipped: those rows are
-    // locally newer, and re-reading them forever would stall the pull.
-    since = data[data.length - 1].updated_at;
-    await store.setWatermark(since);
+    // data is ordered by (updated_at, id), so the last row is the page's high
+    // water mark in that same order. Advance even when every row was skipped:
+    // those rows are locally newer, and re-reading them forever would stall the
+    // pull.
+    const last = data[data.length - 1];
+    cursor = { updatedAt: last.updated_at, id: last.id };
+    await store.setWatermark(encodeCursor(cursor));
 
     if (data.length < pageSize) return result;
   }

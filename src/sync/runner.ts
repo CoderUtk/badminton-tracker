@@ -60,6 +60,13 @@ async function sqlitePullStore(): Promise<PullStore | null> {
       // synced = 1: these rows came FROM the server, so pushAll must not pick
       // them back up. `insert or replace` rather than `or ignore` because a
       // re-pulled match brings a newer status/winner/score_summary.
+      //
+      // SQLite implements `insert or replace` as delete-then-insert. That is
+      // safe here ONLY because local `match_events` has no foreign key to
+      // `matches` and `pragma foreign_keys` is never enabled (see src/db/db.ts
+      // migrations). Adding `references matches(id) on delete cascade` to
+      // match_events later would silently wipe the event log of every match
+      // this pull touches — switch to an explicit UPDATE first if that changes.
       await db.withTransactionAsync(async () => {
         for (const r of rows) {
           await db.runAsync(
@@ -81,7 +88,7 @@ async function sqlitePullStore(): Promise<PullStore | null> {
       });
     },
     getWatermark: () => getSetting(MATCH_PULL_KEY),
-    setWatermark: (iso) => setSetting(MATCH_PULL_KEY, iso),
+    setWatermark: (cursor) => setSetting(MATCH_PULL_KEY, cursor),
   };
 }
 
@@ -106,27 +113,54 @@ export async function syncNow(): Promise<void> {
     const pullStore = await sqlitePullStore();
     if (pullStore) {
       const pullClient: PullClient = {
-        matchesSince: async (since, limit) => {
+        matchesSince: async (cursor, limit) => {
           let q = supabase!
             .from("matches")
             .select("id, club_id, session_id, config, side_a, side_b, status, winner, score_summary, created_at, updated_at")
+            // Finished matches only — a pulled `live` row would be Resumable and
+            // Endable on this device, forking the owning device's event log and
+            // producing a push that RLS rejects forever. See pull.ts.
+            .in("status", ["completed", "forfeited"])
             .order("updated_at", { ascending: true })
             .order("id", { ascending: true })
             .limit(limit);
-          if (since) q = q.gt("updated_at", since);
+          if (cursor && cursor.id) {
+            // Keyset on the composite key: strictly after (updated_at, id).
+            // A bare `updated_at > since` drops every row that shares the last
+            // page's timestamp, and the 0041 backfill gives every pre-existing
+            // row the same one.
+            q = q.or(
+              `updated_at.gt."${cursor.updatedAt}",` +
+              `and(updated_at.eq."${cursor.updatedAt}",id.gt."${cursor.id}")`,
+            );
+          } else if (cursor) {
+            // Empty id = a pre-keyset watermark (bare timestamp). `id > ''`
+            // would be a uuid/text comparison error, so re-read that whole
+            // timestamp instead; replaceMatches is idempotent.
+            q = q.gte("updated_at", cursor.updatedAt);
+          }
           const { data, error } = await q;
           return { data: (data as PullMatchRow[] | null), error };
         },
-        eventsFor: async (matchIds) => {
+        eventsFor: async (matchIds, offset, limit) => {
           const { data, error } = await supabase!
             .from("match_events")
             .select("match_id, seq, event")
             .in("match_id", matchIds)
-            .order("seq", { ascending: true });
+            // (match_id, seq), not seq alone: seq alone interleaves matches, so
+            // a capped response returns the first events of every match and
+            // truncates each log.
+            .order("match_id", { ascending: true })
+            .order("seq", { ascending: true })
+            .range(offset, offset + limit - 1);
           return { data: (data as PullEventRow[] | null), error };
         },
       };
-      await pullAll(pullStore, pullClient);
+      const pullResult = await pullAll(pullStore, pullClient);
+      // pull.ts is import-free by construction, so it reports failures by
+      // returning them. Without this a broken pull looks like a clean sync and
+      // the club leaderboard just stays wrong.
+      if (pullResult.error) captureError(pullResult.error, { area: "sync" });
     }
 
     await refreshClubs();
