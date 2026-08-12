@@ -3,6 +3,7 @@ import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
 import { supabase } from "./supabase";
 import { pushTokenRow } from "./pushToken";
+import { ensureNotificationPermission } from "./notificationPermission";
 import { getSetting, setSetting, PUSH_TOKEN_KEY, REMINDERS_KEY } from "../repos/settingsRepo";
 
 /**
@@ -56,11 +57,7 @@ export async function registerPushToken(): Promise<boolean> {
     const user = (await supabase?.auth.getUser())?.data.user;
     if (!user) return false;
 
-    let status = (await Notifications.getPermissionsAsync()).status;
-    if (status === "undetermined") {
-      status = (await Notifications.requestPermissionsAsync()).status;
-    }
-    if (status !== "granted") return false;
+    if (!(await ensureNotificationPermission())) return false;
 
     const token = await currentToken();
     if (!token) return false;

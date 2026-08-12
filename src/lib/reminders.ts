@@ -1,5 +1,6 @@
 import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
+import { ensureNotificationPermission } from "./notificationPermission";
 import { getSetting, REMINDERS_KEY } from "../repos/settingsRepo";
 import { listSessions } from "../repos/sessionRepo";
 import { INACTIVITY_ID, SESSION_PREFIX, planSessionReminders } from "./reminderPlan";
@@ -17,18 +18,6 @@ async function remindersEnabled(): Promise<boolean> {
   return (await getSetting(REMINDERS_KEY)) === "1";
 }
 
-async function ensurePermission(): Promise<boolean> {
-  let status = (await Notifications.getPermissionsAsync()).status;
-  if (status !== "granted") {
-    // Only prompt when the user hasn't already decided — re-asking after a
-    // denial is a no-op on most platforms anyway, but avoid it either way.
-    if (status === "undetermined") {
-      status = (await Notifications.requestPermissionsAsync()).status;
-    }
-  }
-  return status === "granted";
-}
-
 async function scheduledIds(): Promise<string[]> {
   const all = await Notifications.getAllScheduledNotificationsAsync();
   return all.map((n) => n.identifier);
@@ -44,7 +33,7 @@ export async function scheduleInactivityReminder(): Promise<boolean> {
 
   try {
     if (!(await remindersEnabled())) return false;
-    if (!(await ensurePermission())) return false;
+    if (!(await ensureNotificationPermission())) return false;
 
     // Cancel only our own identifier so session reminders survive.
     await Notifications.cancelScheduledNotificationAsync(INACTIVITY_ID);
@@ -76,7 +65,7 @@ export async function syncSessionReminders(): Promise<void> {
 
   try {
     if (!(await remindersEnabled())) return;
-    if (!(await ensurePermission())) return;
+    if (!(await ensureNotificationPermission())) return;
 
     const sessions = await listSessions();
     const plan = planSessionReminders(sessions, Date.now(), await scheduledIds());

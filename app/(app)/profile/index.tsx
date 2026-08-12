@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Image, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Image, Linking, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { supabase } from "../../../src/lib/supabase";
@@ -19,6 +19,7 @@ import { evaluateBadges } from "../../../src/achievements/rules";
 import { getSetting, setSetting, REMINDERS_KEY } from "../../../src/repos/settingsRepo";
 import { scheduleInactivityReminder, syncSessionReminders, cancelReminders } from "../../../src/lib/reminders";
 import { registerPushToken, unregisterPushToken } from "../../../src/lib/push";
+import { notificationsBlocked } from "../../../src/lib/notificationPermission";
 import { C, F, glow } from "../../../src/theme";
 
 export default function Profile() {
@@ -77,7 +78,21 @@ export default function Profile() {
         if (!scheduled) {
           setRemindersOn(false);
           await setSetting(REMINDERS_KEY, "0");
-          toast("Enable notifications in Settings to get reminders", "error");
+          // Two different dead ends: the OS dialog was shown and declined
+          // (tapping again re-prompts), or the OS refuses to prompt at all,
+          // in which case only system settings can turn this back on.
+          if (await notificationsBlocked()) {
+            Alert.alert(
+              "Notifications are blocked",
+              "Your phone won't show the permission prompt again. Turn notifications on in system settings to get reminders.",
+              [
+                { text: "Not now", style: "cancel" },
+                { text: "Open settings", onPress: () => void Linking.openSettings() },
+              ]
+            );
+          } else {
+            toast("Notifications are off — tap again to allow", "error");
+          }
           return;
         }
         await syncSessionReminders();
