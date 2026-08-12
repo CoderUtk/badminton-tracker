@@ -5,7 +5,8 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { defaultConfig, GAME_FORMATS, MatchConfig, replay } from "../src/engine";
 import { createMatch } from "../src/repos/matchRepo";
-import { Club, listRealClubs, listPlayers, ClubPlayer } from "../src/repos/clubRepo";
+import { Club, listRealClubs, listPlayers, addGuestPlayer, ClubPlayer } from "../src/repos/clubRepo";
+import Icon from "../src/components/Icon";
 import Court, { type CourtEdit } from "../src/components/Court";
 import type { CourtBoxEdit } from "../src/components/CourtBox";
 import ClubPicker from "../src/components/ClubPicker";
@@ -42,6 +43,7 @@ export default function NewMatch() {
   const [editing, setEditing] = useState<ZoneKey | null>(null);
   const [pulse, setPulse] = useState<{ zone: ZoneKey; key: number } | null>(null);
   const [starting, setStarting] = useState(false);
+  const [adding, setAdding] = useState(false);
   const [lineupRestored, setLineupRestored] = useState(false);
   const [clubsLoaded, setClubsLoaded] = useState(false);
   const pulseSeq = useRef(0);
@@ -235,18 +237,35 @@ export default function NewMatch() {
     showTeamSwap: doubles,
   };
 
-  const suggestions = useMemo(() => {
-    if (!editing || !preview || roster.length === 0) return [];
+  /**
+   * The roster strip shown while a name is being edited: the club players still
+   * worth offering, plus whether what has been typed is a name the club doesn't
+   * have yet (which earns an "add to club" chip).
+   */
+  const picker = useMemo(() => {
+    const none = { typed: "", players: [] as ClubPlayer[], canAdd: false };
+    if (!editing || !preview || !clubId) return none;
     const zone = courtZones(preview).find((z) => sameZone(editing, { team: z.team, row: z.row }));
     const index = zone ? nameIndexOf(zone) : null;
-    const typed = index === null ? "" : names[index].trim().toLowerCase();
+    if (index === null) return none;
+
+    const typed = names[index].trim();
+    const lower = typed.toLowerCase();
     const taken = new Set(names.map((n) => n.trim().toLowerCase()).filter(Boolean));
-    return roster
-      .filter((p) => !typed || p.name.toLowerCase().includes(typed))
-      .filter((p) => !taken.has(p.name.toLowerCase()) || p.name.toLowerCase() === typed)
+    const players = roster
+      .filter((p) => !lower || p.name.toLowerCase().includes(lower))
+      .filter((p) => !taken.has(p.name.toLowerCase()) || p.name.toLowerCase() === lower)
       .slice(0, 12);
+
+    return {
+      typed,
+      players,
+      // Two characters before offering to add, so the chip doesn't flash on the
+      // first keystroke of a name that is already on the roster.
+      canAdd: typed.length >= 2 && !roster.some((p) => p.name.toLowerCase() === lower),
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editing, preview, roster, namesDoubles, namesSingles, doubles]);
+  }, [editing, preview, roster, clubId, namesDoubles, namesSingles, doubles]);
 
   const applySuggestion = (name: string) => {
     if (!editing || !preview) return;
@@ -255,6 +274,30 @@ export default function NewMatch() {
     if (index === null || !zone) return;
     setNameAt(index, name);
     editNext(zone);
+  };
+
+  /**
+   * Put the typed name on the club's roster, so a guest who keeps turning up
+   * stops being retyped every match. The slot already holds the name — this
+   * only adds it to the club and moves on.
+   */
+  const addTypedToClub = async () => {
+    if (!clubId || !picker.canAdd || adding) return;
+    const name = picker.typed;
+    setAdding(true);
+    try {
+      await addGuestPlayer(clubId, name);
+      setRoster(await listPlayers(clubId));
+      toast(`${name} added to the club`, "success");
+      const zone = preview
+        ? courtZones(preview).find((z) => sameZone(editing, { team: z.team, row: z.row }))
+        : undefined;
+      if (zone) editNext(zone);
+    } catch (e) {
+      toast((e as Error).message || "Could not add the player", "error");
+    } finally {
+      setAdding(false);
+    }
   };
 
   const toggleFormat = (next: boolean) => {
@@ -304,10 +347,22 @@ export default function NewMatch() {
       {/* One row, swapped for roster suggestions while a name is being edited,
           so the page height never changes. */}
       <View style={s.swapRow}>
-        {editing && suggestions.length > 0 ? (
+        {editing && (picker.players.length > 0 || picker.canAdd) ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <View style={s.chipRow}>
-              {suggestions.map((p) => (
+              {picker.canAdd && (
+                <Pressable
+                  style={[s.chip, s.chipAdd, adding && { opacity: 0.5 }]}
+                  onPress={addTypedToClub}
+                  disabled={adding}
+                >
+                  <Icon name="account-plus" color={C.red} size={16} />
+                  <Text style={[s.chipText, s.chipAddText]} numberOfLines={1}>
+                    Add {picker.typed}
+                  </Text>
+                </Pressable>
+              )}
+              {picker.players.map((p) => (
                 <Pressable key={p.id} style={s.chip} onPress={() => applySuggestion(p.name)}>
                   <Text style={s.chipText} numberOfLines={1}>{p.name}</Text>
                 </Pressable>
@@ -372,10 +427,12 @@ const s = StyleSheet.create({
   chipRow: { flexDirection: "row", gap: 8, paddingVertical: 4 },
   chip: {
     backgroundColor: C.card, borderRadius: 999, paddingHorizontal: 14,
-    minHeight: 40, justifyContent: "center",
-    borderWidth: 1, borderColor: C.line, maxWidth: 160,
+    minHeight: 44, justifyContent: "center",
+    borderWidth: 1, borderColor: C.line, maxWidth: 180,
   },
   chipText: { color: C.text, fontSize: 14, fontWeight: "600" },
+  chipAdd: { flexDirection: "row", alignItems: "center", gap: 6, borderColor: C.red },
+  chipAddText: { color: C.red },
   hint: { color: C.text2, fontSize: 12 },
   cta: { backgroundColor: C.red, borderRadius: 14, minHeight: 56, alignItems: "center", justifyContent: "center" },
   ctaText: { color: C.text, fontSize: 18, fontWeight: "800" },
