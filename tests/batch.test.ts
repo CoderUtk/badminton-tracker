@@ -19,6 +19,22 @@ describe("buildInsert", () => {
   });
 });
 
+describe("buildInsert conflict mode", () => {
+  it("defaults to a plain insert", () => {
+    expect(buildInsert("t", ["a", "b"], 1)).toBe("insert into t (a, b) values (?, ?)");
+  });
+
+  it("emits insert or ignore when asked", () => {
+    expect(buildInsert("t", ["a", "b"], 2, "ignore")).toBe(
+      "insert or ignore into t (a, b) values (?, ?), (?, ?)"
+    );
+  });
+
+  it("emits a plain insert for an explicit fail mode", () => {
+    expect(buildInsert("t", ["a"], 1, "fail")).toBe("insert into t (a) values (?)");
+  });
+});
+
 describe("chunkRows", () => {
   it("keeps every chunk under the variable budget", () => {
     const rows = Array.from({ length: 500 }, (_, i) => [i, i, i, i]);

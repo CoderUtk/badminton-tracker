@@ -19,12 +19,23 @@ import type { SQLiteDatabase } from "expo-sqlite";
  */
 export const MAX_VARS = 900;
 
-export function buildInsert(table: string, columns: string[], rowCount: number): string {
+/** How to handle a primary-key/unique collision. "ignore" keeps the row already
+ *  in the table — the pull relies on that to never clobber an unsynced local
+ *  event with the server's copy of the same (match_id, seq). */
+export type ConflictMode = "fail" | "ignore";
+
+export function buildInsert(
+  table: string,
+  columns: string[],
+  rowCount: number,
+  conflict: ConflictMode = "fail",
+): string {
   if (rowCount < 1) throw new Error("buildInsert requires at least one row");
   if (columns.length < 1) throw new Error("buildInsert requires at least one column");
   const group = `(${columns.map(() => "?").join(", ")})`;
   const groups = Array.from({ length: rowCount }, () => group).join(", ");
-  return `insert into ${table} (${columns.join(", ")}) values ${groups}`;
+  const verb = conflict === "ignore" ? "insert or ignore" : "insert";
+  return `${verb} into ${table} (${columns.join(", ")}) values ${groups}`;
 }
 
 export function chunkRows<T>(rows: T[], columnsPerRow: number): T[][] {
@@ -49,11 +60,12 @@ export async function insertMany(
   table: string,
   columns: string[],
   rows: unknown[][],
+  conflict: ConflictMode = "fail",
 ): Promise<void> {
   if (rows.length === 0) return;
   for (const chunk of chunkRows(rows, columns.length)) {
     await db.runAsync(
-      buildInsert(table, columns, chunk.length),
+      buildInsert(table, columns, chunk.length, conflict),
       ...(chunk.flat() as never[]),
     );
   }
