@@ -118,6 +118,18 @@ describe("pullAll", () => {
     expect(m.written).toEqual([]);
   });
 
+  it("advances the watermark even when all rows in a page are skipped", async () => {
+    const m = memory({
+      pages: [[makeRemote("m1", "2026-08-02T00:00:00.000Z")]],
+      local: { m1: 0 },
+    });
+    const result = await pullAll(m.store, m.client);
+
+    expect(result.skipped).toBe(1);
+    expect(m.written).toEqual([]);
+    expect(m.mark()).toBe("2026-08-02T00:00:00.000Z");
+  });
+
   it("does not request events for a skipped match", async () => {
     const m = memory({
       pages: [[makeRemote("m1", "2026-08-02T00:00:00.000Z"), makeRemote("m2", "2026-08-02T00:00:01.000Z")]],
