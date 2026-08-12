@@ -153,14 +153,19 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: C.line,
     paddingVertical: 4,
     overflow: "hidden",
-    maxHeight: "44%",
+    maxHeight: "56%",
     // zIndex alone does not lift a view above the swap buttons on Android.
     zIndex: 6, elevation: 12,
     shadowColor: "#000", shadowOpacity: 0.4, shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
   },
-  panelLower: { top: "50%", marginTop: 8 },
-  panelUpper: { bottom: "50%", marginBottom: 8 },
+  // Anchored to the field, not to the box below it. A field sits at the centre
+  // of its box — 25% down the half for the top box, 75% for the bottom one —
+  // so the panel starts one half-field-height past that. The bottom box has no
+  // room underneath, so its panel flips and grows upward from just above the
+  // field.
+  panelLower: { top: "25%", marginTop: 20 },
+  panelUpper: { bottom: "25%", marginBottom: 20 },
   teamSwap: {
     position: "absolute", top: "50%", marginTop: -20, alignSelf: "center",
     width: 40, height: 40, borderRadius: 20,
