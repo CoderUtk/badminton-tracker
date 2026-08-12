@@ -32,10 +32,13 @@ export default function Home() {
   // Stamped once per load rather than read during render, so the memos below
   // actually memoize and "Today" cannot flip mid-render.
   const [now, setNow] = useState(() => Date.now());
-  // Gates the blocks below the CTA on the first cache read. Without it,
-  // analytics and clubs both start empty and every focus would flash the
-  // first-run layout at an established user.
-  const [loaded, setLoaded] = useState(false);
+  // Three-valued gate for the blocks below the CTA: "pending" until the first
+  // cache read resolves (nothing renders below the CTA, so there is no flash
+  // and no spinner — just the CTA), "ready" once analytics/clubs reflect a
+  // real cache read (isFirstRun decides panel vs dashboard), or "failed" if
+  // the read itself threw, in which case we show the dashboard rather than
+  // risk the first-run panel on an established user whose data just didn't load.
+  const [status, setStatus] = useState<"pending" | "ready" | "failed">("pending");
   // Guards every setState below against a chain that resolves after a newer
   // focus (or after unmount) has already started. Bumped both at the start
   // of reload() and in the useFocusEffect cleanup.
@@ -66,15 +69,16 @@ export default function Home() {
 
       const name = resolveMyPlayerName(players, profile?.id ?? null, profile?.displayName ?? null);
       // Own try/catch rather than falling through to the chain's catch below:
-      // a failing analytics read must not leave `loaded` false forever, which
-      // would blank everything under the CTA. A user whose analytics fail but
-      // who has clubs still gets the dashboard, because isFirstRun checks both.
+      // a failing analytics read must not leave `status` stuck at "pending"
+      // forever, which would blank everything under the CTA. A user whose
+      // analytics fail but who has clubs still gets the dashboard, because
+      // isFirstRun checks both.
       const stats = name
         ? await getPlayerAnalytics(name).catch(() => null)
         : null;
       if (epoch !== epochRef.current) return;
       setAnalytics(stats);
-      setLoaded(true);
+      setStatus("ready");
     };
 
     void loadFromCache()
@@ -85,10 +89,19 @@ export default function Home() {
         return loadFromCache();
       })
       .catch(() => {
-        // A throw anywhere in the chain (e.g. getPlayerAnalytics) must not
-        // blank the screen or surface as an unhandled rejection — leave
-        // whatever state is already on screen from the last successful step.
-        setLoaded(true);
+        // A throw anywhere in the chain (e.g. getDb, listSessions, or
+        // getMyProfile inside loadFromCache's Promise.all) must not surface
+        // as an unhandled rejection. It also must not be treated as a
+        // successful "ready" read: clubs/analytics are empty here because
+        // nothing was read, not because the account is empty, so falling
+        // through to "ready" could show the first-run panel to an
+        // established user. Only promote a still-"pending" state to
+        // "failed" (dashboard, never the panel); never clobber a "ready"
+        // already set by this or a newer chain. Epoch-guarded like every
+        // other setState above.
+        if (epoch === epochRef.current) {
+          setStatus((s) => (s === "pending" ? "failed" : s));
+        }
       });
   }, []);
 
@@ -106,7 +119,7 @@ export default function Home() {
   const nextSessionTitle = resolveNextSessionTitle(clubs, next);
   const stats = statTileValues(analytics);
   const showCopy = shouldShowFeatureCopy(analytics);
-  const firstRun = isFirstRun(analytics, clubs, loaded);
+  const firstRun = isFirstRun(analytics, clubs, status === "ready");
 
   return (
     <View style={s.root}>
@@ -133,7 +146,7 @@ export default function Home() {
           </LinearGradient>
         </Pressable>
 
-        {firstRun ? (
+        {status === "pending" ? null : firstRun ? (
           <FirstRunPanel onCreateClub={() => setSheetOpen(true)} />
         ) : (
           <>
