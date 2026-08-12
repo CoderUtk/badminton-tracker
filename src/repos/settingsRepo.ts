@@ -13,6 +13,11 @@ export const REMINDERS_KEY = "reminders_on";
 // toggling off in airplane mode must still be able to delete the row.
 export const PUSH_TOKEN_KEY = "push_token";
 
+// ISO timestamp of the newest matches.updated_at this device has pulled
+// (see src/sync/pull.ts). Per-device on purpose: a reinstall has no local
+// history, so it must pull everything again.
+export const MATCH_PULL_KEY = "match_pull_at";
+
 export async function getSetting(key: string): Promise<string | null> {
   const db = await getDb();
   if (!db) return null;
