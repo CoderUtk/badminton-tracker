@@ -1,4 +1,5 @@
 import {
+  isFirstRun,
   MIN_MATCHES_FOR_RATES,
   pickNextSession,
   sessionDateLabel,
@@ -235,5 +236,31 @@ describe("shouldShowFeatureCopy", () => {
   test("hidden at and above the threshold", () => {
     expect(shouldShowFeatureCopy({ played: 5 } as PlayerAnalytics)).toBe(false);
     expect(shouldShowFeatureCopy({ played: 40 } as PlayerAnalytics)).toBe(false);
+  });
+});
+
+describe("isFirstRun", () => {
+  const club = { id: "club-1", name: "Smash Club" } as Club;
+
+  test("no matches, no clubs, loaded -> true", () => {
+    expect(isFirstRun(null, [], true)).toBe(true);
+    expect(isFirstRun({ played: 0 } as PlayerAnalytics, [], true)).toBe(true);
+  });
+
+  test("a club is enough to leave the first-run state", () => {
+    expect(isFirstRun(null, [club], true)).toBe(false);
+  });
+
+  test("a played match is enough to leave the first-run state", () => {
+    expect(isFirstRun({ played: 1 } as PlayerAnalytics, [], true)).toBe(false);
+  });
+
+  test("false until the first load resolves, whatever the inputs", () => {
+    expect(isFirstRun(null, [], false)).toBe(false);
+    expect(isFirstRun({ played: 0 } as PlayerAnalytics, [], false)).toBe(false);
+  });
+
+  test("does not use the rate threshold -> a user with 4 matches is not first-run", () => {
+    expect(isFirstRun({ played: 4 } as PlayerAnalytics, [], true)).toBe(false);
   });
 });
