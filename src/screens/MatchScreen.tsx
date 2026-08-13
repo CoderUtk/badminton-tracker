@@ -8,6 +8,7 @@ import { gameScoreState, MatchState, pointSituation, serverName, TeamId } from "
 import type { MatchRecord } from "../repos/matchRepo";
 import { useMatchStore } from "../stores/matchStore";
 import Court from "../components/Court";
+import ElapsedChip from "../components/ElapsedChip";
 import Icon, { type IconName } from "../components/Icon";
 import PressableScale from "../components/PressableScale";
 import MatchResultCard from "../components/share/MatchResultCard";
@@ -95,13 +96,6 @@ export default function MatchScreen({
 
   const shareCardRef = useRef<View>(null);
   const lockedUntil = useRef(0);
-  // Tick wall-clock; elapsed is derived from the match's start timestamp so it
-  // survives pausing/leaving and resuming (no reset to 0).
-  const [nowTs, setNowTs] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNowTs(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
 
   const score = useCallback((by: TeamId) => {
     const s = useMatchStore.getState().state;
@@ -119,10 +113,10 @@ export default function MatchScreen({
   if (!state) return <View style={s.root} />;
 
   const teamName = (t: TeamId) => state.config.teams[t].map((p) => p.name).join(" / ");
+  // Elapsed is derived from the match's start timestamp, not from a counter, so
+  // it survives leaving and resuming without resetting to 0. The tick itself
+  // lives in ElapsedChip — see the note there about audit A7.
   const startedAt = events[0]?.type === "MATCH_STARTED" ? events[0].at : record.created_at;
-  const seconds = Math.max(0, Math.floor((nowTs - startedAt) / 1000));
-  const fmt = (n: number) => String(n).padStart(2, "0");
-  const timer = `${fmt(Math.floor(seconds / 3600))}:${fmt(Math.floor(seconds / 60) % 60)}:${fmt(seconds % 60)}`;
 
   const banner =
     state.phase === "match_over"
@@ -257,10 +251,7 @@ export default function MatchScreen({
 
   const scoreBlock = (
     <View style={s.scoreWrap}>
-      <View style={s.timerChip}>
-        <Icon name="time-outline" color={C.text2} size={12} />
-        <Text style={s.timerText}>{timer}</Text>
-      </View>
+      <ElapsedChip startedAt={startedAt} pausedMs={0} pausedSince={null} />
       <View style={s.scoreRibbon}>
         <View style={[s.ribbonTeam, s.ribbonTeamA]}>
           <View style={s.serveSlot}>{state.servingTeam === "A" && <View style={[s.serveDot, { backgroundColor: C.red }]} />}</View>
@@ -349,12 +340,6 @@ const s = StyleSheet.create({
   },
   endText: { color: C.text, fontSize: 15, fontFamily: F.bold },
   scoreWrap: { alignSelf: "center", alignItems: "center", gap: 3, width: "100%", maxWidth: 520 },
-  timerChip: {
-    flexDirection: "row", alignItems: "center", gap: 4,
-    backgroundColor: C.card, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 2,
-    borderWidth: 1, borderColor: C.line,
-  },
-  timerText: { color: C.text2, fontSize: 12, fontFamily: F.body, fontVariant: ["tabular-nums"] },
   scoreRibbon: {
     alignSelf: "stretch", minHeight: 46, flexDirection: "row", alignItems: "center",
     backgroundColor: C.card, borderRadius: 12, borderWidth: 1, borderColor: C.lineHi,
