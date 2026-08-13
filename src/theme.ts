@@ -22,7 +22,13 @@ export const C = {
   // text
   text: "#FFFFFF",
   text2: "#9BA3B2",
-  text3: "#5C6472",
+  // Raised from #5C6472, which measured 3.24:1 on bg and 2.90:1 on cardHi —
+  // the root of audit finding A8. This is the dimmest slate that still clears
+  // 4.5:1 on every surface in this palette.
+  text3: "#838B9D",
+  // The old text3. Decorative only — inactive dots, icon washes, hairlines.
+  // Never colour text with this; it fails AA by design.
+  ghost: "#5C6472",
 } as const;
 
 /** Font families (loaded in the root layout via @expo-google-fonts). */
@@ -78,3 +84,35 @@ export const easing = {
 
 /** Instant press feedback for any Pressable — subtle scale + dim. Transform/opacity only (GPU-safe). */
 export const press = { transform: [{ scale: 0.97 }], opacity: 0.92 } as const;
+
+/** 8pt spatial grid. Every margin, padding and gap comes from here. */
+export const space = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 } as const;
+
+/** Android's minimum touch target, in dp. Applies on both axes. */
+export const MIN_TOUCH = 48;
+
+/**
+ * Destructive recipe. Outlined, never filled: a red FILL means "primary
+ * action" and nothing else, so Delete and Start a match can never look alike
+ * (audit M2). Pair with dangerText and always confirm through AppDialog.
+ */
+export const danger = {
+  backgroundColor: "transparent",
+  borderWidth: 1.5,
+  borderColor: C.red,
+} as const;
+export const dangerText = { color: C.red } as const;
+
+/**
+ * Selected state. Deliberately hueless — selection is a state, not an action,
+ * so it gets elevation instead of colour. Cyan was considered and rejected: it
+ * already means DRAFT, and its higher luminance would make a passive selected
+ * chip louder than the primary CTA.
+ */
+export const selected = {
+  backgroundColor: C.cardHi,
+  borderWidth: 1,
+  borderColor: C.lineHi,
+} as const;
+export const selectedText = { color: C.text } as const;
+export const unselectedText = { color: C.text2 } as const;
