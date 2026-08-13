@@ -6,7 +6,7 @@
 
 **Architecture:** Phase 0 adds semantic tokens and five primitives to `src/theme.ts` and `src/components/`, changing no screen. Phase 1 applies them: `react-native-keyboard-controller` drives a Reanimated `translateY` on the New match court so the focused field clears the IME, sheets move into a native `Modal` so they cover the tab bar, and every docked CTA consumes its bottom inset. All logic that can be pure is extracted into `src/lib/` so the existing node-env Jest suite can test it.
 
-**Tech Stack:** Expo SDK 54, React Native 0.81.5, TypeScript 5.9, `react-native-reanimated` ~4.1.1, `react-native-safe-area-context` ~5.6.0, `react-native-gesture-handler` ~2.28.0, `react-native-keyboard-controller` (new, ~1.22.3), Jest 29 + ts-jest.
+**Tech Stack:** Expo SDK 54, React Native 0.81.5, TypeScript 5.9, `react-native-reanimated` ~4.1.1, `react-native-safe-area-context` ~5.6.0, `react-native-gesture-handler` ~2.28.0, `react-native-keyboard-controller` (new — resolved to **1.18.5**, which is Expo's actual SDK 54 pin; an earlier draft of this plan guessed ~1.22.3, the pin for a newer SDK), `expo-dev-client` 6.0.21 (required by `eas.json`'s `development` profile), Jest 29 + ts-jest.
 
 **Spec:** `docs/superpowers/specs/2026-08-13-mobile-ux-refinement-design.md`
 **Audit baseline:** `docs/audit/2026-08-12-ux-audit/`
@@ -26,6 +26,33 @@
 - Run `npx tsc --noEmit` before every commit. It must pass.
 
 ---
+
+## Native builds on Windows — read before touching a native dependency
+
+**`npx expo run:android` cannot complete in this repo on a Windows machine without long-path support.** This was established the hard way during Task 7, and it is a permanent property of the toolchain, not a one-off.
+
+`react-native-keyboard-controller` ships C++ codegen. CMake writes object files whose names embed the **full source path** inside an already-deep build directory, so the object path roughly doubles the project path:
+
+```
+ninja: error: Stat(...reactnativekeyboardcontroller_autolinked_build/CMakeFiles/
+react_codegen_reactnativekeyboardcontroller.dir/C_/…/node_modules/
+react-native-keyboard-controller/common/cpp/react/renderer/components/
+reactnativekeyboardcontroller/RNKCKeyboardBackgroundViewShadowNode.cpp.o):
+Filename longer than 260 characters
+```
+
+**Relocating does not fix it.** Measured: ~440 characters from the worktree, and still above 370 even from a three-character root like `C:\a\`. The main checkout is only 42 characters shorter than the worktree and fails the same way. Pre-existing builds of this app succeeded only because nothing in them had C++ codegen nested this deep.
+
+Three routes, in the order they should be considered:
+
+1. **Build on EAS.** No `MAX_PATH` limit on their Linux workers, no system changes required. This is what Task 7 used and what the plan now assumes. Cost: a cloud round-trip per native change.
+2. **Enable Windows long paths.** `LongPathsEnabled` under `HKLM\SYSTEM\CurrentControlSet\Control\FileSystem` plus `git config --system core.longpaths true`, both needing administrator rights and a reboot. Restores fast local builds and unblocks any future deep-codegen module. Note that the registry flag only lets Win32 accept long paths — individual tools still opt in via their manifests, so this is worth trying but not guaranteed.
+3. **Avoid the dependency.** For the keyboard specifically, the fallback is `Keyboard.addListener` feeding the same shared value. `src/lib/keyboardShift.ts` is deliberately pure and library-agnostic, so it works unchanged either way. Weaker across OEMs on Android 15 edge-to-edge — which is precisely the regime this audit is about.
+
+Two smaller traps found alongside it, both of which cost a build cycle:
+
+- **`expo prebuild` does not generate `android/local.properties`,** and `ANDROID_HOME` is not set in these shells. A fresh worktree therefore fails with `SDK location not found`. **Copy the file from the main checkout — do not regenerate it.** It is a Java properties file, so backslashes must be doubled; a hand-written `C\:\Users\…` fails with `Malformed \uxxxx encoding`.
+- **Never pipe a build through `| tail`.** The pipeline returns tail's exit status, so a failed build reports success. Use `; echo "EXIT_CODE=$?"` instead.
 
 ## File Structure
 
@@ -764,7 +791,7 @@ Those move to ghost, which holds the old value for exactly this purpose."
 
 This is the gate for H1 and H2. `app.json` already sets `softwareKeyboardLayoutMode: "resize"`, but Android 15 edge-to-edge — which RN 0.81 / Expo 54 force — no longer honours `adjustResize`, so nothing moves for the IME. `react-native-keyboard-controller` is the only reliable source of live IME height under that regime.
 
-**If the native build fails**, stop and report rather than improvising: the fallback is `Keyboard.addListener("keyboardDidShow")` feeding the same shared value, which Task 8's pure function already supports unchanged.
+**The local build is not an option here** — see "Native builds on Windows" above. Build on EAS (Step 5). If the EAS build also fails, stop and report rather than improvising: the fallback is `Keyboard.addListener("keyboardDidShow")` feeding the same shared value, which Task 8's pure function already supports unchanged.
 
 **Files:**
 - Modify: `package.json`, `app/_layout.tsx:224`, possibly `app.json`
@@ -818,13 +845,17 @@ and close it with a matching `</KeyboardProvider>` immediately before the existi
 Run: `npx tsc --noEmit`
 Expected: PASS.
 
-- [ ] **Step 5: Rebuild the dev client and confirm it boots**
+- [ ] **Step 5: Build the dev client on EAS and confirm it boots**
+
+**Do not run `npx expo run:android` on this machine — it cannot succeed.** See "Native builds on Windows" below for why. Build on EAS instead:
 
 ```bash
-npx expo run:android
+npx eas-cli@latest build --platform android --profile development --non-interactive
 ```
 
-Expected: the app builds, installs, and reaches Home without a red screen. A native module added to a dev client requires this rebuild — Metro reload alone will throw at `KeyboardProvider`.
+`--non-interactive` is not optional. It makes EAS fail rather than silently generate or overwrite stored Android keystore credentials — this project's Play listing expects a specific local upload key, and an EAS-generated one would be rejected.
+
+Install the resulting APK on the device, then launch it. Expected: the app reaches Home without a red screen. A native module added to a dev client requires a fresh build — a Metro reload alone will throw at `KeyboardProvider`.
 
 - [ ] **Step 6: Commit**
 
