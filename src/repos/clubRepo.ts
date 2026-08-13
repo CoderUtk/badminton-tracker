@@ -2,6 +2,7 @@ import * as Crypto from "expo-crypto";
 import { supabase } from "../lib/supabase";
 import { getDb } from "../db/db";
 import { insertMany } from "../db/batch";
+import { clearSetting, MATCH_PULL_KEY } from "./settingsRepo";
 
 export interface Club {
   id: string;
@@ -71,6 +72,20 @@ export async function refreshClubs(): Promise<void> {
         .filter((m) => m.profile_id === uid)
         .map((m) => [m.club_id, m.role])
     );
+    // Gaining visibility of a club means its history is now readable but sits
+    // entirely BEFORE this device's pull watermark, so the next pull would
+    // return nothing and the club's leaderboard would stay empty -- the exact
+    // bug src/sync/pull.ts exists to fix. Clearing the watermark makes the next
+    // pull re-read everything. Doing it here covers every join route (invite
+    // code, admin approval, being added as a friend) at once.
+    //
+    // Read the cached ids BEFORE the delete below, or every refresh looks like
+    // a brand new set of clubs.
+    const cachedIds = new Set(
+      (await db.getAllAsync<{ id: string }>("select id from clubs_cache")).map((r) => r.id),
+    );
+    const gainedClub = (clubs.data ?? []).some((c) => !cachedIds.has(c.id));
+
     await db.withTransactionAsync(async () => {
       await db.runAsync("delete from clubs_cache");
       await db.runAsync("delete from club_players_cache");
@@ -85,6 +100,7 @@ export async function refreshClubs(): Promise<void> {
         (players.data ?? []).map((p) => [p.id, p.club_id, p.profile_id, p.name]),
       );
     });
+    if (gainedClub) await clearSetting(MATCH_PULL_KEY);
   } finally {
     refreshing = false;
   }

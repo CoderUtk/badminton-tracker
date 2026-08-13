@@ -23,6 +23,15 @@ export interface SyncMatchRow {
   status: string;
   winner: string | null;
   score_summary: string | null;
+  /**
+   * Local match time, epoch milliseconds. Pushed so the server holds the real
+   * time the match was played rather than `default now()` from whenever the
+   * push happened to land — the pull reads this column back and overwrites the
+   * local value, so a Saturday match synced on Monday would otherwise become a
+   * Monday match and corrupt listMatches ordering, session grouping and every
+   * date-derived stat in src/analytics/player.ts.
+   */
+  created_at: number;
 }
 
 /** Minimal surface of the Supabase client that sync needs — mockable in tests. */
@@ -62,6 +71,8 @@ export async function pushAll(
       status: m.status,
       winner: m.winner,
       score_summary: m.score_summary ? JSON.parse(m.score_summary) : null,
+      // Local column is epoch ms; the server column is timestamptz.
+      created_at: new Date(m.created_at).toISOString(),
       created_by: userId,
     });
     if (mErr) {
