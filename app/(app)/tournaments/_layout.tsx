@@ -18,6 +18,10 @@ export default function TournamentsLayout() {
       <Stack.Screen name="new" options={{ title: "New tournament", presentation: "modal" }} />
       <Stack.Screen name="[id]" options={{ title: "Bracket" }} />
       <Stack.Screen name="edit/[id]" options={{ title: "Edit tournament" }} />
+      {/* Without this the header falls back to the route segment and renders
+          the raw parameter name. The screen's own heading already reads "Live
+          Ops Dashboard". Renaming the concept itself is audit M3, phase 4. */}
+      <Stack.Screen name="ops/[tournamentId]" options={{ title: "Live ops" }} />
     </Stack>
   );
 }
