@@ -1,6 +1,6 @@
 import React from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
-import Animated, { FadeIn, FadeOut, ZoomIn } from "react-native-reanimated";
+import Animated, { FadeIn, ZoomIn } from "react-native-reanimated";
 import PressableScale from "./PressableScale";
 import { C, F, MIN_TOUCH, danger, dangerText, space } from "../theme";
 
@@ -34,13 +34,17 @@ export default function AppDialog({
       animationType="none"
       onRequestClose={onCancel}
     >
-      <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(140)} style={s.backdrop}>
+      {/* Entrance only. Android's Modal unmounts its subtree synchronously
+          when `visible` flips false, so an `exiting` animation has no window
+          left to run in — it would read as intent without doing anything. */}
+      <Animated.View entering={FadeIn.duration(180)} style={s.backdrop}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onCancel} accessibilityLabel="Dismiss" />
         <Animated.View
           entering={ZoomIn.springify().damping(18).mass(0.7)}
           style={s.card}
           accessibilityViewIsModal
           accessibilityRole="alert"
+          onStartShouldSetResponder={() => true}
         >
           <Text style={s.title}>{title}</Text>
           {message ? <Text style={s.message}>{message}</Text> : null}
