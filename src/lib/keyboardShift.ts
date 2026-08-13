@@ -23,6 +23,7 @@ export type KeyboardShiftInput = {
 export function keyboardShift({
   keyboardHeight, belowContentHeight, bottomInset, maxShift,
 }: KeyboardShiftInput): number {
+  "worklet";
   const uncovered = keyboardHeight - belowContentHeight - bottomInset;
   if (uncovered <= 0) return 0;
   return Math.min(uncovered, maxShift);
