@@ -3,7 +3,7 @@ import { Alert, Pressable, StyleSheet, Text, useWindowDimensions, View } from "r
 import * as Haptics from "expo-haptics";
 import * as ScreenOrientation from "expo-screen-orientation";
 import { useKeepAwake } from "expo-keep-awake";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { gameScoreState, MatchState, pointSituation, serverName, TeamId } from "../engine";
 import type { MatchRecord } from "../repos/matchRepo";
 import { useMatchStore } from "../stores/matchStore";
@@ -13,6 +13,13 @@ import Icon, { type IconName } from "../components/Icon";
 import PressableScale from "../components/PressableScale";
 import MatchResultCard from "../components/share/MatchResultCard";
 import { captureAndShare } from "../lib/share/captureAndShare";
+import {
+  DEFAULT_SCORING_MODE,
+  lockForMode,
+  RESTORE_ON_BLUR,
+  type LockTarget,
+  type OrientationMode,
+} from "../lib/orientationLock";
 import { C, F, glow, textGlow } from "../theme";
 
 const DEBOUNCE_MS = 500;
@@ -35,6 +42,20 @@ function announcement(state: MatchState): string {
   return `${server} to serve. ${call}${extra}`;
 }
 
+/** The single bridge from the pure contract to expo-screen-orientation. */
+function applyLock(target: LockTarget): void {
+  const p =
+    target === "UNLOCK"
+      ? ScreenOrientation.unlockAsync()
+      : target === "LANDSCAPE"
+      ? ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE)
+      : ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+  // Rotation can legitimately fail (a foldable mid-fold, a policy-locked
+  // device). Failing to rotate is survivable; crashing the scoring screen is
+  // not.
+  p.catch(() => {});
+}
+
 export default function MatchScreen({
   matchId,
   record,
@@ -46,26 +67,32 @@ export default function MatchScreen({
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const portrait = height >= width;
-  const [orientationMode, setOrientationMode] = useState<"auto" | "portrait" | "landscape">("auto");
+  const [orientationMode, setOrientationMode] = useState<OrientationMode>(DEFAULT_SCORING_MODE);
   const [orientationSheetOpen, setOrientationSheetOpen] = useState(false);
-  useEffect(() => {
-    // Allow the player to score in either orientation; landscape gives the court
-    // the most room, portrait puts big +1 buttons under the court. Restore auto
-    // on leaving so the lock doesn't leak into the rest of the app.
-    ScreenOrientation.unlockAsync().catch(() => {});
-    return () => { ScreenOrientation.unlockAsync().catch(() => {}); };
-  }, []);
-  const setOrientation = (mode: "auto" | "portrait" | "landscape") => {
+
+  // useFocusEffect, not useEffect: the cleanup has to run when this screen is
+  // merely covered as well as when it unmounts, so the back gesture, a deep
+  // link and a pause all restore identically (spec section 4).
+  //
+  // The cleanup is RESTORE_ON_BLUR and never unlockAsync(). That single line is
+  // audit H6: unlocking hands orientation to the sensors, so leaving a match
+  // sideways left every other screen — none of which has a landscape layout —
+  // rendering in landscape.
+  useFocusEffect(
+    useCallback(() => {
+      applyLock(lockForMode(orientationMode));
+      return () => applyLock(RESTORE_ON_BLUR);
+    }, [orientationMode])
+  );
+
+  const setOrientation = (mode: OrientationMode) => {
     setOrientationMode(mode);
     setOrientationSheetOpen(false);
-    const lock =
-      mode === "auto" ? ScreenOrientation.unlockAsync()
-      : mode === "portrait" ? ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP)
-      : ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
-    lock.catch(() => {});
+    // No applyLock here: the focus effect re-runs on orientationMode and is the
+    // only caller, so the lock has exactly one owner.
   };
   const orientationLabel = orientationMode === "auto" ? "Auto" : orientationMode === "portrait" ? "Portrait" : "Landscape";
-  const ORIENTATION_OPTIONS: { mode: "auto" | "portrait" | "landscape"; icon: IconName; label: string }[] = [
+  const ORIENTATION_OPTIONS: { mode: OrientationMode; icon: IconName; label: string }[] = [
     { mode: "auto", icon: "screen-rotation", label: "Auto" },
     { mode: "portrait", icon: "phone-portrait-outline", label: "Portrait" },
     { mode: "landscape", icon: "phone-landscape-outline", label: "Landscape" },
