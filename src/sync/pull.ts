@@ -119,9 +119,24 @@ export interface PullClient {
   ): Promise<{ data: PullEventRow[] | null; error: unknown }>;
 }
 
+/** What's known locally about one match id: its `synced` flag and its local `created_at` (epoch ms). */
+export interface LocalMatchState {
+  synced: 0 | 1;
+  createdAt: number;
+}
+
 export interface PullStore {
-  /** The `synced` flag for each id that exists locally. Absent key = no local row. */
-  localSyncState(ids: string[]): Promise<Record<string, 0 | 1>>;
+  /**
+   * Local state for each id that exists locally. Absent key = no local row.
+   *
+   * `createdAt` is the device's own `created_at` for that row. A row this
+   * device has already seen keeps that value forever: the server's
+   * `created_at` for an old row is only the time it happened to sync, not the
+   * time it was played (see SyncMatchRow.created_at in sync.ts), so pull.ts
+   * substitutes this value back in rather than trusting the server's column
+   * for a row that already exists locally.
+   */
+  localSyncState(ids: string[]): Promise<Record<string, LocalMatchState>>;
   /** Insert-or-replace, so a re-pulled match picks up its new status/summary. */
   replaceMatches(rows: LocalMatchWrite[]): Promise<void>;
   /** Insert-or-ignore, so a local row at the same (match_id, seq) survives. */
@@ -167,7 +182,13 @@ export function decodeCursor(raw: string | null): PullCursor | null {
   return { updatedAt: raw.slice(0, cut), id: raw.slice(cut + 1) };
 }
 
-function toLocal(row: PullMatchRow): LocalMatchWrite {
+/**
+ * `localCreatedAt` is set only when this device already has a local row for
+ * `row.id` (see LocalMatchState.createdAt) — in that case the local value
+ * wins over the server's `created_at`, which for an already-synced row is
+ * just the time it happened to sync, not the time it was played.
+ */
+function toLocal(row: PullMatchRow, localCreatedAt: number | undefined): LocalMatchWrite {
   return {
     id: row.id,
     club_id: row.club_id,
@@ -183,7 +204,7 @@ function toLocal(row: PullMatchRow): LocalMatchWrite {
     score_summary: row.score_summary === null || row.score_summary === undefined
       ? null
       : JSON.stringify(row.score_summary),
-    created_at: Date.parse(row.created_at),
+    created_at: localCreatedAt ?? Date.parse(row.created_at),
   };
 }
 
@@ -232,11 +253,13 @@ export async function pullAll(
 
     const ids = data.map((r) => r.id);
     const local = await store.localSyncState(ids);
-    const writable = data.filter((r) => local[r.id] !== 0);
+    const writable = data.filter((r) => local[r.id]?.synced !== 0);
     result.skipped += data.length - writable.length;
 
     if (writable.length) {
-      await store.replaceMatches(writable.map(toLocal));
+      await store.replaceMatches(
+        writable.map((r) => toLocal(r, local[r.id]?.createdAt)),
+      );
 
       const { rows: events, error: eErr } = await fetchAllEvents(
         client, writable.map((r) => r.id), eventPageSize,

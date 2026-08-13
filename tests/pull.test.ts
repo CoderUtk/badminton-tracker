@@ -1,7 +1,7 @@
 import {
   pullAll, decodeCursor, encodeCursor,
   type PullClient, type PullCursor, type PullEventRow, type PullMatchRow, type PullStore,
-  type LocalEventWrite, type LocalMatchWrite,
+  type LocalEventWrite, type LocalMatchState, type LocalMatchWrite,
 } from "../src/sync/pull";
 
 function makeRemote(id: string, updatedAt: string, status = "completed"): PullMatchRow {
@@ -31,7 +31,7 @@ interface EventCall { ids: string[]; offset: number; limit: number }
 function memory(opts: {
   rows?: PullMatchRow[];
   events?: PullEventRow[];
-  local?: Record<string, 0 | 1>;
+  local?: Record<string, LocalMatchState>;
   watermark?: string | null;
   matchError?: unknown;
   eventError?: unknown;
@@ -71,7 +71,7 @@ function memory(opts: {
 
   const store: PullStore = {
     localSyncState: async (ids) => {
-      const out: Record<string, 0 | 1> = {};
+      const out: Record<string, LocalMatchState> = {};
       for (const id of ids) {
         const v = opts.local?.[id];
         if (v !== undefined) out[id] = v;
@@ -128,6 +128,32 @@ describe("pullAll", () => {
     expect(row.created_at).toBe(Date.parse("2026-08-01T10:00:00.000Z"));
   });
 
+  it("takes the server's created_at for a row never seen locally", async () => {
+    const m = memory({ rows: [makeRemote("m1", "2026-08-02T00:00:00.000Z")] });
+    await pullAll(m.store, m.client);
+
+    expect(m.written[0].created_at).toBe(Date.parse("2026-08-01T10:00:00.000Z"));
+  });
+
+  it("keeps the local created_at for a row that already exists locally, even as every other field updates from the server", async () => {
+    const localCreatedAt = Date.parse("2026-07-04T08:30:00.000Z"); // the true, earlier play time
+    const remote = makeRemote("m1", "2026-08-02T00:00:00.000Z");
+    remote.status = "forfeited";
+    remote.winner = "B";
+    remote.score_summary = { games: [{ A: 5, B: 21 }] };
+    const m = memory({
+      rows: [remote],
+      local: { m1: { synced: 1, createdAt: localCreatedAt } },
+    });
+    await pullAll(m.store, m.client);
+
+    expect(m.written).toHaveLength(1);
+    expect(m.written[0].created_at).toBe(localCreatedAt);
+    expect(m.written[0].status).toBe("forfeited");
+    expect(m.written[0].winner).toBe("B");
+    expect(m.written[0].score_summary).toBe(JSON.stringify({ games: [{ A: 5, B: 21 }] }));
+  });
+
   it("keeps score_summary null rather than the string \"null\"", async () => {
     const remote = makeRemote("m1", "2026-08-02T00:00:00.000Z", "forfeited");
     remote.score_summary = null;
@@ -140,7 +166,7 @@ describe("pullAll", () => {
   it("replaces a local row that is already synced", async () => {
     const m = memory({
       rows: [makeRemote("m1", "2026-08-02T00:00:00.000Z")],
-      local: { m1: 1 },
+      local: { m1: { synced: 1, createdAt: Date.parse("2026-08-01T10:00:00.000Z") } },
     });
     const result = await pullAll(m.store, m.client);
 
@@ -151,7 +177,7 @@ describe("pullAll", () => {
   it("skips a local row that has not been pushed yet", async () => {
     const m = memory({
       rows: [makeRemote("m1", "2026-08-02T00:00:00.000Z")],
-      local: { m1: 0 },
+      local: { m1: { synced: 0, createdAt: Date.parse("2026-08-01T10:00:00.000Z") } },
     });
     const result = await pullAll(m.store, m.client);
 
@@ -163,7 +189,7 @@ describe("pullAll", () => {
   it("advances the watermark even when all rows in a page are skipped", async () => {
     const m = memory({
       rows: [makeRemote("m1", "2026-08-02T00:00:00.000Z")],
-      local: { m1: 0 },
+      local: { m1: { synced: 0, createdAt: Date.parse("2026-08-01T10:00:00.000Z") } },
     });
     const result = await pullAll(m.store, m.client);
 
@@ -175,7 +201,7 @@ describe("pullAll", () => {
   it("does not request events for a skipped match", async () => {
     const m = memory({
       rows: [makeRemote("m1", "2026-08-02T00:00:00.000Z"), makeRemote("m2", "2026-08-02T00:00:01.000Z")],
-      local: { m1: 0 },
+      local: { m1: { synced: 0, createdAt: Date.parse("2026-08-01T10:00:00.000Z") } },
       events: [{ match_id: "m1", seq: 0, event: { type: "RALLY_WON" } },
                { match_id: "m2", seq: 0, event: { type: "RALLY_WON" } }],
     });

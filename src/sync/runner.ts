@@ -2,7 +2,7 @@ import NetInfo from "@react-native-community/netinfo";
 import { supabase } from "../lib/supabase";
 import { getDb } from "../db/db";
 import { pushAll, SyncStore, SyncClient } from "./sync";
-import { pullAll, type LocalEventWrite, type LocalMatchWrite, type PullClient, type PullEventRow, type PullMatchRow, type PullStore } from "./pull";
+import { pullAll, type LocalEventWrite, type LocalMatchState, type LocalMatchWrite, type PullClient, type PullEventRow, type PullMatchRow, type PullStore } from "./pull";
 import { insertMany } from "../db/batch";
 import { refreshClubs } from "../repos/clubRepo";
 import { refreshSessions } from "../repos/sessionRepo";
@@ -48,12 +48,12 @@ async function sqlitePullStore(): Promise<PullStore | null> {
     localSyncState: async (ids) => {
       if (ids.length === 0) return {};
       const holes = ids.map(() => "?").join(", ");
-      const rows = await db.getAllAsync<{ id: string; synced: number }>(
-        `select id, synced from matches where id in (${holes})`,
+      const rows = await db.getAllAsync<{ id: string; synced: number; created_at: number }>(
+        `select id, synced, created_at from matches where id in (${holes})`,
         ...(ids as never[]),
       );
-      const out: Record<string, 0 | 1> = {};
-      for (const r of rows) out[r.id] = r.synced ? 1 : 0;
+      const out: Record<string, LocalMatchState> = {};
+      for (const r of rows) out[r.id] = { synced: r.synced ? 1 : 0, createdAt: r.created_at };
       return out;
     },
     replaceMatches: async (rows: LocalMatchWrite[]) => {
