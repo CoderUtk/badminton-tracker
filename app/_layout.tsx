@@ -12,6 +12,7 @@ import {
   ChakraPetch_400Regular, ChakraPetch_500Medium,
   ChakraPetch_600SemiBold, ChakraPetch_700Bold,
 } from "@expo-google-fonts/chakra-petch";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SessionProvider, useSession } from "../src/stores/session";
 import { supabase } from "../src/lib/supabase";
 import { getMyProfile, subscribeProfile } from "../src/repos/profileRepo";
@@ -226,6 +227,10 @@ function RootLayout() {
   if (!fontsLoaded) return null;
   const tree = (
     <GestureHandlerRootView style={{ flex: 1 }}>
+    {/* Inside GestureHandlerRootView so pan gestures on sheets still see
+        keyboard state, and above the navigator so every screen can read IME
+        height — Android 15 edge-to-edge ignores adjustResize (audit H1). */}
+    <KeyboardProvider>
     <SessionProvider>
       <StatusBar style="light" />
       {!splashDone && <AnimatedSplash onFinish={() => setSplashDone(true)} />}
@@ -254,6 +259,7 @@ function RootLayout() {
       </Gate>
     </SessionProvider>
     <Toaster />
+    </KeyboardProvider>
     </GestureHandlerRootView>
   );
 
