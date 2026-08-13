@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Pressable, ScrollView, StyleSheet, Text, View,
 } from "react-native";
-import Animated, { useAnimatedStyle, useDerivedValue, useSharedValue, withSpring } from "react-native-reanimated";
+import Animated, { useAnimatedStyle, useDerivedValue, useSharedValue } from "react-native-reanimated";
 import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
 import { keyboardShift } from "../src/lib/keyboardShift";
 import { useScreenInsets } from "../src/hooks/useScreenInsets";
@@ -384,7 +384,7 @@ export default function NewMatch() {
   );
 
   const rootAnim = useAnimatedStyle(() => ({
-    transform: [{ translateY: withSpring(-shift.value, { dampingRatio: 1, duration: 250 }) }],
+    transform: [{ translateY: -shift.value }],
   }));
 
   return (

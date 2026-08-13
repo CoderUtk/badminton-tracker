@@ -77,6 +77,8 @@ export default function CourtBox({
       disabled={!edit || suppressed}
       pointerEvents={suppressed ? "none" : "auto"}
       accessible={!!edit && !suppressed}
+      accessibilityElementsHidden={suppressed}
+      importantForAccessibility={suppressed ? "no-hide-descendants" : "auto"}
     >
       {isServer && <View style={[s.dot, { backgroundColor: servingColor, shadowColor: servingColor }]} />}
 

@@ -7,10 +7,12 @@ export default function SegmentedControl<T extends string>({
   options,
   value,
   onChange,
+  role = "tab",
 }: {
   options: { label: string; value: T; disabled?: boolean }[];
   value: T;
   onChange: (v: T) => void;
+  role?: "tab" | "radio";
 }) {
   const [width, setWidth] = useState(0);
   const indicator = useRef(new Animated.Value(0)).current;
@@ -26,7 +28,11 @@ export default function SegmentedControl<T extends string>({
   }, [index, width]);
 
   return (
-    <View style={s.track} onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}>
+    <View
+      style={s.track}
+      onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}
+      accessibilityRole={role === "tab" ? "tablist" : undefined}
+    >
       {width > 0 && (
         <Animated.View
           style={[s.indicator, { width: width / options.length - 4, transform: [{ translateX: indicator }] }]}
@@ -38,7 +44,7 @@ export default function SegmentedControl<T extends string>({
           disabled={opt.disabled}
           style={[s.item, opt.disabled && s.itemDisabled]}
           onPress={() => onChange(opt.value)}
-          accessibilityRole="tab"
+          accessibilityRole={role}
           accessibilityState={{ selected: opt.value === value, disabled: !!opt.disabled }}
           accessibilityLabel={opt.label}
         >

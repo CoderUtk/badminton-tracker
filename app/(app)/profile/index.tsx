@@ -362,6 +362,7 @@ export default function Profile() {
               ]}
               value={hand}
               onChange={setHand}
+              role="radio"
             />
             <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
               <Pressable style={[s.modalBtn, s.modalCancel]} onPress={cancelDetailsEdit}>
