@@ -20,7 +20,7 @@ import {
   type LockTarget,
   type OrientationMode,
 } from "../lib/orientationLock";
-import { C, F, glow, MIN_TOUCH, space, textGlow } from "../theme";
+import { C, F, glow, MIN_TOUCH, SCOREBOARD_TYPE, space, textGlow } from "../theme";
 
 const DEBOUNCE_MS = 500;
 
@@ -437,19 +437,22 @@ const s = StyleSheet.create({
   endText: { color: C.text, fontSize: 15, fontFamily: F.bold },
   scoreWrap: { alignSelf: "center", alignItems: "center", gap: 3, width: "100%", maxWidth: 520 },
   scoreRibbon: {
-    alignSelf: "stretch", minHeight: 46, flexDirection: "row", alignItems: "center",
+    alignSelf: "stretch", minHeight: 72, flexDirection: "row", alignItems: "center",
     backgroundColor: C.card, borderRadius: 12, borderWidth: 1, borderColor: C.lineHi,
     overflow: "hidden",
   },
   ribbonTeam: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 12 },
   ribbonTeamA: { borderLeftWidth: 4, borderLeftColor: C.red },
   ribbonTeamB: { justifyContent: "flex-end", borderRightWidth: 4, borderRightColor: C.blue },
-  ribbonName: { flexShrink: 1, fontSize: 15, fontFamily: F.semibold, letterSpacing: 0.3 },
+  ribbonName: { flexShrink: 1, fontSize: SCOREBOARD_TYPE.name, fontFamily: F.semibold, letterSpacing: 0.3 },
   // Fixed-width slot so the serve dot appearing/disappearing never reflows names.
   serveSlot: { width: 8, alignItems: "center", flexShrink: 0 },
   serveDot: { width: 8, height: 8, borderRadius: 4 },
-  ribbonScore: { minWidth: 42, color: C.text, fontSize: 32, fontFamily: F.display, textAlign: "center", fontVariant: ["tabular-nums"] },
-  scoreDivider: { color: C.text3, fontSize: 20, marginHorizontal: 2 },
+  ribbonScore: {
+    minWidth: 72, color: C.text, fontSize: SCOREBOARD_TYPE.score, fontFamily: F.display,
+    textAlign: "center", fontVariant: ["tabular-nums"],
+  },
+  scoreDivider: { color: C.text3, fontSize: SCOREBOARD_TYPE.divider, marginHorizontal: 2 },
   statePill: {
     alignSelf: "center", backgroundColor: C.card, borderRadius: 999,
     paddingHorizontal: 12, paddingVertical: 4, borderWidth: 1, borderColor: C.red,
@@ -468,7 +471,7 @@ const s = StyleSheet.create({
   },
   railTeam: { fontSize: 14, fontFamily: F.semibold },
   railDisabled: { opacity: 0.3 },
-  railText: { color: C.text, fontSize: 26, fontFamily: F.display, ...textGlow(C.text, 8) },
+  railText: { color: C.text, fontSize: SCOREBOARD_TYPE.rail, fontFamily: F.display, ...textGlow(C.text, 8) },
   center: { flex: 1, gap: 4 },
   bubble: {
     position: "absolute", top: 8, alignSelf: "center", zIndex: 2,
