@@ -676,6 +676,86 @@ git commit -m "feat(ui): add useScreenInsets so docked CTAs clear the nav bar"
 
 ---
 
+### Task 6b: Migrate decorative `text3` consumers to `ghost`
+
+Task 2 raised `text3` from `#5C6472` to `#838B9D` so it clears AA as a *text* colour. Several existing call sites use it as a **decorative** colour — an icon fill, a progress-bar fill, a status dot, a border — and those just got visibly brighter with nobody signing off on it. `ghost` exists precisely to hold the old value for these; this task moves them.
+
+Added after the Task 2 review found the migration was unowned by any task. It must land **before** Task 16's re-audit, or the verification screenshots bake the brightened UI in as the new baseline and the regression becomes invisible.
+
+**Rule for deciding each site:** if the value colours glyphs a human reads, it stays `C.text3`. If it fills, tints, borders, or dots, it becomes `C.ghost`.
+
+**Files:**
+- Modify: `src/components/BadgeGrid.tsx:25,88`
+- Modify: `app/(app)/watch/[matchId].tsx:49`
+- Modify: `app/(app)/tournaments/index.tsx:12` and its consumers at `:51,57,58,67,68`
+
+**Interfaces:**
+- Consumes: `C.ghost` from `src/theme.ts` (Task 2).
+- Produces: nothing consumed downstream.
+
+- [ ] **Step 1: Migrate BadgeGrid**
+
+`src/components/BadgeGrid.tsx:25` passes `C.text3` as `iconColor` for locked badges — an icon fill, not text. Change to `C.ghost`.
+
+`src/components/BadgeGrid.tsx:88` is `fill: { backgroundColor: C.text3 }`, the progress-bar fill for badges with no progress — pure decoration. Change to `C.ghost`.
+
+Locked badge *description text* in the same file stays `C.text3`: audit finding M5 calls that text "very low contrast", so it needs the brighter AA value. If you find a description style still on the old dim value, that is the M5 fix and it belongs to Phase 5 — leave it and note it.
+
+- [ ] **Step 2: Migrate the watch status dot**
+
+`app/(app)/watch/[matchId].tsx:49` — `backgroundColor: state.phase === "match_over" ? C.text3 : C.red` on an 8×8 dot. Change the `C.text3` branch to `C.ghost`.
+
+- [ ] **Step 3: Split the tournament status colour**
+
+`app/(app)/tournaments/index.tsx:12` defines `STATUS_COLOR.done: C.text3`, and it feeds five places: `borderLeftColor` (`:51`), an icon-wrap tint via `color + "15"` (`:57`), an `Icon` color (`:58`), a status dot `backgroundColor` (`:67`), and the status **label text** (`:68`).
+
+Four of those are decorative and one is text, so one token cannot serve both. Introduce a second entry rather than changing the shared one:
+
+```typescript
+// done/completed reads as decoration in four places and as a label in one.
+// The label needs the AA text value; the border, tint, icon and dot want the
+// dimmer decorative value, which is what they had before text3 was raised.
+const STATUS_COLOR = { /* existing entries unchanged */, done: C.ghost } as const;
+const STATUS_LABEL_COLOR = { /* same keys */, done: C.text3 } as const;
+```
+
+Apply `STATUS_LABEL_COLOR` at `:68` only. Leave every non-`done` status colour exactly as it is — this task changes the `done` case and nothing else.
+
+If the file's actual shape makes a parallel map clumsy, the acceptable alternative is keeping one map and overriding just the label colour inline at `:68`. Do not restructure the component.
+
+- [ ] **Step 4: Confirm no decorative site was missed**
+
+```bash
+grep -rn "text3" src/ app/
+```
+
+Every remaining hit must colour glyphs a human reads. List them in your report with a one-word role each (`text`, `label`, `caption`) so the controller can check the judgement.
+
+- [ ] **Step 5: Typecheck and run the suite**
+
+```bash
+npx tsc --noEmit
+```
+
+```bash
+npx jest
+```
+
+Both must pass. No test asserts these call sites, so a green suite here means "nothing else broke", not "the migration is right" — Step 4's grep is the real check.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src/components/BadgeGrid.tsx "app/(app)/watch/[matchId].tsx" "app/(app)/tournaments/index.tsx"
+git commit -m "fix(theme): move decorative text3 uses to ghost
+
+Task 2 raised text3 to an AA text value, which brightened call sites that
+were using it as an icon fill, a progress fill, a status dot and a border.
+Those move to ghost, which holds the old value for exactly this purpose."
+```
+
+---
+
 # PHASE 1 — ERGONOMICS & SAFE AREA
 
 ---
