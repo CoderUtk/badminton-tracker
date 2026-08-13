@@ -50,6 +50,7 @@ export default function NewMatch() {
   const [adding, setAdding] = useState(false);
   const [lineupRestored, setLineupRestored] = useState(false);
   const [clubsLoaded, setClubsLoaded] = useState(false);
+  const [courtHeight, setCourtHeight] = useState(0);
   const pulseSeq = useRef(0);
 
   const names = doubles ? namesDoubles : namesSingles;
@@ -333,7 +334,13 @@ export default function NewMatch() {
     showTeamSwap: doubles,
     panel:
       editing && (picker.players.length > 0 || picker.canAdd)
-        ? { team: editing.team, row: editing.row, node: panelNode }
+        ? {
+            team: editing.team,
+            row: editing.row,
+            node: panelNode,
+            // Half the court is the box the panel covers; never taller.
+            maxHeight: courtHeight > 0 ? courtHeight * 0.5 : undefined,
+          }
         : undefined,
   };
 
@@ -401,7 +408,9 @@ export default function NewMatch() {
         {!isGuest && <ClubPicker clubs={clubs} clubId={clubId} onChange={setClubId} />}
       </View>
 
-      <View style={s.courtWrap}>{preview && <Court state={preview} edit={edit} />}</View>
+      <View style={s.courtWrap} onLayout={(e) => setCourtHeight(e.nativeEvent.layout.height)}>
+        {preview && <Court state={preview} edit={edit} />}
+      </View>
 
       <View
         style={s.belowCourt}

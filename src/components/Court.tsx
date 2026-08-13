@@ -35,7 +35,16 @@ export type CourtEdit = {
    * that half, so a name picker sits next to its field instead of below the
    * court. `row` is the row being edited, not the row the panel covers.
    */
-  panel?: { team: TeamId; row: CourtRow; node: React.ReactNode };
+  panel?: {
+    team: TeamId;
+    row: CourtRow;
+    node: React.ReactNode;
+    /**
+     * Space available above the keyboard, in dp. The panel clamps to this so
+     * a long roster can never extend under the IME (audit H2).
+     */
+    maxHeight?: number;
+  };
 };
 
 function Half({
@@ -58,22 +67,31 @@ function Half({
 
   return (
     <View style={s.half}>
-      {zones.map((zone) => (
-        <CourtBox
-          key={zone.row}
-          zone={zone}
-          name={zone.playerIdx !== null ? state.config.teams[team][zone.playerIdx].name : null}
-          color={color}
-          isServer={serveRow === zone.row}
-          servingColor={servingColor}
-          showDivider={zone.row === "top"}
-          edit={edit?.zoneEdit(zone)}
-        />
-      ))}
+      {zones.map((zone) => {
+        const covered =
+          edit?.panel?.team === team && edit.panel.row !== zone.row;
+        return (
+          <CourtBox
+            key={zone.row}
+            zone={zone}
+            name={zone.playerIdx !== null ? state.config.teams[team][zone.playerIdx].name : null}
+            color={color}
+            isServer={serveRow === zone.row}
+            servingColor={servingColor}
+            showDivider={zone.row === "top"}
+            suppressed={covered}
+            edit={edit?.zoneEdit(zone)}
+          />
+        );
+      })}
 
       {edit?.panel?.team === team && (
         <View
-          style={[s.panel, edit.panel.row === "top" ? s.panelLower : s.panelUpper]}
+          style={[
+            s.panel,
+            edit.panel.row === "top" ? s.panelLower : s.panelUpper,
+            edit.panel.maxHeight !== undefined && { maxHeight: edit.panel.maxHeight },
+          ]}
         >
           {edit.panel.node}
         </View>

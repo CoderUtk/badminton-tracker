@@ -30,7 +30,7 @@ export type CourtBoxEdit = {
  * rejected serve pick flashes an outline here.
  */
 export default function CourtBox({
-  zone, name, color, isServer, servingColor, showDivider, edit,
+  zone, name, color, isServer, servingColor, showDivider, suppressed = false, edit,
 }: {
   zone: CourtZone;
   name: string | null;
@@ -38,6 +38,9 @@ export default function CourtBox({
   isServer: boolean;
   servingColor: string;
   showDivider: boolean;
+  /** Covered by the name panel: dimmed and inert so the panel reads as a menu
+   *  over an inactive area instead of two live controls colliding (audit H2). */
+  suppressed?: boolean;
   edit?: CourtBoxEdit;
 }) {
   const pulse = useRef(new Animated.Value(0)).current;
@@ -68,10 +71,12 @@ export default function CourtBox({
               : "rgba(59,130,246,0.12)",
           },
         ],
+        suppressed && s.suppressed,
       ]}
       onPress={edit?.onZonePress}
-      disabled={!edit}
-      accessible={!!edit}
+      disabled={!edit || suppressed}
+      pointerEvents={suppressed ? "none" : "auto"}
+      accessible={!!edit && !suppressed}
     >
       {isServer && <View style={[s.dot, { backgroundColor: servingColor, shadowColor: servingColor }]} />}
 
@@ -120,6 +125,7 @@ const s = StyleSheet.create({
     borderWidth: 1.5,
     // borderColor and backgroundColor are overridden dynamically per serving team
   },
+  suppressed: { opacity: 0.35 },
   dot: {
     position: "absolute", top: 10, right: 10,
     width: 14, height: 14, borderRadius: 7,
