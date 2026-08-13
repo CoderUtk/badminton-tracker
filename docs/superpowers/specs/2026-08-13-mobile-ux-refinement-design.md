@@ -168,6 +168,66 @@ points.
 player names, the `+1` buttons and the elapsed-time chip. The `0` glyph stops
 rendering as a filled coloured rectangle so `1 – 0` reads as two numerals.
 
+### 4a. Amendments from Phase 2 planning (2026-08-13)
+
+Four corrections, made after reading the code this phase touches. The clauses
+above are kept verbatim above so the diff is legible; where they conflict with
+this section, this section governs.
+
+**`app.json` is already correct.** It has declared `"orientation": "portrait"`
+since before this spec was written. H6's first bullet describes existing
+behaviour, not work. The leak is entirely at runtime:
+`src/screens/MatchScreen.tsx:55` restores with `unlockAsync()` — which releases
+the lock to device sensors rather than forcing portrait — so leaving a match in
+landscape strands every other screen there. The route's `orientation: "all"` at
+`app/_layout.tsx:254` is correct and stays: it is what *permits* rotation on the
+scoring screen, and the runtime lock does the deciding.
+
+**The orientation picker survives.** `MatchScreen.tsx:48-72` already ships a
+user-facing Auto / Portrait / Landscape control with a complete portrait layout
+branch (`railWide`, `bodyPortrait`, `s.top`). Hard-locking landscape would
+delete shipped, working UX to satisfy a clause written without knowledge of it.
+Instead: **landscape becomes the default taken on focus** (replacing
+`unlockAsync()`), the picker can still override mid-match, and the cleanup is
+unconditionally `lockAsync(PORTRAIT_UP)`. The cleanup is what closes H6; the
+default is what honours the spirit of the clause.
+
+**Pause freezes elapsed time, without touching the event log.** Paused means an
+overlay that blocks `+1` / undo / redo, plus elapsed time that excludes paused
+spans — a timer that keeps counting through a pause is lying. It is implemented
+as a **local, non-persisted accumulator**, not as new `PAUSED` / `RESUMED`
+entries in `MatchEvent`. That log is reduced by the engine, persisted, synced to
+Supabase and replayed by undo and `autoFinish`; new variants would reach all of
+them for a UI affordance. Pause means "stay on this screen", so it does not need
+to survive unmount.
+
+**M8's `0` glyph is a diagnosis, not a known cause.** The working hypothesis is
+that it is not a font defect: `ribbonScore` carries `textGlow(C.red, 16)`, a
+16px `textShadowRadius` on a 32px Russo One numeral. That font's `0` has a small
+counter, which a bloom that wide floods into a solid rounded rectangle, while
+`1` is a thin stroke and survives. Phase 2 verifies this before fixing it, and
+carries a fallback (a tabular fallback family for the digits) for the case where
+a glowless `0` still renders filled.
+
+**One found bug is absorbed into this phase.** The Ops screen's *navigation*
+header renders the raw route segment, because
+`app/(app)/tournaments/_layout.tsx` declares no `Stack.Screen` for
+`ops/[tournamentId]` and expo-router falls back to the filename. The screen's
+own in-body header (`Live Ops Dashboard`) is already correct. This is a
+one-entry fix with no verification cost, so it rides here rather than waiting
+for Phase 3. Renaming the concept "Ops" itself is M3 and stays in Phase 4.
+
+**Routed elsewhere, deliberately.** Four separately-reported UX complaints were
+checked against the audit and already have owners: the Home `Longest Streak`
+baseline is **P1** (Phase 5), the New tournament screen's clutter is **H7**
+(Phase 4) and its entrant rows are **P13** (Phase 5), and the confusing "Ops"
+name is **M3** (Phase 4). The dull Brackets screen is a visual-design pass and
+is a Phase 4 carry-forward. Two are genuinely new and get their own spec rather
+than being bolted onto a scoring-screen plan: **restructuring the over-long
+Profile screen** (an information-architecture question that also re-opens P4,
+M5 and P3) and **starting a quick match from a Friends row** (a new feature
+carrying real product decisions about save-scope and doubles/singles defaults).
+
 ## 5. Phase 3 — Correctness
 
 Closes **H4, H5, M6, P2, P6, P12, P17**.
