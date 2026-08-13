@@ -1,7 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View,
+  Pressable, ScrollView, StyleSheet, Text, View,
 } from "react-native";
+import Animated, { useAnimatedStyle, useDerivedValue, useSharedValue, withSpring } from "react-native-reanimated";
+import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
+import { keyboardShift } from "../src/lib/keyboardShift";
+import { useScreenInsets } from "../src/hooks/useScreenInsets";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { defaultConfig, GAME_FORMATS, MatchConfig, replay } from "../src/engine";
 import { createMatch } from "../src/repos/matchRepo";
@@ -354,12 +358,34 @@ export default function NewMatch() {
     }
   };
 
+  const { ctaPadding, bottom } = useScreenInsets();
+  const { height: kbHeight } = useReanimatedKeyboardAnimation();
+  // Measured, not guessed: the block below the court absorbs part of the IME.
+  const belowContent = useSharedValue(0);
+  // The Doubles/Singles row is the only thing we are willing to push off the
+  // top — everything else on this screen has to stay reachable while typing.
+  const topRow = useSharedValue(0);
+
+  const shift = useDerivedValue(() =>
+    keyboardShift({
+      // useReanimatedKeyboardAnimation reports height as a negative offset.
+      keyboardHeight: Math.abs(kbHeight.value),
+      belowContentHeight: belowContent.value,
+      bottomInset: bottom,
+      maxShift: topRow.value,
+    })
+  );
+
+  const rootAnim = useAnimatedStyle(() => ({
+    transform: [{ translateY: withSpring(-shift.value, { dampingRatio: 1, duration: 250 }) }],
+  }));
+
   return (
-    <KeyboardAvoidingView
-      style={s.root}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <View style={s.topRow}>
+    <Animated.View style={[s.root, { paddingBottom: ctaPadding }, rootAnim]}>
+      <View
+        style={s.topRow}
+        onLayout={(e) => { topRow.value = e.nativeEvent.layout.height; }}
+      >
         <View style={[s.seg, s.segFill]}>
           {[true, false].map((d) => (
             <PressableScale
@@ -377,7 +403,11 @@ export default function NewMatch() {
 
       <View style={s.courtWrap}>{preview && <Court state={preview} edit={edit} />}</View>
 
-      <View style={s.formatRow}>
+      <View
+        style={s.belowCourt}
+        onLayout={(e) => { belowContent.value = e.nativeEvent.layout.height; }}
+      >
+        <View style={s.formatRow}>
         <View style={s.formatGroup}>
           <Text style={s.caption}>Points</Text>
           <View style={s.seg}>
@@ -398,21 +428,25 @@ export default function NewMatch() {
             ))}
           </View>
         </View>
+        </View>
+
+        <Text style={s.hint} numberOfLines={1}>
+          First to {Math.floor(bestOf / 2) + 1} {bestOf === 1 ? "game" : "games"} · best of {bestOf}
+        </Text>
+
+        <BusyButton busy={starting} disabled={!filled} style={[s.cta, !filled && { opacity: 0.5 }]} onPress={start}>
+          <Text style={s.ctaText}>Start scoring</Text>
+        </BusyButton>
       </View>
-
-      <Text style={s.hint} numberOfLines={1}>
-        First to {Math.floor(bestOf / 2) + 1} {bestOf === 1 ? "game" : "games"} · best of {bestOf}
-      </Text>
-
-      <BusyButton busy={starting} disabled={!filled} style={[s.cta, !filled && { opacity: 0.5 }]} onPress={start}>
-        <Text style={s.ctaText}>Start scoring</Text>
-      </BusyButton>
-    </KeyboardAvoidingView>
+    </Animated.View>
   );
 }
 
 const s = StyleSheet.create({
+  // paddingBottom now comes from useScreenInsets at render time (audit H3):
+  // the nav bar was clipping the bottom 32dp of the Start scoring CTA.
   root: { flex: 1, backgroundColor: C.bg, padding: 16, gap: 12 },
+  belowCourt: { gap: 12 },
   topRow: { flexDirection: "row", gap: 8, alignItems: "center" },
   // No flex here: inside the column-laid-out format groups it would stretch the
   // pill row past the card background. The top row opts in with segFill.
