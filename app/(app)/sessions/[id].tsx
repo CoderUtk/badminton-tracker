@@ -10,11 +10,12 @@ import {
 } from "../../../src/repos/sessionRepo";
 import { getClub } from "../../../src/repos/clubRepo";
 import Icon from "../../../src/components/Icon";
+import Chip from "../../../src/components/Chip";
 import Sheet from "../../../src/components/Sheet";
 import SegmentedControl from "../../../src/components/SegmentedControl";
 import SessionResultCard from "../../../src/components/share/SessionResultCard";
 import { captureAndShare } from "../../../src/lib/share/captureAndShare";
-import { C } from "../../../src/theme";
+import { C, space } from "../../../src/theme";
 import { toast } from "../../../src/lib/toast";
 import { useSession } from "../../../src/stores/session";
 
@@ -374,11 +375,19 @@ export default function SessionDetail() {
           <View style={[s.avatar, item.status === "in" && s.avatarIn]}><Text style={s.avatarText}>{item.name.slice(0, 1).toUpperCase()}</Text></View>
           <Text style={s.playerName}>{item.name}</Text>
           <View style={s.attendanceActions}>
-            {(["in", "maybe", "out"] as const).map((status) => (
-              <Pressable key={status} onPress={() => mark(item, status)} style={[s.attendanceChip, item.status === status && s.attendanceChipOn]}>
-                <Text style={[s.attendanceText, item.status === status && s.attendanceTextOn]}>{status === "in" ? "In" : status === "maybe" ? "Maybe" : "Out"}</Text>
-              </Pressable>
-            ))}
+            {(["in", "maybe", "out"] as const).map((status) => {
+              const label = status === "in" ? "In" : status === "maybe" ? "Maybe" : "Out";
+              return (
+                <Chip
+                  key={status}
+                  label={label}
+                  isSelected={item.status === status}
+                  onPress={() => mark(item, status)}
+                  accessibilityLabel={`${label}, ${item.name}`}
+                  style={s.attendanceChip}
+                />
+              );
+            })}
           </View>
         </View>
       )}
@@ -453,5 +462,8 @@ const s = StyleSheet.create({
   playerChipTextOn: { color: C.text },
   games: { gap: 8, marginVertical: 4 }, gameCard: { backgroundColor: "#211819", borderColor: "#5B2524", borderWidth: 1, padding: 14, borderRadius: 14, gap: 3 }, court: { color: C.red, fontSize: 11, fontWeight: "900", letterSpacing: 0.8 }, teams: { color: C.text, fontSize: 16, fontWeight: "800" }, vs: { color: C.text2, fontSize: 13 }, scoreButton: { alignSelf: "flex-start", flexDirection: "row", gap: 6, marginTop: 7, paddingVertical: 9, paddingHorizontal: 13, borderRadius: 9, backgroundColor: C.red, alignItems: "center" }, scoreText: { color: C.text, fontWeight: "900", fontSize: 13 },
   matchRow: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: C.card, borderRadius: 12, padding: 13, borderWidth: 1, borderColor: C.line }, matchTeams: { color: C.text, fontSize: 15, fontWeight: "700" }, matchMeta: { color: C.text2, fontSize: 13, marginTop: 2 }, matchLive: { color: C.green, fontWeight: "800", fontSize: 12 }, matchDone: { color: C.text2, fontWeight: "800" },
-  playerRow: { minHeight: 66, paddingVertical: 9, flexDirection: "row", alignItems: "center", borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line, gap: 10 }, avatar: { height: 34, width: 34, borderRadius: 17, backgroundColor: C.cardHi, alignItems: "center", justifyContent: "center" }, avatarIn: { backgroundColor: C.red }, avatarText: { color: C.text, fontWeight: "900" }, playerName: { flex: 1, color: C.text, fontSize: 16, fontWeight: "700" }, attendanceActions: { flexDirection: "row", gap: 4 }, attendanceChip: { minWidth: 43, minHeight: 32, alignItems: "center", justifyContent: "center", borderRadius: 8, backgroundColor: C.card }, attendanceChipOn: { backgroundColor: C.red }, attendanceText: { color: C.text2, fontWeight: "700", fontSize: 12 }, attendanceTextOn: { color: C.text },
+  playerRow: { minHeight: 66, paddingVertical: 9, flexDirection: "row", alignItems: "center", borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line, gap: 10 }, avatar: { height: 34, width: 34, borderRadius: 17, backgroundColor: C.cardHi, alignItems: "center", justifyContent: "center" }, avatarIn: { backgroundColor: C.red }, avatarText: { color: C.text, fontWeight: "900" }, playerName: { flex: 1, color: C.text, fontSize: 16, fontWeight: "700" }, attendanceActions: { flexDirection: "row", gap: space.sm },
+  // Sizing, selected styling and accessibilityState all live in Chip. This
+  // only tightens horizontal padding so three chips fit a 360dp row.
+  attendanceChip: { paddingHorizontal: space.sm },
 });
