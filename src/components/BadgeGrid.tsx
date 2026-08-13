@@ -22,7 +22,7 @@ export default function BadgeGrid({
     <View style={s.grid}>
       {badges.map((b) => {
         const inProgress = !b.earned && b.progress > 0;
-        const iconColor = b.earned ? C.red : inProgress ? C.text : C.text3;
+        const iconColor = b.earned ? C.red : inProgress ? C.text : C.ghost;
         const titleStyle = b.earned ? s.titleEarned : inProgress ? s.titleActive : s.titleLocked;
         const Wrapper = b.earned ? Pressable : View;
         const wrapperProps = b.earned ? { onPress: () => onPressBadge?.(b) } : {};
@@ -85,6 +85,6 @@ const s = StyleSheet.create({
   titleLocked: { color: C.text2 },
   desc: { color: C.text3, fontSize: 10, fontFamily: F.body, textAlign: "center" },
   track: { width: "100%", height: 4, borderRadius: 2, backgroundColor: C.line, marginTop: 2, overflow: "hidden" },
-  fill: { height: "100%", borderRadius: 2, backgroundColor: C.text3 },
+  fill: { height: "100%", borderRadius: 2, backgroundColor: C.ghost },
   fillActive: { backgroundColor: C.red },
 });

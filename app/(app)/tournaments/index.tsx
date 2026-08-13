@@ -9,7 +9,9 @@ import { C, F, press, glow } from "../../../src/theme";
 const STATUS_COLOR: Record<string, string> = {
   draft: C.accent,
   live: C.green,
-  done: C.text3,
+  // Decorative value (border/tint/icon/dot) — old dim shade, kept off the
+  // brightened AA text3. The status label overrides back to text3 below.
+  done: C.ghost,
 };
 
 export default function TournamentsList() {
@@ -65,7 +67,9 @@ export default function TournamentsList() {
                 </Text>
                 <View style={[s.statusPill, { backgroundColor: color + "22" }]}>
                   <View style={[s.statusDot, { backgroundColor: color }]} />
-                  <Text style={[s.status, { color }]}>{item.status.toUpperCase()}</Text>
+                  {/* Label reads as text, not decoration — needs the AA text3 value even
+                      when the shared status color (done) is the dimmer ghost shade. */}
+                  <Text style={[s.status, { color: item.status === "done" ? C.text3 : color }]}>{item.status.toUpperCase()}</Text>
                 </View>
               </View>
               <Icon name="chevron-forward" color={C.text2} size={20} />

@@ -46,7 +46,7 @@ export default function WatchMatch() {
   return (
     <View style={{ flex: 1, backgroundColor: C.bg, padding: 20, justifyContent: "center" }}>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 24 }}>
-        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: state.phase === "match_over" ? C.text3 : C.red }} />
+        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: state.phase === "match_over" ? C.ghost : C.red }} />
         <Text style={{ color: state.phase === "match_over" ? C.text2 : C.red, fontFamily: F.medium }}>
           {state.phase === "match_over" ? "FINAL" : `LIVE · Game ${state.game} of ${state.config.bestOf}`}
         </Text>
