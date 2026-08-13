@@ -1,5 +1,5 @@
 import { contrastRatio } from "../src/lib/contrast";
-import { C, MIN_TOUCH, danger, selected, space } from "../src/theme";
+import { C, danger, selected, space } from "../src/theme";
 
 const AA = 4.5;
 // Every surface body or secondary text can sit on.
