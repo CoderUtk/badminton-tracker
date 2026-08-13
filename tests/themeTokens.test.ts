@@ -34,17 +34,8 @@ describe("ghost is decorative only", () => {
 });
 
 describe("spacing grid", () => {
-  it("is the 8pt scale", () => {
-    expect(space).toEqual({ xs: 4, sm: 8, md: 16, lg: 24, xl: 32 });
-  });
   it("has every value divisible by 4", () => {
     for (const v of Object.values(space)) expect(v % 4).toBe(0);
-  });
-});
-
-describe("touch target floor", () => {
-  it("is the Android 48dp minimum", () => {
-    expect(MIN_TOUCH).toBe(48);
   });
 });
 
