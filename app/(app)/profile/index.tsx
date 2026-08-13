@@ -21,6 +21,7 @@ import { scheduleInactivityReminder, syncSessionReminders, cancelReminders } fro
 import { registerPushToken, unregisterPushToken } from "../../../src/lib/push";
 import { notificationsBlocked } from "../../../src/lib/notificationPermission";
 import { C, F, glow } from "../../../src/theme";
+import { useScreenInsets } from "../../../src/hooks/useScreenInsets";
 
 export default function Profile() {
   const { session } = useSession();
@@ -223,9 +224,11 @@ export default function Profile() {
   const initial = me.slice(0, 1).toUpperCase();
   const badges = a ? evaluateBadges(a, { age, hand, avatarUrl }) : [];
 
+  const { ctaPadding } = useScreenInsets();
+
   return (
     <>
-    <FormScreen contentContainerStyle={s.content}>
+    <FormScreen contentContainerStyle={[s.content, { paddingBottom: ctaPadding + 56 }]}>
       {/* Identity */}
       {/* Tap the name to edit it. The name is set once at signup and rarely
           changes, so a standing text field here just pushed the stats down. */}
@@ -552,7 +555,7 @@ function Row({ icon, label, value, last }: { icon: React.ComponentProps<typeof I
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
-  content: { padding: 16, gap: 12, paddingBottom: 32 },
+  content: { padding: 16, gap: 12 },
   hero: { flexDirection: "row", alignItems: "center", gap: 14, backgroundColor: C.card, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: C.line },
   avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: C.red, alignItems: "center", justifyContent: "center", ...glow(C.red, 12, 0.4) },
   avatarText: { color: C.text, fontSize: 24, fontFamily: F.display },
