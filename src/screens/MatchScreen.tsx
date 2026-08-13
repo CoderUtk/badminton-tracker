@@ -20,7 +20,7 @@ import {
   type LockTarget,
   type OrientationMode,
 } from "../lib/orientationLock";
-import { C, F, glow, textGlow } from "../theme";
+import { C, F, glow, MIN_TOUCH, space, textGlow } from "../theme";
 
 const DEBOUNCE_MS = 500;
 
@@ -69,6 +69,27 @@ export default function MatchScreen({
   const portrait = height >= width;
   const [orientationMode, setOrientationMode] = useState<OrientationMode>(DEFAULT_SCORING_MODE);
   const [orientationSheetOpen, setOrientationSheetOpen] = useState(false);
+
+  // Local and non-persisted, deliberately. MatchEvent is reduced by the engine,
+  // synced to Supabase and replayed by undo and autoFinish; a UI affordance must
+  // not reach any of that (spec 4a). Pause means "stay on this screen", so it
+  // does not need to survive unmount.
+  const [pausedMs, setPausedMs] = useState(0);
+  const [pausedSince, setPausedSince] = useState<number | null>(null);
+  const paused = pausedSince !== null;
+
+  const togglePause = useCallback(() => {
+    const now = Date.now();
+    if (pausedSince === null) {
+      setPausedSince(now);
+      return;
+    }
+    // Bank the span that just closed, then clear the open one. Both setters are
+    // called from the handler rather than from inside an updater: React invokes
+    // updaters twice in development, which would double-bank the span.
+    setPausedMs((banked) => banked + (now - pausedSince));
+    setPausedSince(null);
+  }, [pausedSince]);
 
   // useFocusEffect, not useEffect: the cleanup has to run when this screen is
   // merely covered as well as when it unmounts, so the back gesture, a deep
@@ -152,7 +173,7 @@ export default function MatchScreen({
       ? `Game to ${teamName(state.gameHistory.at(-1)!.winner)} — tap to start game ${state.game + 1}`
       : null;
 
-  const playing = !banner;
+  const playing = !banner && !paused;
 
   const centerBlock = (
     <View style={s.center}>
@@ -224,10 +245,10 @@ export default function MatchScreen({
 
   const leftGroup = (
     <View style={s.group}>
-      <PressableScale style={[s.iconBtn, events.length < 2 && s.iconDisabled]} onPress={undo} accessibilityLabel="Undo last rally">
+      <PressableScale style={[s.iconBtn, (paused || events.length < 2) && s.iconDisabled]} disabled={paused || events.length < 2} onPress={undo} accessibilityLabel="Undo last rally">
         <Icon name="arrow-undo" color={C.text} size={18} />
       </PressableScale>
-      <PressableScale style={[s.iconBtn, redoStack.length === 0 && s.iconDisabled]} onPress={redo} accessibilityLabel="Redo rally">
+      <PressableScale style={[s.iconBtn, (paused || redoStack.length === 0) && s.iconDisabled]} disabled={paused || redoStack.length === 0} onPress={redo} accessibilityLabel="Redo rally">
         <Icon name="arrow-redo" color={C.text} size={18} />
       </PressableScale>
       <View>
@@ -257,8 +278,24 @@ export default function MatchScreen({
   );
   const rightGroup = (
     <View style={s.group}>
-      <PressableScale style={s.iconBtn} onPress={() => router.back()} hitSlop={10} accessibilityLabel="Pause and leave (match stays live)">
-        <Icon name="pause" color={C.text} size={20} />
+      <PressableScale
+        style={[s.iconBtn, paused && s.iconBtnOn]}
+        onPress={togglePause}
+        hitSlop={10}
+        accessibilityRole="button"
+        accessibilityLabel={paused ? "Resume match" : "Pause match"}
+        accessibilityState={{ selected: paused }}
+      >
+        <Icon name={paused ? "play" : "pause"} color={C.text} size={20} />
+      </PressableScale>
+      <PressableScale
+        style={s.iconBtn}
+        onPress={() => router.back()}
+        hitSlop={10}
+        accessibilityRole="button"
+        accessibilityLabel="Leave match — it stays live and can be resumed from Matches"
+      >
+        <Icon name="chevron-back" color={C.text} size={20} />
       </PressableScale>
       <PressableScale style={s.endBtn} onPress={confirmEnd} accessibilityLabel="End match">
         <Icon name="flag" color={C.text} size={15} />
@@ -278,7 +315,7 @@ export default function MatchScreen({
 
   const scoreBlock = (
     <View style={s.scoreWrap}>
-      <ElapsedChip startedAt={startedAt} pausedMs={0} pausedSince={null} />
+      <ElapsedChip startedAt={startedAt} pausedMs={pausedMs} pausedSince={pausedSince} />
       <View style={s.scoreRibbon}>
         <View style={[s.ribbonTeam, s.ribbonTeamA]}>
           <View style={s.serveSlot}>{state.servingTeam === "A" && <View style={[s.serveDot, { backgroundColor: C.red }]} />}</View>
@@ -333,6 +370,21 @@ export default function MatchScreen({
         )}
       </View>
 
+      {paused && (
+        <Pressable
+          style={s.pausedScrim}
+          onPress={togglePause}
+          accessibilityRole="button"
+          accessibilityLabel="Match paused. Tap to resume."
+        >
+          <View style={s.pausedCard}>
+            <Icon name="pause" color={C.text} size={28} />
+            <Text style={s.pausedTitle}>Paused</Text>
+            <Text style={s.pausedHint}>The clock is stopped. Tap anywhere to resume.</Text>
+          </View>
+        </Pressable>
+      )}
+
       {state.phase === "match_over" && (
         <View ref={shareCardRef} collapsable={false} style={s.offscreenCard}>
           <MatchResultCard record={record} />
@@ -354,6 +406,23 @@ const s = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
   iconDisabled: { opacity: 0.35 },
+  iconBtnOn: { backgroundColor: C.cardHi, borderWidth: 1, borderColor: C.lineHi },
+  // absoluteFillObject rather than a sized box: the scrim has to cover the +1
+  // rails in both the portrait and landscape layouts.
+  pausedScrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.72)",
+    alignItems: "center", justifyContent: "center",
+    zIndex: 30,
+  },
+  pausedCard: {
+    alignItems: "center", gap: space.sm,
+    backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.lineHi,
+    paddingHorizontal: space.xl, paddingVertical: space.lg,
+    minHeight: MIN_TOUCH,
+  },
+  pausedTitle: { color: C.text, fontFamily: F.display, fontSize: 22, letterSpacing: 0.5 },
+  pausedHint: { color: C.text2, fontFamily: F.body, fontSize: 14, textAlign: "center" },
   orientDropdown: {
     position: "absolute", top: 46, left: 0, zIndex: 20,
     backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.line, padding: 5, gap: 4,
