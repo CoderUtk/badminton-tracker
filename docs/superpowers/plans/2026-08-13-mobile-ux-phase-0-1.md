@@ -20,6 +20,7 @@
 - **Touch targets ≥48×48dp**, via real bounds or `hitSlop`.
 - **`C.red` as a `backgroundColor` means primary action only.** Destructive uses the `danger` outline recipe. Never introduce a red fill for a destructive control.
 - **Selection carries no hue** — `C.cardHi` fill, `C.lineHi` border, `C.text` label.
+- **Scope of the two colour rules above:** they bind code this plan **creates or restyles**. They are *not* a licence to repaint existing red selection surfaces — `SegmentedControl`'s indicator, the New match format segments, the session manual-pair slots and player chips all still fill red, and all of them are Phase 4's job. Phase 1's verification reads geometry and accessibility, not colour, so a repaint landing here would make its before/after screenshots unreadable. Leaving existing red selection in place is correct in this plan and must not be reported as a violation.
 - **Commit with explicit pathspec.** Never `git add -A`, `git add .`, or `git commit -a`. No `Co-Authored-By` trailer.
 - **Existing code style:** double-quoted strings, 2-space indent, `StyleSheet.create` assigned to a const named `s`, comments explain *why* not *what*.
 - Run `npx tsc --noEmit` before every commit. It must pass.
