@@ -8,11 +8,13 @@ import { toast } from "../../../src/lib/toast";
 import FormScreen from "../../../src/components/FormScreen";
 import Logo from "../../../src/components/Logo";
 import PressableScale from "../../../src/components/PressableScale";
+import { useScreenInsets } from "../../../src/hooks/useScreenInsets";
 import { C, F, GRAD, glow } from "../../../src/theme";
 
 export default function JoinTournament({ role = "player" }: { role?: "player" | "scorer" }) {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { ctaPadding } = useScreenInsets();
   const [tournament, setTournament] = useState<TournamentPreview | null>(null);
   const [loading, setLoading] = useState(true);
   const [outcome, setOutcome] = useState<RequestOutcome | null>(null);
@@ -62,7 +64,7 @@ export default function JoinTournament({ role = "player" }: { role?: "player" | 
   const decided = outcome === "pending" || outcome === "denied";
 
   return (
-    <FormScreen contentContainerStyle={s.scroll}>
+    <FormScreen contentContainerStyle={[s.scroll, { paddingBottom: ctaPadding }]}>
       <View style={s.hero}>
         <Logo size={52} />
         <Text style={s.eyebrow}>{role === "scorer" ? "SCORER INVITATION" : "TOURNAMENT INVITATION"}</Text>

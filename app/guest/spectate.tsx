@@ -5,10 +5,12 @@ import { parseJoinTarget, joinRouteFor } from "../../src/lib/joinLink";
 import { toast } from "../../src/lib/toast";
 import FormScreen from "../../src/components/FormScreen";
 import PressableScale from "../../src/components/PressableScale";
+import { useScreenInsets } from "../../src/hooks/useScreenInsets";
 import { C, F } from "../../src/theme";
 
 export default function GuestSpectate() {
   const router = useRouter();
+  const { ctaPadding } = useScreenInsets();
   const [input, setInput] = useState("");
 
   const go = () => {
@@ -21,7 +23,7 @@ export default function GuestSpectate() {
   };
 
   return (
-    <FormScreen contentContainerStyle={s.scroll}>
+    <FormScreen contentContainerStyle={[s.scroll, { paddingBottom: ctaPadding }]}>
       <Stack.Screen options={{ title: "Spectate" }} />
       <View style={s.hero}>
         <Text style={s.eyebrow}>SPECTATE</Text>

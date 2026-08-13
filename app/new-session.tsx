@@ -10,6 +10,7 @@ import BusyButton from "../src/components/BusyButton";
 import FormScreen from "../src/components/FormScreen";
 import Stepper from "../src/components/Stepper";
 import CalendarIcon from "../src/components/CalendarIcon";
+import { useScreenInsets } from "../src/hooks/useScreenInsets";
 import { C } from "../src/theme";
 
 /** Default club-night slot: 6:00 PM on the chosen day, as minutes-since-midnight. */
@@ -26,6 +27,7 @@ function formatTime(minutes: number): string {
 
 export default function NewSession() {
   const router = useRouter();
+  const { ctaPadding } = useScreenInsets();
   const [clubs, setClubs] = useState<Club[]>([]);
   const [clubId, setClubId] = useState<string | null>(null);
   const [location, setLocation] = useState("Badminton hall");
@@ -67,7 +69,7 @@ export default function NewSession() {
   };
 
   return (
-    <FormScreen contentContainerStyle={s.content}>
+    <FormScreen contentContainerStyle={[s.content, { paddingBottom: ctaPadding }]}>
       <Text style={s.intro}>Set up the court night. Players can check in from the session screen.</Text>
       {clubs.length === 0 ? (
         <Text style={s.hint}>You need to be an admin of a club to plan a session.</Text>

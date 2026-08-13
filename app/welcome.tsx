@@ -11,6 +11,7 @@ import { joinRouteFor, parseJoinTarget } from "../src/lib/joinLink";
 import FormScreen from "../src/components/FormScreen";
 import Logo from "../src/components/Logo";
 import PressableScale from "../src/components/PressableScale";
+import { useScreenInsets } from "../src/hooks/useScreenInsets";
 import { C, F, GRAD, glow } from "../src/theme";
 
 /**
@@ -20,6 +21,7 @@ import { C, F, GRAD, glow } from "../src/theme";
  */
 export default function Welcome() {
   const router = useRouter();
+  const { ctaPadding } = useScreenInsets();
   const [name, setName] = useState("");
   const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -65,7 +67,7 @@ export default function Welcome() {
   };
 
   return (
-    <FormScreen contentContainerStyle={s.scroll}>
+    <FormScreen contentContainerStyle={[s.scroll, { paddingBottom: ctaPadding }]}>
       <Animated.View style={[s.hero, heroStyle]}>
         <Logo size={52} />
         <Text style={s.eyebrow}>ONE LAST THING</Text>
