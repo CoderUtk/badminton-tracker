@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-nati
 import Svg, { Line } from "react-native-svg";
 import type { BracketMatch, Entrant } from "../tournament/types";
 import { gamesWonBy } from "../tournament/score";
+import { bracketCellLabel } from "../tournament/bracketLabel";
 import Icon from "./Icon";
 import { C, F } from "../theme";
 
@@ -62,22 +63,8 @@ const BracketCell = React.memo(function BracketCell({
   const games = liveScore?.scoreSummary?.games ?? [];
   const current = liveScore?.scoreSummary?.current;
 
-  const matchDesc = cell.entrantA && cell.entrantB
-    ? `${nameA} versus ${nameB}`
-    : cell.entrantA
-      ? `${nameA}, waiting for opponent`
-      : cell.entrantB
-        ? `${nameB}, waiting for opponent`
-        : "Empty match slot";
-  const resultDesc = cell.winnerEntrant
-    ? cell.winnerEntrant === cell.entrantA
-      ? `, ${nameA} won`
-      : `, ${nameB} won`
-    : cell.entrantA && cell.entrantB
-      ? ", in progress"
-      : "";
   const courtDesc = cell.court ? `, Court ${cell.court}` : "";
-  const cellLabel = `Round ${cell.round}${courtDesc}, ${matchDesc}${resultDesc}`;
+  const cellLabel = `Round ${cell.round}${courtDesc}, ${bracketCellLabel(cell, nameA, nameB)}`;
 
   return (
     <TouchableOpacity
