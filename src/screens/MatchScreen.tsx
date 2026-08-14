@@ -448,8 +448,9 @@ const s = StyleSheet.create({
   // Fixed-width slot so the serve dot appearing/disappearing never reflows names.
   serveSlot: { width: 8, alignItems: "center", flexShrink: 0 },
   serveDot: { width: 8, height: 8, borderRadius: 4 },
-  // Russo One's zero closes at 56pt; 1–0 read as numeral + filled block. Measured on device:
-  // removing glow changed nothing, only the font did, so bold is kept everywhere else.
+  // Russo One's zero closes at 56pt, making 1 - 0 read as numeral beside filled
+  // block (audit M8). Measured on device: only the font fixed this, not glow.
+  // Glow stays. Score digits alone move to bold; F.display in rail labels.
   ribbonScore: {
     minWidth: 72, color: C.text, fontSize: SCOREBOARD_TYPE.score, fontFamily: F.bold,
     textAlign: "center", fontVariant: ["tabular-nums"],
