@@ -77,6 +77,8 @@ export default function Matches() {
     ...(filter === null || filter === "forfeited" ? (forfeited.length ? [{ title: "Forfeited", data: forfeited }] : []) : []),
   ];
 
+  const hasAnyMatches = live.length > 0 || done.length > 0;
+
   const TeamLine = ({ m, team }: { m: Row; team: TeamId }) => {
     const side = team === "A" ? m.side_a : m.side_b;
     const won = m.winner === team;
@@ -109,6 +111,7 @@ export default function Matches() {
 
   return (
     <View style={s.root}>
+      {hasAnyMatches && (
       <View style={s.filterBar}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterRow}>
           <Pressable style={[s.fChip, !filter && s.fChipOn]} onPress={() => setFilter(null)}>
@@ -121,6 +124,7 @@ export default function Matches() {
           ))}
         </ScrollView>
       </View>
+      )}
       <SectionList
         sections={sections}
         keyExtractor={(m) => m.id}
