@@ -1234,7 +1234,11 @@ Expected: PASS. If `@react-navigation/native` types are not resolvable, confirm 
 
 - [ ] **Step 7: Verify on device**
 
-Reload Metro. Open Cups → a tournament → drill into its Bracket (matching the audit's screenshot 35 sequence). Switch to another tab (e.g. Home). Tap **Cups** again. Expected: lands on the **tournament list**, not the Bracket screen. Then open a tournament again, switch tabs, tap **Cups** again while already on the tournament list (not deep) — expected: no visible change, still the list (the `isFocused` + `index > 0` guard means this is a no-op, not a forced reload).
+Reload Metro. Open Cups → a tournament → drill into its Bracket (matching the audit's screenshot 35 sequence), **without switching tabs away**. While still looking at the Bracket screen, tap the **Cups** tab button again — this is the re-tap the `isFocused` check is built for: it fires the reset only when the tab you're tapping is the one you're already on. Expected: lands on the **tournament list**, not the Bracket screen.
+
+Separately confirm the deep stack survives an ordinary tab switch, which is deliberately *not* reset: drill into a Bracket again, switch to Home, then tap Cups to return. Expected: lands back on the **Bracket screen**, unchanged — switching tabs and back is not a re-tap of the active tab, so it must not reset. (This is the opposite of what an earlier draft of this step said; standard iOS/Android convention resets only on a genuine re-tap of the tab you're currently on, not on returning to a tab from elsewhere — see the Decision note above.)
+
+Then tap **Cups** again while already on the tournament list (not deep) — expected: no visible change, still the list (the `isFocused` + `index > 0` guard means this is a no-op, not a forced reload).
 
 - [ ] **Step 8: Commit**
 
