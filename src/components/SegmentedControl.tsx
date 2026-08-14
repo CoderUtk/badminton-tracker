@@ -57,7 +57,9 @@ export default function SegmentedControl<T extends string>({
 
 const s = StyleSheet.create({
   track: { flexDirection: "row", backgroundColor: C.card, borderRadius: 12, padding: 4, borderWidth: 1, borderColor: C.line },
-  indicator: { position: "absolute", top: 4, bottom: 4, left: 4, backgroundColor: C.red, borderRadius: 9 },
+  // Selection is a state, not an action — C.red is reserved for primary CTAs
+  // (audit M2). cardHi + a hairline border matches Chip's `selected` recipe.
+  indicator: { position: "absolute", top: 4, bottom: 4, left: 4, backgroundColor: C.cardHi, borderRadius: 9, borderWidth: 1, borderColor: C.lineHi },
   item: { flex: 1, minHeight: MIN_TOUCH, alignItems: "center", justifyContent: "center" },
   itemDisabled: { opacity: 0.4 },
   itemText: { color: C.text2, fontWeight: "800", fontSize: 14 },
