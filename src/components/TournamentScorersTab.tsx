@@ -81,6 +81,10 @@ export default function TournamentScorersTab({
         </View>
       ))}
 
+      {staff.length === 0 && !isAdmin ? (
+        <Text style={s.empty}>No scorers assigned yet.</Text>
+      ) : null}
+
       {isAdmin && scorerRequests.length > 0 ? (
         <>
           <Text style={s.sectionTitle}>Pending requests</Text>
@@ -123,4 +127,5 @@ const s = StyleSheet.create({
   reqBtn: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   deny: { backgroundColor: C.cardHi, borderWidth: 1, borderColor: C.line },
   approve: { backgroundColor: C.green },
+  empty: { color: C.text2, fontFamily: F.body, fontSize: 14, textAlign: "center", paddingVertical: 16 },
 });
