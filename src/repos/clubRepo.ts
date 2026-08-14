@@ -165,6 +165,36 @@ export async function listMyClubPlayers(): Promise<ClubPlayer[]> {
   return db.getAllAsync<ClubPlayer>("select * from club_players_cache order by name");
 }
 
+/**
+ * Role + avatar per club member, keyed by profile_id. Live query only —
+ * club_players_cache (used by listPlayers) never synced these columns, and
+ * this screen already requires a connection for add/remove actions, so a
+ * supplementary live fetch is smaller than extending the offline cache.
+ * Returns an empty map (not a throw) when offline — callers degrade to
+ * name-only rows rather than failing the whole screen for a secondary field.
+ */
+export async function listPlayerRoles(clubId: string): Promise<Map<string, { role: string; avatarUrl: string | null }>> {
+  if (!supabase) return new Map();
+  const { data: members, error: mErr } = await supabase
+    .from("club_members")
+    .select("profile_id, role")
+    .eq("club_id", clubId);
+  if (mErr || !members) return new Map();
+  const ids = members.map((m) => m.profile_id).filter(Boolean) as string[];
+  if (ids.length === 0) return new Map();
+  const { data: profiles, error: pErr } = await supabase
+    .from("profiles")
+    .select("id, avatar_url")
+    .in("id", ids);
+  const avatarById = new Map((profiles ?? []).map((p) => [p.id, p.avatar_url as string | null]));
+  const out = new Map<string, { role: string; avatarUrl: string | null }>();
+  for (const m of members) {
+    if (!m.profile_id) continue;
+    out.set(m.profile_id, { role: m.role, avatarUrl: pErr ? null : (avatarById.get(m.profile_id) ?? null) });
+  }
+  return out;
+}
+
 /** Distinct player names across every club (used to pick a profile identity). */
 export async function listAllPlayerNames(): Promise<string[]> {
   const db = await getDb();
