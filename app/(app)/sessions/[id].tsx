@@ -222,17 +222,20 @@ export default function SessionDetail() {
             </View>
           )}
 
-          {/* Sub-tabs */}
+          {/* Sub-tabs — real navigation between attendance and games, so it
+              uses the same shared control as every other tab switch in the
+              app (audit M9: this used to share a visual style with the mode
+              toggle below, which is a different kind of control). */}
           {!done && (
-            <View style={s.seg}>
-              {(["attendance", "games"] as Tab[]).map((t) => (
-                <Pressable key={t} style={[s.segBtn, tab === t && s.segOn]} onPress={() => setTab(t)}>
-                  <Icon name={t === "attendance" ? "people-outline" : "scoreboard-outline"} size={16} color={tab === t ? C.text : C.text2} />
-                  <Text style={[s.segText, tab === t && s.segTextOn]}>
-                    {t === "attendance" ? `Attendance · ${checkedIn.length}` : `Games · ${matches.length}`}
-                  </Text>
-                </Pressable>
-              ))}
+            <View style={{ marginTop: 6 }}>
+              <SegmentedControl
+                options={[
+                  { label: `Attendance · ${checkedIn.length}`, value: "attendance" as Tab },
+                  { label: `Games · ${matches.length}`, value: "games" as Tab },
+                ]}
+                value={tab}
+                onChange={setTab}
+              />
             </View>
           )}
 
@@ -240,17 +243,14 @@ export default function SessionDetail() {
           {tab === "games" && (
             <View style={{ gap: 8 }}>
               {!done && (
-                <View style={s.seg}>
-                  <Pressable style={[s.segBtn, !manualMode && s.segOn]} onPress={() => setManualMode(false)}>
-                    <Text style={[s.segText, !manualMode && s.segTextOn]}>Auto</Text>
-                  </Pressable>
-                  <Pressable
-                    disabled={!canDoubles}
-                    style={[s.segBtn, manualMode && s.segOn, !canDoubles && s.modeDisabled]}
+                <View style={s.modeToggleRow}>
+                  <Chip label="Auto" isSelected={!manualMode} onPress={() => setManualMode(false)} />
+                  <Chip
+                    label="Manual pair"
+                    isSelected={manualMode}
                     onPress={() => setManualMode(true)}
-                  >
-                    <Text style={[s.segText, manualMode && s.segTextOn]}>Manual pair</Text>
-                  </Pressable>
+                    disabled={!canDoubles}
+                  />
                 </View>
               )}
               {!done && manualMode && (
@@ -435,10 +435,7 @@ const s = StyleSheet.create({
   rank: { color: C.text2, width: 24, textAlign: "center", fontWeight: "800", fontSize: 15 }, boardName: { flex: 1, color: C.text, fontSize: 15, fontWeight: "700" }, boardWl: { color: C.text2, fontSize: 13, fontWeight: "700", fontVariant: ["tabular-nums"] },
   shareBtn: { flexDirection: "row", gap: 8, backgroundColor: C.cardHi, borderRadius: 11, minHeight: 46, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: C.line }, shareText: { color: C.text, fontWeight: "800" },
   offscreenCard: { position: "absolute", top: -3000, left: 0 },
-  seg: { flexDirection: "row", backgroundColor: C.card, borderRadius: 12, padding: 4, gap: 4, marginTop: 6 },
-  segBtn: { flex: 1, flexDirection: "row", gap: 6, minHeight: 42, borderRadius: 9, alignItems: "center", justifyContent: "center" },
-  segOn: { backgroundColor: C.red },
-  segText: { color: C.text2, fontSize: 14, fontWeight: "700" }, segTextOn: { color: C.text },
+  modeToggleRow: { flexDirection: "row", gap: 8, marginTop: 4 },
   sectionTitle: { color: C.text, fontSize: 18, fontWeight: "900" },
   modeRow: { flexDirection: "row", gap: 8, alignItems: "center" },
   modeDisabled: { opacity: 0.4 },
