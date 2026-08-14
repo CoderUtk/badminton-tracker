@@ -26,7 +26,7 @@ import TournamentScorersTab from "../../../src/components/TournamentScorersTab";
 import TournamentResultCard from "../../../src/components/share/TournamentResultCard";
 import { captureAndShare } from "../../../src/lib/share/captureAndShare";
 import { toast } from "../../../src/lib/toast";
-import { C, F, press } from "../../../src/theme";
+import { C, F, press, selected } from "../../../src/theme";
 
 type Tab = "config" | "players" | "scorers";
 const POLL_MS = 15000;
@@ -417,7 +417,7 @@ const s = StyleSheet.create({
   refreshBtn: { width: 28, height: 28, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: C.card },
   tabRow: { flexDirection: "row", gap: 8, marginTop: 8 },
   tabBtn: { flex: 1, alignItems: "center", paddingVertical: 10, backgroundColor: C.card, borderRadius: 10, borderWidth: 1, borderColor: C.line },
-  tabOn: { borderColor: C.red, backgroundColor: "rgba(255,59,48,0.12)" },
+  tabOn: selected,
   tabText: { color: C.text2, fontFamily: F.semibold, fontSize: 14 },
   tabTextOn: { color: C.text },
   shareButton: {
