@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from "react";
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Image, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
-import { addFriendToClub, getClub, listPlayers, removePlayer, type ClubPlayer } from "../../../../src/repos/clubRepo";
+import { addFriendToClub, getClub, listPlayerRoles, listPlayers, removePlayer, type ClubPlayer } from "../../../../src/repos/clubRepo";
 import { listFriends, type Friend } from "../../../../src/repos/friendRepo";
 import { toast } from "../../../../src/lib/toast";
 import Sheet from "../../../../src/components/Sheet";
@@ -19,13 +19,15 @@ export default function ClubPlayers() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [addableFriends, setAddableFriends] = useState<Friend[]>([]);
   const [addingId, setAddingId] = useState<string | null>(null);
+  const [roles, setRoles] = useState<Map<string, { role: string; avatarUrl: string | null }>>(new Map());
 
   const reload = useCallback(async () => {
     if (!clubId) return;
     try {
-      const [list, club] = await Promise.all([listPlayers(clubId), getClub(clubId)]);
+      const [list, club, roleMap] = await Promise.all([listPlayers(clubId), getClub(clubId), listPlayerRoles(clubId)]);
       setPlayers(list);
       setIsAdmin(club?.role === "owner" || club?.role === "admin");
+      setRoles(roleMap);
     } catch (e) {
       toast((e as Error).message || "Could not load players", "error");
     } finally {
@@ -94,20 +96,34 @@ export default function ClubPlayers() {
           ) : null
         }
         ListEmptyComponent={<Text style={s.empty}>No players yet.</Text>}
-        renderItem={({ item }) => (
-          <View style={s.row}>
-            <Text style={s.name} numberOfLines={1}>{item.name}</Text>
-            {isAdmin ? (
-              <PressableScale
-                style={[s.remove, busyId === item.id && s.off]}
-                disabled={busyId === item.id}
-                onPress={() => setPending(item)}
-              >
-                <Icon name="trash-outline" color={C.text2} size={18} />
-              </PressableScale>
-            ) : null}
-          </View>
-        )}
+        renderItem={({ item }) => {
+          const meta = item.profile_id ? roles.get(item.profile_id) : undefined;
+          const isRowOwner = meta?.role === "owner";
+          return (
+            <View style={s.row}>
+              {meta?.avatarUrl ? (
+                <Image source={{ uri: meta.avatarUrl }} style={s.avatar} />
+              ) : (
+                <View style={s.avatarFallback}>
+                  <Icon name="person" color={C.text2} size={16} />
+                </View>
+              )}
+              <View style={{ flex: 1 }}>
+                <Text style={s.name} numberOfLines={1}>{item.name}</Text>
+                {meta?.role ? <Text style={s.roleBadge}>{meta.role}</Text> : null}
+              </View>
+              {isAdmin && !isRowOwner ? (
+                <PressableScale
+                  style={[s.remove, busyId === item.id && s.off]}
+                  disabled={busyId === item.id}
+                  onPress={() => setPending(item)}
+                >
+                  <Icon name="trash-outline" color={C.text2} size={18} />
+                </PressableScale>
+              ) : null}
+            </View>
+          );
+        }}
       />
       <Sheet
         visible={pickerOpen}
@@ -155,4 +171,7 @@ const s = StyleSheet.create({
   name: { flex: 1, color: C.text, fontSize: 16, fontFamily: F.semibold },
   remove: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: C.bgElev },
   off: { opacity: 0.45 },
+  avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: C.bgElev },
+  avatarFallback: { width: 36, height: 36, borderRadius: 18, backgroundColor: C.bgElev, alignItems: "center", justifyContent: "center" },
+  roleBadge: { color: C.text2, fontSize: 11, fontFamily: F.medium, textTransform: "capitalize", marginTop: 2 },
 });
