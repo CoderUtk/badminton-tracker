@@ -138,10 +138,16 @@ export async function listOutgoingRequests(): Promise<FriendRequestRow[]> {
 export async function searchUsers(prefix: string): Promise<{ id: string; username: string; displayName: string }[]> {
   const trimmed = prefix.trim();
   if (!supabase || trimmed.length < 2) return [];
+  // Strip characters that are significant to PostgREST's ilike/or() filter grammar
+  // (`,` `.` `(` `)` `"` split/terminate clauses, `%` `_` are ilike wildcards) so a
+  // literal search term can't rewrite the query. None of these appear in real
+  // usernames or are needed for a plain display-name search.
+  const safe = trimmed.replace(/[,.()"%_]/g, "");
+  if (safe.length < 2) return [];
   const { data, error } = await supabase
     .from("profiles")
     .select("id, username, display_name")
-    .or(`username.ilike.${trimmed}%,display_name.ilike.${trimmed}%`)
+    .or(`username.ilike.${safe}%,display_name.ilike.${safe}%`)
     .limit(8);
   if (error) throw new Error(error.message);
   return (data ?? []).map((p) => ({ id: p.id, username: p.username, displayName: p.display_name }));
