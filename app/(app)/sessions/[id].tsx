@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState } from "react";
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { generateMatchups, type GeneratedMatch, type MatchMode } from "../../../src/matchmaking/generator";
 import { listMatchesForSession, replayMatch, type MatchRecord } from "../../../src/repos/matchRepo";
@@ -9,6 +9,7 @@ import {
   type Attendance, type ClubSession, type SessionStats,
 } from "../../../src/repos/sessionRepo";
 import { getClub } from "../../../src/repos/clubRepo";
+import AppDialog from "../../../src/components/AppDialog";
 import Icon from "../../../src/components/Icon";
 import Chip from "../../../src/components/Chip";
 import Sheet from "../../../src/components/Sheet";
@@ -36,6 +37,7 @@ export default function SessionDetail() {
   const [genMode, setGenMode] = useState<MatchMode>("doubles");
   const [clubRole, setClubRole] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [confirmingFinish, setConfirmingFinish] = useState(false);
   const [manualMode, setManualMode] = useState(false);
   const [manualPicks, setManualPicks] = useState<Attendance[]>([]);
   const [manualCourts, setManualCourts] = useState<{ teamA: Attendance[]; teamB: Attendance[] }[]>([]);
@@ -127,15 +129,12 @@ export default function SessionDetail() {
       },
     });
   };
-  const finishSession = () => {
+  const finishSession = () => setConfirmingFinish(true);
+  const onConfirmFinish = async () => {
+    setConfirmingFinish(false);
     if (!session) return;
-    const note = liveCount > 0
-      ? `This will also end ${liveCount} live ${liveCount === 1 ? "match" : "matches"} and save their current scores.`
-      : "Wrap up this session and see the summary.";
-    Alert.alert("Finish session?", note, [
-      { text: "Cancel", style: "cancel" },
-      { text: "Finish", style: "destructive", onPress: async () => { await endSession(session.id); await reload(); } },
-    ]);
+    await endSession(session.id);
+    await reload();
   };
   const openMatch = (m: MatchRecord) =>
     m.status === "live" ? router.push(`/score/${m.id}`) : router.push(`/matches/${m.id}`);
@@ -404,6 +403,20 @@ export default function SessionDetail() {
           onClose={() => setConfirmingDelete(false)}
         />
       )}
+      <AppDialog
+        visible={confirmingFinish}
+        title="Finish session?"
+        message={
+          liveCount > 0
+            ? `This will also end ${liveCount} live ${liveCount === 1 ? "match" : "matches"} and save their current scores.`
+            : "Wrap up this session and see the summary."
+        }
+        confirmLabel="Finish"
+        cancelLabel="Cancel"
+        destructive
+        onConfirm={onConfirmFinish}
+        onCancel={() => setConfirmingFinish(false)}
+      />
     </View>
   );
 }

@@ -1,9 +1,10 @@
 import React, { useCallback, useMemo, useState } from "react";
-import { Alert, Pressable, ScrollView, SectionList, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, SectionList, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { endMatchEarly, listMatches, MatchRecord, replayMatch } from "../../../src/repos/matchRepo";
 import type { TeamId } from "../../../src/engine";
 import { syncNow } from "../../../src/sync/runner";
+import AppDialog from "../../../src/components/AppDialog";
 import Icon from "../../../src/components/Icon";
 import { C, F, glow, textGlow } from "../../../src/theme";
 
@@ -40,6 +41,7 @@ export default function Matches() {
   const [live, setLive] = useState<Row[]>([]);
   const [done, setDone] = useState<Row[]>([]);
   const [filter, setFilter] = useState<StatusFilter | null>(null);
+  const [confirmingEndId, setConfirmingEndId] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     const list = await listMatches();
@@ -55,21 +57,16 @@ export default function Matches() {
   }, []);
   useFocusEffect(useCallback(() => { void reload(); }, [reload]));
 
-  const endLive = (m: Row) => {
-    Alert.alert("End match?", "Finish now and save the current score to history.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "End match",
-        style: "destructive",
-        onPress: async () => {
-          const state = await replayMatch(m.id);
-          if (state) await endMatchEarly(m.id, state);
-          void syncNow();
-          void reload();
-        },
-      },
-    ]);
-  };
+  const endLive = (m: Row) => setConfirmingEndId(m.id);
+  const onConfirmEndLive = useCallback(async () => {
+    const id = confirmingEndId;
+    setConfirmingEndId(null);
+    if (!id) return;
+    const state = await replayMatch(id);
+    if (state) await endMatchEarly(id, state);
+    void syncNow();
+    void reload();
+  }, [confirmingEndId, reload]);
 
   const completed = useMemo(() => done.filter((m) => m.status === "completed"), [done]);
   const forfeited = useMemo(() => done.filter((m) => m.status === "forfeited"), [done]);
@@ -189,6 +186,16 @@ export default function Matches() {
             </Pressable>
           );
         }}
+      />
+      <AppDialog
+        visible={!!confirmingEndId}
+        title="End match?"
+        message="Finish now and save the current score to history."
+        confirmLabel="End match"
+        cancelLabel="Cancel"
+        destructive
+        onConfirm={onConfirmEndLive}
+        onCancel={() => setConfirmingEndId(null)}
       />
     </View>
   );

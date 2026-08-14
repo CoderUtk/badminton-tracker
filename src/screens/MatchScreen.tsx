@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import * as Haptics from "expo-haptics";
 import * as ScreenOrientation from "expo-screen-orientation";
 import { useKeepAwake } from "expo-keep-awake";
@@ -7,6 +7,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { gameScoreState, MatchState, pointSituation, serverName, TeamId } from "../engine";
 import type { MatchRecord } from "../repos/matchRepo";
 import { useMatchStore } from "../stores/matchStore";
+import AppDialog from "../components/AppDialog";
 import Court from "../components/Court";
 import ElapsedChip from "../components/ElapsedChip";
 import Icon, { type IconName } from "../components/Icon";
@@ -69,6 +70,7 @@ export default function MatchScreen({
   const portrait = height >= width;
   const [orientationMode, setOrientationMode] = useState<OrientationMode>(DEFAULT_SCORING_MODE);
   const [orientationSheetOpen, setOrientationSheetOpen] = useState(false);
+  const [confirmingEnd, setConfirmingEnd] = useState(false);
 
   // Local and non-persisted, deliberately. MatchEvent is reduced by the engine,
   // synced to Supabase and replayed by undo and autoFinish; a UI affordance must
@@ -124,15 +126,11 @@ export default function MatchScreen({
 
   const { state, events, redoStack, open, dispatch, undo, redo, endEarly, close } = useMatchStore();
 
-  const confirmEnd = useCallback(() => {
-    Alert.alert(
-      "End match?",
-      "Finish now and save the current score to history.",
-      [
-        { text: "Keep playing", style: "cancel" },
-        { text: "End match", style: "destructive", onPress: async () => { await endEarly(); router.back(); } },
-      ]
-    );
+  const confirmEnd = useCallback(() => setConfirmingEnd(true), []);
+  const onConfirmEnd = useCallback(async () => {
+    setConfirmingEnd(false);
+    await endEarly();
+    router.back();
   }, [endEarly, router]);
   useEffect(() => {
     open(matchId).then(() => {
@@ -415,6 +413,17 @@ export default function MatchScreen({
           <MatchResultCard record={record} />
         </View>
       )}
+
+      <AppDialog
+        visible={confirmingEnd}
+        title="End match?"
+        message="Finish now and save the current score to history."
+        confirmLabel="End match"
+        cancelLabel="Keep playing"
+        destructive
+        onConfirm={onConfirmEnd}
+        onCancel={() => setConfirmingEnd(false)}
+      />
     </View>
   );
 }
