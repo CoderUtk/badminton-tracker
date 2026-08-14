@@ -28,14 +28,18 @@ and continuing. No app data or state was affected.
 |---|---|---|---|
 | **M5** | `m5-achievement-grid.png` | Live screenshot, Profile tab scrolled to Achievements | **PASS** |
 | **M7** | `m7-reminders-switch.png` | Live screenshot, Profile tab scrolled to Notifications | **PASS** |
-| **P1** | `p1-stat-tiles.png` | Live screenshot, Home | **PASS** |
+| **P1** | `p1-stat-tiles.png`\* | Live screenshot, Home | **PASS** |
 | **P3** | `p3-display-name.png` | Live screenshot, Profile tab top | **PASS** |
 | **P5** | `p5-matches-with-data.png` (not the brief's empty-state capture) | Live screenshot, Matches tab — see below | **CODE-CONFIRMED, PARTIAL DEVICE EVIDENCE** |
 | **P7** | `p7-club-detail-header.png` | Live screenshot, Club detail (owner path) | **PASS (owner path only — see below)** |
 | **P10** | `p10-friends-search.png` | Live screenshot, Friends screen, mid-type "utk" | **PASS** |
 | **P11** | `p11-roster-rows.png` | Live screenshot, Manage players | **PASS** |
 | **P13** | `p13-entrant-rows.png` | Live screenshot, New tournament → Entrants tab, zero picks | **PASS** |
-| **P18** | `p18-home-club-row.png` | Live screenshot, Home | **PASS** |
+| **P18** | `p18-home-club-row.png`\* | Live screenshot, Home | **PASS** |
+
+\* `p1-stat-tiles.png` and `p18-home-club-row.png` are the same capture of
+the Home screen, reused because it satisfies both findings' checks (aligned
+stat tiles and no invite code in the club row) in one shot.
 
 ## Explicit call-outs (per brief Step 3)
 
