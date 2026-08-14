@@ -65,12 +65,25 @@ export default function ClubDetail() {
 
   return (
     <>
-      {/* Logo lives in headerLeft; owner screens additionally get a menu button in headerRight. */}
+      {/* Logo lives in headerLeft; owner screens additionally get a menu button in headerRight.
+          This stack's initialRouteName is this very screen (see clubs/_layout.tsx), so React
+          Navigation's canGoBack is always false here even though the screen is only ever reached
+          by a push from Home — force the back chevron and wire it to router.back() directly. */}
       <Stack.Screen
         options={{
           headerLeft: isOwner
-            ? (props) => <HeaderLogoLeft {...props} />
-            : undefined,
+            ? (props) => <HeaderLogoLeft {...props} canGoBack onPress={() => router.back()} />
+            : () => (
+                <Pressable
+                  onPress={() => router.back()}
+                  hitSlop={8}
+                  style={{ padding: 6, paddingLeft: 8 }}
+                  accessibilityLabel="Go back"
+                  accessibilityRole="button"
+                >
+                  <Icon name="chevron-back" color={C.text} size={26} />
+                </Pressable>
+              ),
           headerRight: isOwner
             ? () => <MenuButton onPress={() => setMenuOpen(true)} />
             : undefined,
