@@ -21,4 +21,15 @@ describe("fillEmptySlots", () => {
     const result = fillEmptySlots(["", ""], [false, false], [{ name: "Alice" }]);
     expect(result).toEqual(["Alice", ""]);
   });
+
+  it("does not overwrite a slot that already has a name but was never typed into (deep link, restored lineup)", () => {
+    // Audit P12's original bug, on a path Task 7 didn't originally cover:
+    // names arriving from a session deep-link or a restored last-lineup are
+    // "untouched" (never typed into) but must not be replaced by roster
+    // order when a club is picked afterward.
+    const result = fillEmptySlots(["Ann", "Bob", "", ""], [false, false, false, false], [
+      { name: "Alice" }, { name: "Bob" }, { name: "Carol" }, { name: "Dan" },
+    ]);
+    expect(result).toEqual(["Ann", "Bob", "Carol", "Dan"]);
+  });
 });

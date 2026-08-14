@@ -63,6 +63,13 @@ export default function NewMatch() {
   const labels = doubles ? DOUBLES_LABELS : SINGLES_LABELS;
   const filled = names.every((n) => n.trim());
 
+  // Mirrors `touched` so the in-flight listPlayers().then() below can read the
+  // latest touched-flags instead of the stale closure it captured when the
+  // effect started — a keystroke that lands while the fetch is in flight must
+  // still protect its slot.
+  const touchedRef = useRef(touched);
+  useEffect(() => { touchedRef.current = touched; }, [touched]);
+
   // Restore the previous lineup once on mount. Route params (a session or
   // tournament deep link) win over anything remembered.
   useEffect(() => {
@@ -121,7 +128,7 @@ export default function NewMatch() {
       .then((players) => {
         if (cancelled) return;
         setRoster(players);
-        setNames((prev) => fillEmptySlots(prev, touched, players));
+        setNames((prev) => fillEmptySlots(prev, touchedRef.current, players));
       })
       .catch(() => { if (!cancelled) setRoster([]); });
     return () => { cancelled = true; };
@@ -174,9 +181,11 @@ export default function NewMatch() {
   const swapSides = () => {
     if (doubles) {
       setNamesDoubles((p) => [p[2], p[3], p[0], p[1]]);
+      setTouchedDoubles((p) => [p[2], p[3], p[0], p[1]]);
       setFirstServerIdx((i) => (i + 2) % 4);
     } else {
       setNamesSingles((p) => [p[1], p[0]]);
+      setTouchedSingles((p) => [p[1], p[0]]);
       setFirstServerIdx((i) => (i === 0 ? 1 : 0));
     }
     setEditing(null);
@@ -191,6 +200,7 @@ export default function NewMatch() {
   const swapTeam = (team: "A" | "B") => {
     const [x, y] = team === "A" ? [0, 1] : [2, 3];
     setNamesDoubles((p) => p.map((n, i) => (i === x ? p[y] : i === y ? p[x] : n)));
+    setTouchedDoubles((p) => p.map((t, i) => (i === x ? p[y] : i === y ? p[x] : t)));
     setEditing(null);
   };
 

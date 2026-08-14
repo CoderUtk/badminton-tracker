@@ -13,5 +13,5 @@ export function fillEmptySlots(
   touched: boolean[],
   players: { name: string }[]
 ): string[] {
-  return prev.map((n, i) => (touched[i] ? n : players[i]?.name ?? n));
+  return prev.map((n, i) => (touched[i] || n.trim() ? n : players[i]?.name ?? n));
 }
