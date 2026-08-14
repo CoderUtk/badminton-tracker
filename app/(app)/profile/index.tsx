@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Alert, Image, Linking, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Image, Linking, Modal, Pressable, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { supabase } from "../../../src/lib/supabase";
@@ -474,17 +474,14 @@ export default function Profile() {
             <Text style={s.cardTitle}>Notifications</Text>
             <Text style={s.reminderSub}>Match reminders and requests</Text>
           </View>
-          <Pressable
-            style={[s.toggleChip, remindersOn && s.toggleChipOn, remindersBusy && s.off]}
-            onPress={() => void toggleReminders()}
+          <Switch
+            value={remindersOn}
+            onValueChange={() => void toggleReminders()}
             disabled={remindersBusy}
-            accessibilityRole="switch"
-            accessibilityState={{ checked: remindersOn, busy: remindersBusy }}
-          >
-            <Text style={[s.toggleChipText, remindersOn && s.toggleChipTextOn]}>
-              {remindersOn ? "ON" : "OFF"}
-            </Text>
-          </Pressable>
+            trackColor={{ false: C.line, true: C.red }}
+            thumbColor={C.text}
+            accessibilityLabel="Match reminders"
+          />
         </View>
       </View>
 
@@ -600,10 +597,6 @@ const s = StyleSheet.create({
   matchMeta: { color: C.text2, fontSize: 13, marginTop: 1, fontVariant: ["tabular-nums"] },
   reminderRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   reminderSub: { color: C.text2, fontSize: 12.5, marginTop: 2, fontFamily: F.body },
-  toggleChip: { backgroundColor: C.bgElev, borderRadius: 999, borderWidth: 1, borderColor: C.line, paddingHorizontal: 16, paddingVertical: 8, minWidth: 56, alignItems: "center" },
-  toggleChipOn: { backgroundColor: C.red, borderColor: C.red },
-  toggleChipText: { color: C.text2, fontFamily: F.semibold, fontSize: 13 },
-  toggleChipTextOn: { color: C.text },
   off: { opacity: 0.45 },
   emptyCard: { backgroundColor: C.card, borderRadius: 14, padding: 22, alignItems: "center", gap: 10, borderWidth: 1, borderColor: C.line },
   emptyText: { color: C.text2, fontSize: 15, textAlign: "center" },
