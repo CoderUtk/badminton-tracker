@@ -62,10 +62,29 @@ const BracketCell = React.memo(function BracketCell({
   const games = liveScore?.scoreSummary?.games ?? [];
   const current = liveScore?.scoreSummary?.current;
 
+  const matchDesc = cell.entrantA && cell.entrantB
+    ? `${nameA} versus ${nameB}`
+    : cell.entrantA
+      ? `${nameA}, waiting for opponent`
+      : cell.entrantB
+        ? `${nameB}, waiting for opponent`
+        : "Empty match slot";
+  const resultDesc = cell.winnerEntrant
+    ? cell.winnerEntrant === cell.entrantA
+      ? `, ${nameA} won`
+      : `, ${nameB} won`
+    : cell.entrantA && cell.entrantB
+      ? ", in progress"
+      : "";
+  const courtDesc = cell.court ? `, Court ${cell.court}` : "";
+  const cellLabel = `Round ${cell.round}${courtDesc}, ${matchDesc}${resultDesc}`;
+
   return (
     <TouchableOpacity
       disabled={!onPress || (!cell.entrantA && !cell.entrantB)}
       onPress={() => onPress?.(cell)}
+      accessibilityLabel={cellLabel}
+      accessibilityRole={onPress && (cell.entrantA || cell.entrantB) ? "button" : undefined}
       style={[
         s.cell,
         { left, top, borderColor: live ? C.accent : isChampCell ? C.red : C.line },
