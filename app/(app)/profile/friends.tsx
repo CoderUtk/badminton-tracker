@@ -1,9 +1,9 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useFocusEffect } from "expo-router";
 import {
   cancelRequest, listFriends, listIncomingRequests, listOutgoingRequests,
-  removeFriend, respondToRequest, sendFriendRequest,
+  removeFriend, respondToRequest, searchUsers, sendFriendRequest,
   type Friend, type FriendRequestRow,
 } from "../../../src/repos/friendRepo";
 import { toast } from "../../../src/lib/toast";
@@ -21,6 +21,8 @@ export default function Friends() {
   const [sending, setSending] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [pendingRemove, setPendingRemove] = useState<Friend | null>(null);
+  const [results, setResults] = useState<{ id: string; username: string; displayName: string }[]>([]);
+  const [searching, setSearching] = useState(false);
 
   const reload = useCallback(async () => {
     try {
@@ -35,6 +37,19 @@ export default function Friends() {
     }
   }, []);
   useFocusEffect(useCallback(() => { void reload(); }, [reload]));
+
+  useEffect(() => {
+    const trimmed = username.trim();
+    if (trimmed.length < 2) { setResults([]); return; }
+    setSearching(true);
+    const t = setTimeout(() => {
+      searchUsers(trimmed)
+        .then(setResults)
+        .catch(() => setResults([]))
+        .finally(() => setSearching(false));
+    }, 300);
+    return () => clearTimeout(t);
+  }, [username]);
 
   const onAdd = async () => {
     const trimmed = username.trim();
@@ -115,10 +130,11 @@ export default function Friends() {
         keyExtractor={(f) => f.id}
         ListHeaderComponent={
           <>
+            <Text style={s.fieldLabel}>Add by username</Text>
             <View style={s.addRow}>
               <TextInput
                 style={s.input}
-                placeholder="Username"
+                placeholder="Search by username or name"
                 placeholderTextColor={C.text3}
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -131,6 +147,21 @@ export default function Friends() {
                 <Text style={s.addBtnText}>Add</Text>
               </PressableScale>
             </View>
+            {searching && <Text style={s.searchHint}>Searching…</Text>}
+            {!searching && results.length > 0 && (
+              <View style={s.resultsBox}>
+                {results.map((r) => (
+                  <Pressable
+                    key={r.id}
+                    style={s.resultRow}
+                    onPress={() => { setUsername(r.username); setResults([]); }}
+                  >
+                    <Text style={s.resultName} numberOfLines={1}>{r.displayName}</Text>
+                    <Text style={s.resultUsername} numberOfLines={1}>@{r.username}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
 
             {incoming.length > 0 && (
               <>
@@ -217,6 +248,12 @@ const s = StyleSheet.create({
   },
   addBtn: { flexDirection: "row", gap: 6, backgroundColor: C.red, borderRadius: 12, paddingHorizontal: 18, alignItems: "center", justifyContent: "center" },
   addBtnText: { color: C.text, fontFamily: F.semibold, fontSize: 15 },
+  fieldLabel: { color: C.text2, fontSize: 12, fontFamily: F.medium, letterSpacing: 0.3, marginBottom: 6 },
+  searchHint: { color: C.text2, fontSize: 12, fontFamily: F.body, marginTop: 4, marginBottom: 4 },
+  resultsBox: { backgroundColor: C.card, borderRadius: 12, borderWidth: 1, borderColor: C.line, marginTop: 4, marginBottom: 8, overflow: "hidden" },
+  resultRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.line },
+  resultName: { flex: 1, color: C.text, fontFamily: F.semibold, fontSize: 14 },
+  resultUsername: { color: C.text2, fontFamily: F.body, fontSize: 13, marginLeft: 8 },
   sectionTitle: { color: C.text2, fontFamily: F.medium, fontSize: 12, letterSpacing: 1, marginTop: 12, marginBottom: 4 },
   empty: { color: C.text2, fontSize: 15, lineHeight: 22, padding: 24, textAlign: "center" },
   row: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: C.card, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: C.line },
