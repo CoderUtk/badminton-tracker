@@ -132,3 +132,17 @@ export async function listOutgoingRequests(): Promise<FriendRequestRow[]> {
   const profiles = await profilesById(ids);
   return ids.map((id) => ({ profileId: id, ...(profiles.get(id) ?? { displayName: "Player", avatarUrl: null }) }));
 }
+
+/** Live username/display-name prefix search. profiles are readable by any
+ *  authenticated user (0001_init.sql), so no RLS change was needed for this. */
+export async function searchUsers(prefix: string): Promise<{ id: string; username: string; displayName: string }[]> {
+  const trimmed = prefix.trim();
+  if (!supabase || trimmed.length < 2) return [];
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, username, display_name")
+    .or(`username.ilike.${trimmed}%,display_name.ilike.${trimmed}%`)
+    .limit(8);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((p) => ({ id: p.id, username: p.username, displayName: p.display_name }));
+}
