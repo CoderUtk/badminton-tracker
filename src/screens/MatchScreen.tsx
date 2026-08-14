@@ -148,6 +148,11 @@ export default function MatchScreen({
   const lockedUntil = useRef(0);
 
   const score = useCallback((by: TeamId) => {
+    // Enforcement lives here, not in the scrim. A screen reader activates a
+    // node directly and never hit-tests, and Fabric does not honour
+    // no-hide-descendants on the wrapper, so neither the overlay nor the
+    // accessibility tree can be trusted to block a point.
+    if (paused) return;
     const s = useMatchStore.getState().state;
     if (!s) return;
     const now = Date.now();
@@ -158,7 +163,7 @@ export default function MatchScreen({
     lockedUntil.current = now + DEBOUNCE_MS;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     useMatchStore.getState().dispatch({ type: "RALLY_WON", by, at: now });
-  }, []);
+  }, [paused]);
 
   if (!state) return <View style={s.root} />;
 
@@ -256,7 +261,8 @@ export default function MatchScreen({
       </PressableScale>
       <View>
         <PressableScale
-          style={s.iconBtn}
+          style={[s.iconBtn, paused && s.iconDisabled]}
+          disabled={paused}
           onPress={() => setOrientationSheetOpen((v) => !v)}
           accessibilityLabel={`Screen orientation: ${orientationLabel}. Tap to change.`}
         >
@@ -292,7 +298,8 @@ export default function MatchScreen({
         <Icon name={paused ? "play" : "pause"} color={C.text} size={20} />
       </PressableScale>
       <PressableScale
-        style={s.iconBtn}
+        style={[s.iconBtn, paused && s.iconDisabled]}
+        disabled={paused}
         onPress={() => router.back()}
         hitSlop={10}
         accessibilityRole="button"
@@ -300,7 +307,12 @@ export default function MatchScreen({
       >
         <Icon name="chevron-back" color={C.text} size={20} />
       </PressableScale>
-      <PressableScale style={s.endBtn} onPress={confirmEnd} accessibilityLabel="End match">
+      <PressableScale
+        style={[s.endBtn, paused && s.iconDisabled]}
+        disabled={paused}
+        onPress={confirmEnd}
+        accessibilityLabel="End match"
+      >
         <Icon name="flag" color={C.text} size={15} />
         <Text style={s.endText}>End</Text>
       </PressableScale>
