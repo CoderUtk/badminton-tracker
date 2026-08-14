@@ -80,7 +80,13 @@ export default function CourtBox({
       accessibilityElementsHidden={suppressed}
       importantForAccessibility={suppressed ? "no-hide-descendants" : "auto"}
     >
-      {isServer && <View style={[s.dot, { backgroundColor: servingColor, shadowColor: servingColor }]} />}
+      {isServer && (
+        <View
+          style={[s.dot, { backgroundColor: servingColor, shadowColor: servingColor }]}
+          accessible
+          accessibilityLabel="Serving"
+        />
+      )}
 
       <Animated.View pointerEvents="none" style={[s.pulse, { opacity: pulse }]} />
 
@@ -106,6 +112,8 @@ export default function CourtBox({
           disabled={!edit}
           hitSlop={8}
           accessible={!!edit}
+          accessibilityRole={edit ? "button" : undefined}
+          accessibilityHint={edit ? "Opens player picker" : undefined}
         >
           <Icon name="person" color={color} size={15} />
           <Text
