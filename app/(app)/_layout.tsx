@@ -26,12 +26,36 @@ export default function AppTabs() {
         headerTitleAlign: "center",
       }}
     >
-      <Tabs.Screen name="index" options={{ title: "Home", tabBarIcon: icon("home") }} />
-      <Tabs.Screen name="sessions" options={{ title: "Sessions", tabBarIcon: icon("calendar"), headerShown: false }} />
-      <Tabs.Screen name="matches" options={{ title: "Matches", tabBarIcon: icon("badminton"), headerShown: false }} />
+      <Tabs.Screen
+        name="index"
+        options={{ title: "Home", tabBarIcon: icon("home"), tabBarAccessibilityLabel: "Home" }}
+      />
+      <Tabs.Screen
+        name="sessions"
+        options={{
+          title: "Sessions",
+          tabBarIcon: icon("calendar"),
+          headerShown: false,
+          tabBarAccessibilityLabel: "Sessions",
+        }}
+      />
+      <Tabs.Screen
+        name="matches"
+        options={{
+          title: "Matches",
+          tabBarIcon: icon("badminton"),
+          headerShown: false,
+          tabBarAccessibilityLabel: "Matches",
+        }}
+      />
       <Tabs.Screen
         name="tournaments"
-        options={{ title: "Tournaments", tabBarIcon: icon("trophy"), headerShown: false }}
+        options={{
+          title: "Tournaments",
+          tabBarIcon: icon("trophy"),
+          headerShown: false,
+          tabBarAccessibilityLabel: "Tournaments",
+        }}
         listeners={({ navigation, route }) => ({
           tabPress: (e) => {
             const state = navigation.getState();
@@ -53,7 +77,15 @@ export default function AppTabs() {
           },
         })}
       />
-      <Tabs.Screen name="profile" options={{ title: "Profile", tabBarIcon: icon("person"), headerShown: false }} />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "Profile",
+          tabBarIcon: icon("person"),
+          headerShown: false,
+          tabBarAccessibilityLabel: "Profile",
+        }}
+      />
       <Tabs.Screen name="clubs" options={{ href: null, headerShown: false }} />
       <Tabs.Screen name="watch" options={{ href: null, headerShown: false }} />
     </Tabs>
