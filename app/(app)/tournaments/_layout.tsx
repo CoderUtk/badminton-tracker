@@ -16,7 +16,7 @@ export default function TournamentsLayout() {
     >
       <Stack.Screen name="index" options={{ title: "Tournaments" }} />
       <Stack.Screen name="new" options={{ title: "New tournament", presentation: "modal" }} />
-      <Stack.Screen name="[id]" options={{ title: "Bracket" }} />
+      <Stack.Screen name="[id]" options={{ title: "Tournament" }} />
       <Stack.Screen name="edit/[id]" options={{ title: "Edit tournament" }} />
       {/* Without this the header falls back to the route segment and renders
           the raw parameter name. The screen's own heading already reads "Live

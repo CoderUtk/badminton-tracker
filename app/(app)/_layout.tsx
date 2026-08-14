@@ -31,7 +31,7 @@ export default function AppTabs() {
       <Tabs.Screen name="matches" options={{ title: "Matches", tabBarIcon: icon("badminton"), headerShown: false }} />
       <Tabs.Screen
         name="tournaments"
-        options={{ title: "Cups", tabBarIcon: icon("trophy"), headerShown: false }}
+        options={{ title: "Tournaments", tabBarIcon: icon("trophy"), headerShown: false }}
         listeners={({ navigation, route }) => ({
           tabPress: (e) => {
             const state = navigation.getState();
