@@ -6,14 +6,11 @@
 import type { ClubSession } from "../repos/sessionRepo";
 import type { Club, ClubPlayer } from "../repos/clubRepo";
 import type { PlayerAnalytics } from "../analytics/player";
+import { formatWinRate, MIN_MATCHES_FOR_RATES } from "../lib/winRate";
 
-/**
- * Win rate and streak are meaningless on a handful of matches, and "0%" reads
- * as "you lose every game" rather than "not enough data". Below this many
- * completed matches those two tiles show an em dash, and the onboarding
- * feature copy under the CTA is still visible.
- */
-export const MIN_MATCHES_FOR_RATES = 5;
+// Re-export for backward compatibility with existing tests.
+export { MIN_MATCHES_FOR_RATES };
+
 
 /**
  * The soonest session that has not started yet. Note that listSessions()
@@ -83,14 +80,12 @@ export function statTileValues(analytics: PlayerAnalytics | null): {
   matches: string; winRate: string; streak: string; hasRates: boolean;
 } {
   const played = analytics?.played ?? 0;
-  if (!analytics || played < MIN_MATCHES_FOR_RATES) {
-    return { matches: String(played), winRate: "—", streak: "—", hasRates: false };
-  }
+  const hasRates = played >= MIN_MATCHES_FOR_RATES;
   return {
     matches: String(played),
-    winRate: `${analytics.winPct}%`,
-    streak: String(analytics.longestWinStreak),
-    hasRates: true,
+    winRate: formatWinRate(played, analytics?.winPct ?? 0),
+    streak: hasRates ? String(analytics!.longestWinStreak) : "—",
+    hasRates,
   };
 }
 
