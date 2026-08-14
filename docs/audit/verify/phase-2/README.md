@@ -46,6 +46,24 @@ tested, all landing portrait:
 `h6-28-paused.png`. Pause shows the scrim, blocks scoring, and **does not
 navigate** — the audit's `28-scoring-paused.png` showed the Home tab.
 
+Pause is enforced **in the handlers, not by the overlay**. The first attempt
+relied on the scrim for touches plus `importantForAccessibility="no-hide-descendants"`
+on a wrapper for assistive tech. Measured on device, that second half does not
+work: RN 0.81 / Fabric does not honour it, `accessibilityElementsHidden` is
+iOS-only, and a screen reader activates a node by dispatching `ACTION_CLICK`
+without hit-testing — so a paused screen still exposed a live `End match` and
+`Leave match`. `score()` now carries `if (paused) return;` (with `paused` in its
+dependency array — an empty one would capture a stale `false` forever) and the
+leave, End and orientation controls take `disabled={paused}`.
+
+Verified in `h6-paused-a11y-tree.xml`: while paused, `End match`,
+`Leave match` and both `Point to …` rails report `enabled="false"`, while
+`Resume match` stays `enabled="true"` — Android refuses `ACTION_CLICK` on a
+disabled node. All four return to `enabled="true"` after resuming. The
+pause/resume toggle is deliberately never disabled; it is the only exit. The
+iOS-side wrapper and `accessibilityViewIsModal` were kept — correct there, just
+no longer load-bearing.
+
 Clock behaviour measured: paused at `00:14:22`, still `00:14:22` after 30+
 seconds. Tapping where a `+1` rail sits resumed the match instead of scoring
 (score stayed `10 – 10`). After resuming, the clock read `00:14:29` — continuing
