@@ -157,7 +157,7 @@ export default function NewTournament() {
 
           <View style={s.gamesRow}>
             <View style={s.gamesCol}>
-              <Text style={s.h}>Games / match</Text>
+              <Text style={s.h} numberOfLines={1}>Games</Text>
               <Segmented value={bestOf} options={BESTOFS} onPick={(v) => setBestOf(v as number)} />
             </View>
             <View style={s.gamesCol}>
@@ -255,8 +255,8 @@ const s = StyleSheet.create({
   stepBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, alignItems: "center", justifyContent: "center" },
   stepBtnText: { color: C.text, fontFamily: F.bold, fontSize: 20 },
   stepValue: { color: C.text, fontFamily: F.bold, fontSize: 18, minWidth: 24, textAlign: "center" },
-  gamesRow: { flexDirection: "row", gap: 12 },
-  gamesCol: { flex: 1, gap: 6 },
+  gamesRow: { flexDirection: "row", gap: 12, flexWrap: "wrap" },
+  gamesCol: { flexGrow: 1, flexBasis: "40%", gap: 6 },
   empty: { color: C.text2, textAlign: "center", marginTop: 24 },
   player: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: C.card, borderRadius: 10, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: C.line },
   playerOn: { borderColor: C.lineHi, backgroundColor: C.cardHi },
