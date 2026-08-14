@@ -5,6 +5,7 @@ import { createTournament, type MatchType } from "../../../src/repos/tournamentR
 import { addGuestPlayer, listClubs, listPlayers, type ClubPlayer } from "../../../src/repos/clubRepo";
 import { drawSizeFor, startBlocker } from "../../../src/tournament/draw";
 import { C, F, press, selected, selectedText } from "../../../src/theme";
+import Icon from "../../../src/components/Icon";
 import { toast } from "../../../src/lib/toast";
 import { validateName } from "../../../src/lib/validate";
 
@@ -224,7 +225,10 @@ export default function NewTournament() {
                 const badge = matchType === "doubles" ? `P${Math.floor(idx / 2) + 1}` : `#${idx + 1}`;
                 return (
                   <Pressable style={({ pressed }) => [s.player, pressed && press, on && s.playerOn]} onPress={() => toggle(item.id)}>
-                    <Text style={[s.playerName, on && { color: C.text }]}>{item.name}</Text>
+                    <View style={[s.checkbox, on && s.checkboxOn]}>
+                      {on && <Icon name="checkmark" color={C.text} size={14} />}
+                    </View>
+                    <Text style={[s.playerName, { flex: 1 }, on && { color: C.text }]}>{item.name}</Text>
                     {on ? <Text style={s.seed}>{badge}</Text> : null}
                   </Pressable>
                 );
@@ -234,7 +238,7 @@ export default function NewTournament() {
         </View>
       )}
 
-      {picked.length > 0 && entrantsBlocker ? <Text style={s.err}>{entrantsBlocker}</Text> : null}
+      {entrantsBlocker ? <Text style={s.err}>{entrantsBlocker}</Text> : null}
       <Pressable style={({ pressed }) => [s.create, pressed && press, !canCreate && s.createOff]} disabled={!canCreate} onPress={onCreate}>
         <Text style={[s.createText, !canCreate && s.createTextOff]}>Create bracket</Text>
       </Pressable>
@@ -261,6 +265,8 @@ const s = StyleSheet.create({
   player: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: C.card, borderRadius: 10, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: C.line },
   playerOn: { borderColor: C.lineHi, backgroundColor: C.cardHi },
   playerName: { color: C.text2, fontSize: 15, fontFamily: F.body },
+  checkbox: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: C.line, alignItems: "center", justifyContent: "center", marginRight: 10 },
+  checkboxOn: { backgroundColor: C.red, borderColor: C.red },
   seed: { color: C.accent, fontFamily: F.semibold },
   create: { backgroundColor: C.red, borderRadius: 12, paddingVertical: 15, alignItems: "center" },
   off: { opacity: 0.5 },
