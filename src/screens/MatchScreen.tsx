@@ -3,16 +3,24 @@ import { Alert, Pressable, StyleSheet, Text, useWindowDimensions, View } from "r
 import * as Haptics from "expo-haptics";
 import * as ScreenOrientation from "expo-screen-orientation";
 import { useKeepAwake } from "expo-keep-awake";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { gameScoreState, MatchState, pointSituation, serverName, TeamId } from "../engine";
 import type { MatchRecord } from "../repos/matchRepo";
 import { useMatchStore } from "../stores/matchStore";
 import Court from "../components/Court";
+import ElapsedChip from "../components/ElapsedChip";
 import Icon, { type IconName } from "../components/Icon";
 import PressableScale from "../components/PressableScale";
 import MatchResultCard from "../components/share/MatchResultCard";
 import { captureAndShare } from "../lib/share/captureAndShare";
-import { C, F, glow, textGlow } from "../theme";
+import {
+  DEFAULT_SCORING_MODE,
+  lockForMode,
+  RESTORE_ON_BLUR,
+  type LockTarget,
+  type OrientationMode,
+} from "../lib/orientationLock";
+import { C, F, glow, MIN_TOUCH, SCOREBOARD_TYPE, space, textGlow } from "../theme";
 
 const DEBOUNCE_MS = 500;
 
@@ -34,6 +42,20 @@ function announcement(state: MatchState): string {
   return `${server} to serve. ${call}${extra}`;
 }
 
+/** The single bridge from the pure contract to expo-screen-orientation. */
+function applyLock(target: LockTarget): void {
+  const p =
+    target === "UNLOCK"
+      ? ScreenOrientation.unlockAsync()
+      : target === "LANDSCAPE"
+      ? ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE)
+      : ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+  // Rotation can legitimately fail (a foldable mid-fold, a policy-locked
+  // device). Failing to rotate is survivable; crashing the scoring screen is
+  // not.
+  p.catch(() => {});
+}
+
 export default function MatchScreen({
   matchId,
   record,
@@ -45,26 +67,55 @@ export default function MatchScreen({
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const portrait = height >= width;
-  const [orientationMode, setOrientationMode] = useState<"auto" | "portrait" | "landscape">("auto");
+  const [orientationMode, setOrientationMode] = useState<OrientationMode>(DEFAULT_SCORING_MODE);
   const [orientationSheetOpen, setOrientationSheetOpen] = useState(false);
-  useEffect(() => {
-    // Allow the player to score in either orientation; landscape gives the court
-    // the most room, portrait puts big +1 buttons under the court. Restore auto
-    // on leaving so the lock doesn't leak into the rest of the app.
-    ScreenOrientation.unlockAsync().catch(() => {});
-    return () => { ScreenOrientation.unlockAsync().catch(() => {}); };
-  }, []);
-  const setOrientation = (mode: "auto" | "portrait" | "landscape") => {
+
+  // Local and non-persisted, deliberately. MatchEvent is reduced by the engine,
+  // synced to Supabase and replayed by undo and autoFinish; a UI affordance must
+  // not reach any of that (spec 4a). Pause means "stay on this screen", so it
+  // does not need to survive unmount.
+  const [pausedMs, setPausedMs] = useState(0);
+  const [pausedSince, setPausedSince] = useState<number | null>(null);
+  const paused = pausedSince !== null;
+
+  const togglePause = useCallback(() => {
+    const now = Date.now();
+    if (pausedSince === null) {
+      setPausedSince(now);
+      return;
+    }
+    // Bank the span that just closed, then clear the open one. The functional
+    // updater is used deliberately: it is pure and idempotent under React's
+    // dev-mode double-invocation, and correct if several updates batch. Do NOT
+    // rewrite this as setPausedMs(pausedMs + ...) — that closes over a stale
+    // value and would be wrong under batching.
+    setPausedMs((banked) => banked + (now - pausedSince));
+    setPausedSince(null);
+  }, [pausedSince]);
+
+  // useFocusEffect, not useEffect: the cleanup has to run when this screen is
+  // merely covered as well as when it unmounts, so the back gesture, a deep
+  // link and a pause all restore identically (spec section 4).
+  //
+  // The cleanup is RESTORE_ON_BLUR and never unlockAsync(). That single line is
+  // audit H6: unlocking hands orientation to the sensors, so leaving a match
+  // sideways left every other screen — none of which has a landscape layout —
+  // rendering in landscape.
+  useFocusEffect(
+    useCallback(() => {
+      applyLock(lockForMode(orientationMode));
+      return () => applyLock(RESTORE_ON_BLUR);
+    }, [orientationMode])
+  );
+
+  const setOrientation = (mode: OrientationMode) => {
     setOrientationMode(mode);
     setOrientationSheetOpen(false);
-    const lock =
-      mode === "auto" ? ScreenOrientation.unlockAsync()
-      : mode === "portrait" ? ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP)
-      : ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
-    lock.catch(() => {});
+    // No applyLock here: the focus effect re-runs on orientationMode and is the
+    // only caller, so the lock has exactly one owner.
   };
   const orientationLabel = orientationMode === "auto" ? "Auto" : orientationMode === "portrait" ? "Portrait" : "Landscape";
-  const ORIENTATION_OPTIONS: { mode: "auto" | "portrait" | "landscape"; icon: IconName; label: string }[] = [
+  const ORIENTATION_OPTIONS: { mode: OrientationMode; icon: IconName; label: string }[] = [
     { mode: "auto", icon: "screen-rotation", label: "Auto" },
     { mode: "portrait", icon: "phone-portrait-outline", label: "Portrait" },
     { mode: "landscape", icon: "phone-landscape-outline", label: "Landscape" },
@@ -95,15 +146,13 @@ export default function MatchScreen({
 
   const shareCardRef = useRef<View>(null);
   const lockedUntil = useRef(0);
-  // Tick wall-clock; elapsed is derived from the match's start timestamp so it
-  // survives pausing/leaving and resuming (no reset to 0).
-  const [nowTs, setNowTs] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNowTs(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
 
   const score = useCallback((by: TeamId) => {
+    // Enforcement lives here, not in the scrim. A screen reader activates a
+    // node directly and never hit-tests, and Fabric does not honour
+    // no-hide-descendants on the wrapper, so neither the overlay nor the
+    // accessibility tree can be trusted to block a point.
+    if (paused) return;
     const s = useMatchStore.getState().state;
     if (!s) return;
     const now = Date.now();
@@ -114,15 +163,15 @@ export default function MatchScreen({
     lockedUntil.current = now + DEBOUNCE_MS;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     useMatchStore.getState().dispatch({ type: "RALLY_WON", by, at: now });
-  }, []);
+  }, [paused]);
 
   if (!state) return <View style={s.root} />;
 
   const teamName = (t: TeamId) => state.config.teams[t].map((p) => p.name).join(" / ");
+  // Elapsed is derived from the match's start timestamp, not from a counter, so
+  // it survives leaving and resuming without resetting to 0. The tick itself
+  // lives in ElapsedChip — see the note there about audit A7.
   const startedAt = events[0]?.type === "MATCH_STARTED" ? events[0].at : record.created_at;
-  const seconds = Math.max(0, Math.floor((nowTs - startedAt) / 1000));
-  const fmt = (n: number) => String(n).padStart(2, "0");
-  const timer = `${fmt(Math.floor(seconds / 3600))}:${fmt(Math.floor(seconds / 60) % 60)}:${fmt(seconds % 60)}`;
 
   const banner =
     state.phase === "match_over"
@@ -131,7 +180,7 @@ export default function MatchScreen({
       ? `Game to ${teamName(state.gameHistory.at(-1)!.winner)} — tap to start game ${state.game + 1}`
       : null;
 
-  const playing = !banner;
+  const playing = !banner && !paused;
 
   const centerBlock = (
     <View style={s.center}>
@@ -143,6 +192,7 @@ export default function MatchScreen({
       {banner ? (
         <Pressable
           style={s.banner}
+          disabled={paused}
           onPress={() => {
             if (state.phase === "game_over") dispatch({ type: "GAME_STARTED", at: Date.now() });
             else router.back();
@@ -203,15 +253,16 @@ export default function MatchScreen({
 
   const leftGroup = (
     <View style={s.group}>
-      <PressableScale style={[s.iconBtn, events.length < 2 && s.iconDisabled]} onPress={undo} accessibilityLabel="Undo last rally">
+      <PressableScale style={[s.iconBtn, (paused || events.length < 2) && s.iconDisabled]} disabled={paused || events.length < 2} onPress={undo} accessibilityLabel="Undo last rally">
         <Icon name="arrow-undo" color={C.text} size={18} />
       </PressableScale>
-      <PressableScale style={[s.iconBtn, redoStack.length === 0 && s.iconDisabled]} onPress={redo} accessibilityLabel="Redo rally">
+      <PressableScale style={[s.iconBtn, (paused || redoStack.length === 0) && s.iconDisabled]} disabled={paused || redoStack.length === 0} onPress={redo} accessibilityLabel="Redo rally">
         <Icon name="arrow-redo" color={C.text} size={18} />
       </PressableScale>
       <View>
         <PressableScale
-          style={s.iconBtn}
+          style={[s.iconBtn, paused && s.iconDisabled]}
+          disabled={paused}
           onPress={() => setOrientationSheetOpen((v) => !v)}
           accessibilityLabel={`Screen orientation: ${orientationLabel}. Tap to change.`}
         >
@@ -236,10 +287,32 @@ export default function MatchScreen({
   );
   const rightGroup = (
     <View style={s.group}>
-      <PressableScale style={s.iconBtn} onPress={() => router.back()} hitSlop={10} accessibilityLabel="Pause and leave (match stays live)">
-        <Icon name="pause" color={C.text} size={20} />
+      <PressableScale
+        style={[s.iconBtn, paused && s.iconBtnOn]}
+        onPress={togglePause}
+        hitSlop={10}
+        accessibilityRole="button"
+        accessibilityLabel={paused ? "Resume match" : "Pause match"}
+        accessibilityState={{ selected: paused }}
+      >
+        <Icon name={paused ? "play" : "pause"} color={C.text} size={20} />
       </PressableScale>
-      <PressableScale style={s.endBtn} onPress={confirmEnd} accessibilityLabel="End match">
+      <PressableScale
+        style={[s.iconBtn, paused && s.iconDisabled]}
+        disabled={paused}
+        onPress={() => router.back()}
+        hitSlop={10}
+        accessibilityRole="button"
+        accessibilityLabel="Leave match — it stays live and can be resumed from Matches"
+      >
+        <Icon name="chevron-back" color={C.text} size={20} />
+      </PressableScale>
+      <PressableScale
+        style={[s.endBtn, paused && s.iconDisabled]}
+        disabled={paused}
+        onPress={confirmEnd}
+        accessibilityLabel="End match"
+      >
         <Icon name="flag" color={C.text} size={15} />
         <Text style={s.endText}>End</Text>
       </PressableScale>
@@ -257,18 +330,15 @@ export default function MatchScreen({
 
   const scoreBlock = (
     <View style={s.scoreWrap}>
-      <View style={s.timerChip}>
-        <Icon name="time-outline" color={C.text2} size={12} />
-        <Text style={s.timerText}>{timer}</Text>
-      </View>
+      <ElapsedChip startedAt={startedAt} pausedMs={pausedMs} pausedSince={pausedSince} />
       <View style={s.scoreRibbon}>
         <View style={[s.ribbonTeam, s.ribbonTeamA]}>
           <View style={s.serveSlot}>{state.servingTeam === "A" && <View style={[s.serveDot, { backgroundColor: C.red }]} />}</View>
           <Text style={[s.ribbonName, { color: C.red }]} numberOfLines={1}>{teamName("A")}</Text>
         </View>
-        <Text style={[s.ribbonScore, { color: C.red }, textGlow(C.red, 16)]}>{state.score.A}</Text>
+        <Text style={[s.ribbonScore, { color: C.red }, textGlow(C.red, 16)]} maxFontSizeMultiplier={1.2}>{state.score.A}</Text>
         <Text style={s.scoreDivider}>—</Text>
-        <Text style={[s.ribbonScore, { color: C.blue }, textGlow(C.blue, 16)]}>{state.score.B}</Text>
+        <Text style={[s.ribbonScore, { color: C.blue }, textGlow(C.blue, 16)]} maxFontSizeMultiplier={1.2}>{state.score.B}</Text>
         <View style={[s.ribbonTeam, s.ribbonTeamB]}>
           <Text style={[s.ribbonName, { color: C.blue }]} numberOfLines={1}>{teamName("B")}</Text>
           <View style={s.serveSlot}>{state.servingTeam === "B" && <View style={[s.serveDot, { backgroundColor: C.blue }]} />}</View>
@@ -284,36 +354,61 @@ export default function MatchScreen({
 
   return (
     <View style={s.root}>
-      {/* Landscape: controls flank the centered score in one full-width row (no
-          empty top corners). Portrait: controls row above the score. */}
-      {portrait ? (
-        <View style={s.top}>
-          <View style={s.controls}>{leftGroup}{rightGroup}</View>
-          {scoreBlock}
-        </View>
-      ) : (
-        <View style={s.topRow}>
-          {leftGroup}
-          <View style={s.scoreFill}>{scoreBlock}</View>
-          {rightGroup}
-        </View>
-      )}
-
-      {/* body: side rails (landscape) or court over a +1 row (portrait) */}
-      <View style={[s.body, portrait && s.bodyPortrait]}>
+      <View
+        style={s.fill}
+        // The scrim blocks touches, but a screen reader activates a node
+        // directly and never hit-tests, so without this a TalkBack user could
+        // still End or Leave a match that is supposed to be paused.
+        importantForAccessibility={paused ? "no-hide-descendants" : "auto"}
+        accessibilityElementsHidden={paused}
+      >
+        {/* Landscape: controls flank the centered score in one full-width row (no
+            empty top corners). Portrait: controls row above the score. */}
         {portrait ? (
-          <>
-            {centerBlock}
-            <View style={s.railsRow}>{railA}{railB}</View>
-          </>
+          <View style={s.top}>
+            <View style={s.controls}>{leftGroup}{rightGroup}</View>
+            {scoreBlock}
+          </View>
         ) : (
-          <>
-            {railA}
-            {centerBlock}
-            {railB}
-          </>
+          <View style={s.topRow}>
+            {leftGroup}
+            <View style={s.scoreFill}>{scoreBlock}</View>
+            {rightGroup}
+          </View>
         )}
+
+        {/* body: side rails (landscape) or court over a +1 row (portrait) */}
+        <View style={[s.body, portrait && s.bodyPortrait]}>
+          {portrait ? (
+            <>
+              {centerBlock}
+              <View style={s.railsRow}>{railA}{railB}</View>
+            </>
+          ) : (
+            <>
+              {railA}
+              {centerBlock}
+              {railB}
+            </>
+          )}
+        </View>
       </View>
+
+      {paused && (
+        <Pressable
+          style={s.pausedScrim}
+          onPress={togglePause}
+          accessibilityRole="button"
+          accessibilityLabel="Match paused. Tap to resume."
+          accessibilityViewIsModal
+        >
+          <View style={s.pausedCard}>
+            <Icon name="pause" color={C.text} size={28} />
+            <Text style={s.pausedTitle}>Paused</Text>
+            <Text style={s.pausedHint}>The clock is stopped. Tap anywhere to resume.</Text>
+          </View>
+        </Pressable>
+      )}
 
       {state.phase === "match_over" && (
         <View ref={shareCardRef} collapsable={false} style={s.offscreenCard}>
@@ -326,6 +421,7 @@ export default function MatchScreen({
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg, padding: 8, gap: 6 },
+  fill: { flex: 1, gap: 6 },
   top: { gap: 6 },
   topRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 8 },
   scoreFill: { flex: 1, alignItems: "center" },
@@ -336,6 +432,23 @@ const s = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
   iconDisabled: { opacity: 0.35 },
+  iconBtnOn: { backgroundColor: C.cardHi, borderWidth: 1, borderColor: C.lineHi },
+  // absoluteFillObject rather than a sized box: the scrim has to cover the +1
+  // rails in both the portrait and landscape layouts.
+  pausedScrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.72)",
+    alignItems: "center", justifyContent: "center",
+    zIndex: 30,
+  },
+  pausedCard: {
+    alignItems: "center", gap: space.sm,
+    backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.lineHi,
+    paddingHorizontal: space.xl, paddingVertical: space.lg,
+    minHeight: MIN_TOUCH,
+  },
+  pausedTitle: { color: C.text, fontFamily: F.display, fontSize: 22, letterSpacing: 0.5 },
+  pausedHint: { color: C.text2, fontFamily: F.body, fontSize: 14, textAlign: "center" },
   orientDropdown: {
     position: "absolute", top: 46, left: 0, zIndex: 20,
     backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.line, padding: 5, gap: 4,
@@ -349,26 +462,26 @@ const s = StyleSheet.create({
   },
   endText: { color: C.text, fontSize: 15, fontFamily: F.bold },
   scoreWrap: { alignSelf: "center", alignItems: "center", gap: 3, width: "100%", maxWidth: 520 },
-  timerChip: {
-    flexDirection: "row", alignItems: "center", gap: 4,
-    backgroundColor: C.card, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 2,
-    borderWidth: 1, borderColor: C.line,
-  },
-  timerText: { color: C.text2, fontSize: 12, fontFamily: F.body, fontVariant: ["tabular-nums"] },
   scoreRibbon: {
-    alignSelf: "stretch", minHeight: 46, flexDirection: "row", alignItems: "center",
+    alignSelf: "stretch", minHeight: 72, flexDirection: "row", alignItems: "center",
     backgroundColor: C.card, borderRadius: 12, borderWidth: 1, borderColor: C.lineHi,
     overflow: "hidden",
   },
   ribbonTeam: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 12 },
   ribbonTeamA: { borderLeftWidth: 4, borderLeftColor: C.red },
   ribbonTeamB: { justifyContent: "flex-end", borderRightWidth: 4, borderRightColor: C.blue },
-  ribbonName: { flexShrink: 1, fontSize: 15, fontFamily: F.semibold, letterSpacing: 0.3 },
+  ribbonName: { flexShrink: 1, fontSize: SCOREBOARD_TYPE.name, fontFamily: F.semibold, letterSpacing: 0.3 },
   // Fixed-width slot so the serve dot appearing/disappearing never reflows names.
   serveSlot: { width: 8, alignItems: "center", flexShrink: 0 },
   serveDot: { width: 8, height: 8, borderRadius: 4 },
-  ribbonScore: { minWidth: 42, color: C.text, fontSize: 32, fontFamily: F.display, textAlign: "center", fontVariant: ["tabular-nums"] },
-  scoreDivider: { color: C.text3, fontSize: 20, marginHorizontal: 2 },
+  // Russo One's zero closes at 56pt, making 1 - 0 read as numeral beside filled
+  // block (audit M8). Measured on device: only the font fixed this, not glow.
+  // Glow stays. Score digits alone move to bold; F.display in rail labels.
+  ribbonScore: {
+    minWidth: 72, color: C.text, fontSize: SCOREBOARD_TYPE.score, fontFamily: F.bold,
+    textAlign: "center", fontVariant: ["tabular-nums"],
+  },
+  scoreDivider: { color: C.text3, fontSize: SCOREBOARD_TYPE.divider, marginHorizontal: 2 },
   statePill: {
     alignSelf: "center", backgroundColor: C.card, borderRadius: 999,
     paddingHorizontal: 12, paddingVertical: 4, borderWidth: 1, borderColor: C.red,
@@ -387,7 +500,7 @@ const s = StyleSheet.create({
   },
   railTeam: { fontSize: 14, fontFamily: F.semibold },
   railDisabled: { opacity: 0.3 },
-  railText: { color: C.text, fontSize: 26, fontFamily: F.display, ...textGlow(C.text, 8) },
+  railText: { color: C.text, fontSize: SCOREBOARD_TYPE.rail, fontFamily: F.display, ...textGlow(C.text, 8) },
   center: { flex: 1, gap: 4 },
   bubble: {
     position: "absolute", top: 8, alignSelf: "center", zIndex: 2,

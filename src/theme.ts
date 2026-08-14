@@ -116,3 +116,19 @@ export const selected = {
 } as const;
 export const selectedText = { color: C.text } as const;
 export const unselectedText = { color: C.text2 } as const;
+
+/**
+ * Scoreboard type scale, in points.
+ *
+ * Lives here rather than in MatchScreen's StyleSheet so the hierarchy is
+ * asserted in tests. Audit M8: the score was 32pt against a 26pt "+1" label and
+ * 15pt names, so on a board meant to be read from across a court the buttons
+ * were the dominant element.
+ */
+export const SCOREBOARD_TYPE = {
+  score: 56,
+  divider: 26,
+  rail: 22,
+  name: 13,
+  timer: 12,
+} as const;
