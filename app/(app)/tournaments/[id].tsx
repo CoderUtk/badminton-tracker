@@ -305,7 +305,12 @@ export default function TournamentBracket() {
       <View style={s.titleRow}>
         <Text style={s.titleText}>{tournament.name}</Text>
         {!isDraft ? (
-          <PressableScale style={s.refreshBtn} onPress={onRefresh} disabled={refreshing}>
+          <PressableScale
+            style={s.refreshBtn}
+            onPress={onRefresh}
+            disabled={refreshing}
+            accessibilityLabel="Refresh tournament"
+          >
             {refreshing
               ? <ActivityIndicator size="small" color={C.text2} />
               : <Icon name="sync-outline" color={C.text2} size={16} />}
