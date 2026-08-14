@@ -9,7 +9,7 @@ jest.mock("../src/lib/supabase", () => ({
   },
 }));
 
-import { sendFriendRequest, respondToRequest, cancelRequest, removeFriend, listFriends, listIncomingRequests, listOutgoingRequests } from "../src/repos/friendRepo";
+import { sendFriendRequest, respondToRequest, cancelRequest, removeFriend, listFriends, listIncomingRequests, listOutgoingRequests, sanitizeSearchTerm } from "../src/repos/friendRepo";
 
 beforeEach(() => {
   getUser.mockReset().mockResolvedValue({ data: { user: { id: "u-me" } } });
@@ -151,4 +151,18 @@ test("listOutgoingRequests returns pending rows I sent", async () => {
   expect(eqStatus).toHaveBeenCalledWith("status", "pending");
   expect(eqRequester).toHaveBeenCalledWith("requester_id", "u-me");
   expect(result).toEqual([{ profileId: "u-them", displayName: "Trg", avatarUrl: null }]);
+});
+
+test("sanitizeSearchTerm leaves real usernames and display names unchanged", () => {
+  expect(sanitizeSearchTerm("john_doe")).toBe("john_doe");
+  expect(sanitizeSearchTerm("Dr. Smith")).toBe("Dr. Smith");
+});
+
+test("sanitizeSearchTerm strips characters that break out of the or() clause", () => {
+  const out = sanitizeSearchTerm("a,b.c)(\"d%");
+  expect(out).not.toMatch(/[,()"%]/);
+});
+
+test("sanitizeSearchTerm collapses an all-symbol input below the length-2 minimum", () => {
+  expect(sanitizeSearchTerm("%%,,").length).toBeLessThan(2);
 });

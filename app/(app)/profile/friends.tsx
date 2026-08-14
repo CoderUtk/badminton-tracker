@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useFocusEffect } from "expo-router";
 import {
@@ -23,6 +23,7 @@ export default function Friends() {
   const [pendingRemove, setPendingRemove] = useState<Friend | null>(null);
   const [results, setResults] = useState<{ id: string; username: string; displayName: string }[]>([]);
   const [searching, setSearching] = useState(false);
+  const pickedUsername = useRef("");
 
   const reload = useCallback(async () => {
     try {
@@ -40,15 +41,17 @@ export default function Friends() {
 
   useEffect(() => {
     const trimmed = username.trim();
-    if (trimmed.length < 2) { setResults([]); return; }
+    if (trimmed === pickedUsername.current) { setResults([]); return; }
+    if (trimmed.length < 2) { setResults([]); setSearching(false); return; }
     setSearching(true);
+    let cancelled = false;
     const t = setTimeout(() => {
       searchUsers(trimmed)
-        .then(setResults)
-        .catch(() => setResults([]))
-        .finally(() => setSearching(false));
+        .then((r) => { if (!cancelled) setResults(r); })
+        .catch(() => { if (!cancelled) setResults([]); })
+        .finally(() => { if (!cancelled) setSearching(false); });
     }, 300);
-    return () => clearTimeout(t);
+    return () => { cancelled = true; clearTimeout(t); };
   }, [username]);
 
   const onAdd = async () => {
@@ -154,7 +157,7 @@ export default function Friends() {
                   <Pressable
                     key={r.id}
                     style={s.resultRow}
-                    onPress={() => { setUsername(r.username); setResults([]); }}
+                    onPress={() => { pickedUsername.current = r.username; setUsername(r.username); setResults([]); }}
                   >
                     <Text style={s.resultName} numberOfLines={1}>{r.displayName}</Text>
                     <Text style={s.resultUsername} numberOfLines={1}>@{r.username}</Text>

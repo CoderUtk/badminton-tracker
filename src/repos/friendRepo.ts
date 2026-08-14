@@ -133,21 +133,26 @@ export async function listOutgoingRequests(): Promise<FriendRequestRow[]> {
   return ids.map((id) => ({ profileId: id, ...(profiles.get(id) ?? { displayName: "Player", avatarUrl: null }) }));
 }
 
+/** Strips characters that are significant to PostgREST's `.or()` filter grammar
+ *  (`,` `(` `)` split/terminate clauses; `"` breaks quoting; `%` is an ilike
+ *  wildcard) so a literal search term can't rewrite the query. `_` and `.` are
+ *  left intact — both are legal in real usernames/display names, and `_` at
+ *  worst widens an ilike match rather than breaking anything. */
+export function sanitizeSearchTerm(s: string): string {
+  return s.replace(/[,()"%]/g, "");
+}
+
 /** Live username/display-name prefix search. profiles are readable by any
  *  authenticated user (0001_init.sql), so no RLS change was needed for this. */
 export async function searchUsers(prefix: string): Promise<{ id: string; username: string; displayName: string }[]> {
   const trimmed = prefix.trim();
   if (!supabase || trimmed.length < 2) return [];
-  // Strip characters that are significant to PostgREST's ilike/or() filter grammar
-  // (`,` `.` `(` `)` `"` split/terminate clauses, `%` `_` are ilike wildcards) so a
-  // literal search term can't rewrite the query. None of these appear in real
-  // usernames or are needed for a plain display-name search.
-  const safe = trimmed.replace(/[,.()"%_]/g, "");
+  const safe = sanitizeSearchTerm(trimmed);
   if (safe.length < 2) return [];
   const { data, error } = await supabase
     .from("profiles")
     .select("id, username, display_name")
-    .or(`username.ilike.${safe}%,display_name.ilike.${safe}%`)
+    .or(`username.ilike."${safe}%",display_name.ilike."${safe}%"`)
     .limit(8);
   if (error) throw new Error(error.message);
   return (data ?? []).map((p) => ({ id: p.id, username: p.username, displayName: p.display_name }));
