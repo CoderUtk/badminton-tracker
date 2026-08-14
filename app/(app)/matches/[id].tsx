@@ -1,8 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
-import { getMatch, loadEvents, MatchRecord, replayMatch } from "../../../src/repos/matchRepo";
-import type { MatchState } from "../../../src/engine";
+import { getMatch, loadEvents, MatchRecord } from "../../../src/repos/matchRepo";
 import type { MatchEvent } from "../../../src/engine";
 import { formatElapsed } from "../../../src/lib/elapsed";
 import {
@@ -21,14 +20,12 @@ import { C, F } from "../../../src/theme";
 export default function MatchDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [match, setMatch] = useState<MatchRecord | null>(null);
-  const [state, setState] = useState<MatchState | null>(null);
   const [events, setEvents] = useState<MatchEvent[]>([]);
   const cardRef = useRef<View>(null);
 
   useEffect(() => {
     if (!id) return;
     getMatch(id).then(setMatch);
-    replayMatch(id).then(setState);
     loadEvents(id).then(setEvents);
   }, [id]);
 
