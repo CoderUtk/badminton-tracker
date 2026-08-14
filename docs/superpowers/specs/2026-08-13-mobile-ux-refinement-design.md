@@ -201,13 +201,32 @@ Supabase and replayed by undo and `autoFinish`; new variants would reach all of
 them for a UI affordance. Pause means "stay on this screen", so it does not need
 to survive unmount.
 
-**M8's `0` glyph is a diagnosis, not a known cause.** The working hypothesis is
-that it is not a font defect: `ribbonScore` carries `textGlow(C.red, 16)`, a
-16px `textShadowRadius` on a 32px Russo One numeral. That font's `0` has a small
-counter, which a bloom that wide floods into a solid rounded rectangle, while
-`1` is a thin stroke and survives. Phase 2 verifies this before fixing it, and
-carries a fallback (a tabular fallback family for the digits) for the case where
-a glowless `0` still renders filled.
+**M8's `0` glyph was a diagnosis. It has since been measured, and the original
+hypothesis was wrong.** Planning guessed the cause was not the font but the
+glow: `ribbonScore` carried `textGlow(C.red, 16)`, a 16px `textShadowRadius`,
+and Russo One's `0` has a small counter that a bloom that wide could plausibly
+flood into a solid rounded rectangle while the thin-stroked `1` survived.
+
+Phase 2 tested that on the audit device at a `0 – 0` board, and it does not
+hold:
+
+| fontFamily | glow | `0` renders as |
+|---|---|---|
+| `F.display` (Russo One) | `textGlow(…, 16)` | solid filled block |
+| `F.display` (Russo One) | none | **still a solid filled block** |
+| `F.bold` (Chakra Petch Bold) | none | open counter, a numeral |
+| `F.bold` (Chakra Petch Bold) | `textGlow(…, 16)` | open counter, glow intact |
+
+Removing the glow changed nothing; only the font did. **The cause is the font** —
+Russo One's zero closes up at this size — **and the glow is innocent and stays.**
+The fix that shipped is one property: `ribbonScore.fontFamily` moves to `F.bold`,
+the body stack's bold. `F.display` is kept everywhere else on the screen,
+including the `+1` rail labels. Evidence is in
+`docs/audit/verify/phase-2/README.md`.
+
+The general lesson is worth carrying into later phases: this was recorded as a
+hypothesis rather than a cause precisely so it would be measured, and measuring
+it overturned a reading that looked obvious on paper.
 
 **One found bug is absorbed into this phase.** The Ops screen's *navigation*
 header renders the raw route segment, because
