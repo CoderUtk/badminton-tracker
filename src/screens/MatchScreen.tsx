@@ -448,8 +448,10 @@ const s = StyleSheet.create({
   // Fixed-width slot so the serve dot appearing/disappearing never reflows names.
   serveSlot: { width: 8, alignItems: "center", flexShrink: 0 },
   serveDot: { width: 8, height: 8, borderRadius: 4 },
+  // Russo One's zero closes at 56pt; 1–0 read as numeral + filled block. Measured on device:
+  // removing glow changed nothing, only the font did, so bold is kept everywhere else.
   ribbonScore: {
-    minWidth: 72, color: C.text, fontSize: SCOREBOARD_TYPE.score, fontFamily: F.display,
+    minWidth: 72, color: C.text, fontSize: SCOREBOARD_TYPE.score, fontFamily: F.bold,
     textAlign: "center", fontVariant: ["tabular-nums"],
   },
   scoreDivider: { color: C.text3, fontSize: SCOREBOARD_TYPE.divider, marginHorizontal: 2 },
