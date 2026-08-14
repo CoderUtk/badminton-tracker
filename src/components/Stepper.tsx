@@ -42,7 +42,7 @@ const s = StyleSheet.create({
     width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center",
     backgroundColor: C.card, borderWidth: 1, borderColor: C.line,
   },
-  btnDisabled: { opacity: 0.4 },
+  btnDisabled: { opacity: 0.4, borderColor: C.line, backgroundColor: C.bgElev },
   btnText: { color: C.text, fontSize: 24, fontWeight: "800" },
   value: { color: C.text, fontSize: 24, fontWeight: "800", minWidth: 32, textAlign: "center" },
 });

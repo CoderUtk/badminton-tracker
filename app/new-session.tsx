@@ -30,7 +30,7 @@ export default function NewSession() {
   const { ctaPadding } = useScreenInsets();
   const [clubs, setClubs] = useState<Club[]>([]);
   const [clubId, setClubId] = useState<string | null>(null);
-  const [location, setLocation] = useState("Badminton hall");
+  const [location, setLocation] = useState("");
   const [courts, setCourts] = useState(1);
   const [day, setDay] = useState<Date>(() => startOfDay(new Date()));
   const [timeMinutes, setTimeMinutes] = useState(DEFAULT_TIME_MINUTES);
@@ -59,7 +59,7 @@ export default function NewSession() {
       const hour = Math.floor(timeMinutes / 60);
       const minute = timeMinutes % 60;
       const startsAt = new Date(day.getFullYear(), day.getMonth(), day.getDate(), hour, minute).getTime();
-      const id = await createSession({ clubId, startsAt, location, courts });
+      const id = await createSession({ clubId, startsAt, location: location.trim() || "Badminton hall", courts });
       router.replace(`/(app)/sessions/${id}`);
     } catch (e) {
       toast((e as Error).message || "Could not create session", "error");
@@ -96,7 +96,7 @@ export default function NewSession() {
           <View style={s.whereRow}>
             <View style={s.whereInput}>
               <Text style={s.label}>Where</Text>
-              <TextInput style={s.input} value={location} onChangeText={setLocation} placeholder="Venue" placeholderTextColor={C.text2} />
+              <TextInput style={s.input} value={location} onChangeText={setLocation} placeholder="Badminton hall" placeholderTextColor={C.text2} />
             </View>
             <View>
               <Text style={s.label}>Courts</Text>
