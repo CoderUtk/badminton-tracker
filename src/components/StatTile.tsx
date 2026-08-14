@@ -22,6 +22,8 @@ const s = StyleSheet.create({
     paddingVertical: 14, paddingHorizontal: 10, alignItems: "center", gap: 6,
   },
   // C.text2, never C.text3 — #5C6472 on C.bg is ~2.9:1, below WCAG AA.
-  label: { color: C.text2, fontSize: 12, fontFamily: F.medium, letterSpacing: 0.3 },
+  // minHeight reserves space for a 2-line label (e.g. "Longest Streak")
+  // so every tile's value starts at the same y regardless of wrap (P1).
+  label: { color: C.text2, fontSize: 12, fontFamily: F.medium, letterSpacing: 0.3, minHeight: 30, textAlign: "center" },
   value: { fontSize: 22, fontFamily: F.display },
 });

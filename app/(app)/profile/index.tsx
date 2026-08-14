@@ -252,7 +252,7 @@ export default function Profile() {
           accessibilityLabel="Edit display name"
         >
           <View style={{ flex: 1 }}>
-            <Text style={s.name}>{me}</Text>
+            <Text style={s.name} numberOfLines={1} ellipsizeMode="tail">{me}</Text>
             <Text style={s.sub}>{session?.user.email ?? ""}</Text>
           </View>
           <Icon name="create-outline" color={C.text2} size={18} />
