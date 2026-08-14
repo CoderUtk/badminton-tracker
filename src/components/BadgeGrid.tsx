@@ -46,9 +46,12 @@ export default function BadgeGrid({
             <Text style={[s.title, titleStyle]} numberOfLines={1}>{b.title}</Text>
             <Text style={s.desc} numberOfLines={2}>{b.description}</Text>
             {!b.earned && (
-              <View style={s.track}>
-                <View style={[s.fill, { width: `${Math.round(b.progress * 100)}%` }, inProgress && s.fillActive]} />
-              </View>
+              <>
+                <View style={s.track}>
+                  <View style={[s.fill, { width: `${Math.round(b.progress * 100)}%` }, inProgress && s.fillActive]} />
+                </View>
+                <Text style={s.progressLabel}>{Math.round(b.progress * 100)}%</Text>
+              </>
             )}
           </Wrapper>
         );
@@ -60,7 +63,7 @@ export default function BadgeGrid({
 const s = StyleSheet.create({
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   chip: {
-    width: "31%",
+    width: "48%",
     backgroundColor: C.bgElev,
     borderRadius: 12,
     borderWidth: 1,
@@ -87,4 +90,5 @@ const s = StyleSheet.create({
   track: { width: "100%", height: 4, borderRadius: 2, backgroundColor: C.line, marginTop: 2, overflow: "hidden" },
   fill: { height: "100%", borderRadius: 2, backgroundColor: C.ghost },
   fillActive: { backgroundColor: C.red },
+  progressLabel: { color: C.text2, fontSize: 10, fontFamily: F.medium, marginTop: 2 },
 });
