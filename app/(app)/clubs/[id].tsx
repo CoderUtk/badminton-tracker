@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { deleteClub, getClub, leaveClub, type Club } from "../../../src/repos/clubRepo";
+import { deleteClub, getClub, leaveClub, listPlayers, type Club, type ClubPlayer } from "../../../src/repos/clubRepo";
 import { getClubStats, type PlayerStat, type SessionStats } from "../../../src/repos/sessionRepo";
 import { buildClubJoinPath } from "../../../src/lib/joinLink";
 import { shareJoinLink } from "../../../src/lib/shareJoin";
@@ -22,6 +22,7 @@ export default function ClubDetail() {
   const router = useRouter();
   const [club, setClub] = useState<Club | null>(null);
   const [stats, setStats] = useState<SessionStats | null>(null);
+  const [roster, setRoster] = useState<ClubPlayer[]>([]);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmingLeave, setConfirmingLeave] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -30,6 +31,7 @@ export default function ClubDetail() {
     if (!id) return;
     setClub(await getClub(id));
     setStats(await getClubStats(id));
+    setRoster(await listPlayers(id));
   }, [id]);
   useFocusEffect(useCallback(() => { void reload(); }, [reload]));
 
@@ -107,7 +109,11 @@ export default function ClubDetail() {
             <View style={s.statRow}>
               <View style={s.statBox}><Text style={s.statNum}>{stats?.matchCount ?? 0}</Text><Text style={s.statLbl}>matches</Text></View>
               <View style={s.statBox}><Text style={s.statNum}>{stats?.gameCount ?? 0}</Text><Text style={s.statLbl}>games</Text></View>
-              <View style={s.statBox}><Text style={s.statNum}>{stats?.players.length ?? 0}</Text><Text style={s.statLbl}>players</Text></View>
+              {/* Roster size, not stats.players.length — that array is built
+                  from completed matches with a recorded winner, so a club
+                  with members but no finished matches would read 0 players
+                  against a real roster (audit H5). */}
+              <View style={s.statBox}><Text style={s.statNum}>{roster.length}</Text><Text style={s.statLbl}>players</Text></View>
             </View>
             <Pressable style={s.cta} onPress={() => router.push({ pathname: "/new-match", params: { clubId: club.id } })}>
               <Text style={s.ctaText}>▶  Start a match</Text>
