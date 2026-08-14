@@ -203,7 +203,6 @@ export default function Home() {
                     <Text style={s.clubName}>{club.name}</Text>
                     <Text style={s.clubMeta}>
                       {club.role ?? "member"}
-                      {club.invite_code ? ` · code ${club.invite_code}` : ""}
                     </Text>
                   </View>
                   {live.has(club.id) && (
