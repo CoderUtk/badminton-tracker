@@ -18,6 +18,7 @@ import PressableScale from "../src/components/PressableScale";
 import BusyButton from "../src/components/BusyButton";
 import { courtZones, rightRow, type CourtRow, type CourtZone } from "../src/lib/courtZones";
 import { loadLastLineup, resolveInitialLineup, saveLastLineup } from "../src/lib/lastLineup";
+import { fillEmptySlots } from "../src/lib/matchLineup";
 import { toast } from "../src/lib/toast";
 import { useSession } from "../src/stores/session";
 import { recordGuestMatch } from "../src/lib/guestMatches";
@@ -38,6 +39,8 @@ export default function NewMatch() {
   const [doubles, setDoubles] = useState(true);
   const [namesDoubles, setNamesDoubles] = useState<string[]>(["", "", "", ""]);
   const [namesSingles, setNamesSingles] = useState<string[]>(["", ""]);
+  const [touchedDoubles, setTouchedDoubles] = useState<boolean[]>([false, false, false, false]);
+  const [touchedSingles, setTouchedSingles] = useState<boolean[]>([false, false]);
   const [clubs, setClubs] = useState<Club[]>([]);
   const [roster, setRoster] = useState<ClubPlayer[]>([]);
   const [clubId, setClubId] = useState<string | null>(null);
@@ -55,6 +58,8 @@ export default function NewMatch() {
 
   const names = doubles ? namesDoubles : namesSingles;
   const setNames = doubles ? setNamesDoubles : setNamesSingles;
+  const touched = doubles ? touchedDoubles : touchedSingles;
+  const setTouched = doubles ? setTouchedDoubles : setTouchedSingles;
   const labels = doubles ? DOUBLES_LABELS : SINGLES_LABELS;
   const filled = names.every((n) => n.trim());
 
@@ -68,6 +73,8 @@ export default function NewMatch() {
       setDoubles(init.doubles);
       setNamesDoubles(init.namesDoubles);
       setNamesSingles(init.namesSingles);
+      setTouchedDoubles([false, false, false, false]);
+      setTouchedSingles([false, false]);
       setPoints(init.points);
       setBestOf(init.bestOf);
       // Names and format are restored, the club deliberately is not: a quick
@@ -114,7 +121,7 @@ export default function NewMatch() {
       .then((players) => {
         if (cancelled) return;
         setRoster(players);
-        setNames((prev) => prev.map((n, i) => (n.trim() ? n : players[i]?.name ?? "")));
+        setNames((prev) => fillEmptySlots(prev, touched, players));
       })
       .catch(() => { if (!cancelled) setRoster([]); });
     return () => { cancelled = true; };
@@ -158,8 +165,10 @@ export default function NewMatch() {
     return doubles ? (zone.team === "A" ? 0 : 2) + zone.playerIdx : zone.team === "A" ? 0 : 1;
   };
 
-  const setNameAt = (index: number, text: string) =>
+  const setNameAt = (index: number, text: string) => {
     setNames((prev) => prev.map((n, i) => (i === index ? text : n)));
+    setTouched((prev) => prev.map((t, i) => (i === index ? true : t)));
+  };
 
   /** Swap left/right halves (team A ↔ team B). */
   const swapSides = () => {
