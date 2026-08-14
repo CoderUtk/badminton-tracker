@@ -235,8 +235,8 @@ export default function NewTournament() {
       )}
 
       {picked.length > 0 && entrantsBlocker ? <Text style={s.err}>{entrantsBlocker}</Text> : null}
-      <Pressable style={({ pressed }) => [s.create, pressed && press, !canCreate && s.off]} disabled={!canCreate} onPress={onCreate}>
-        <Text style={s.createText}>Create bracket</Text>
+      <Pressable style={({ pressed }) => [s.create, pressed && press, !canCreate && s.createOff]} disabled={!canCreate} onPress={onCreate}>
+        <Text style={[s.createText, !canCreate && s.createTextOff]}>Create bracket</Text>
       </Pressable>
     </KeyboardAvoidingView>
   );
@@ -265,6 +265,8 @@ const s = StyleSheet.create({
   create: { backgroundColor: C.red, borderRadius: 12, paddingVertical: 15, alignItems: "center" },
   off: { opacity: 0.5 },
   createText: { color: C.text, fontFamily: F.semibold, fontSize: 16 },
+  createOff: { backgroundColor: C.cardHi, borderWidth: 1, borderColor: C.line },
+  createTextOff: { color: C.text3 },
   err: { color: C.red, fontSize: 12.5, fontFamily: F.body },
   guestRow: { flexDirection: "row", gap: 8 },
   guestBtn: { backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 12, paddingHorizontal: 18, justifyContent: "center" },
