@@ -141,8 +141,8 @@ export default function Home() {
           <LinearGradient
             colors={GRAD.redCTA} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.cta}
           >
-            <Icon name="play" color={C.text} size={26} />
-            <Text style={s.ctaText}>START A MATCH</Text>
+            <Icon name="play" color={C.text} size={20} />
+            <Text style={s.ctaText}>Start a match</Text>
           </LinearGradient>
         </Pressable>
 
@@ -244,10 +244,10 @@ const s = StyleSheet.create({
   greetName: { color: C.text, fontSize: 24, fontFamily: F.display, letterSpacing: 0.5 },
   ctaWrap: { borderRadius: 16, ...glow(C.red, 18, 0.5) },
   cta: {
-    flexDirection: "row", gap: 12, borderRadius: 16, minHeight: 96,
+    flexDirection: "row", gap: 12, borderRadius: 16, minHeight: 72,
     alignItems: "center", justifyContent: "center",
   },
-  ctaText: { color: C.text, fontSize: 22, fontFamily: F.display, letterSpacing: 1 },
+  ctaText: { color: C.text, fontSize: 18, fontFamily: F.display },
   featureCopy: {
     color: C.text2, fontSize: 13, fontFamily: F.body, lineHeight: 19,
     textAlign: "center", paddingHorizontal: 8, marginTop: -4,
