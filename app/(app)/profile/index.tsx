@@ -8,6 +8,7 @@ import { getMyProfile, setDisplayName as saveProfileName, setProfileDetails, set
 import SegmentedControl from "../../../src/components/SegmentedControl";
 import { validateName, validateUsername } from "../../../src/lib/validate";
 import { toast } from "../../../src/lib/toast";
+import { formatWinRate } from "../../../src/lib/winRate";
 import { getPlayerAnalytics, type PlayerAnalytics } from "../../../src/repos/statsRepo";
 import Icon from "../../../src/components/Icon";
 import FormScreen from "../../../src/components/FormScreen";
@@ -392,7 +393,7 @@ export default function Profile() {
         <Stat label="Played" value={a?.played ?? 0} />
         <Stat label="Won" value={a?.wins ?? 0} accent />
         <Stat label="Lost" value={a?.losses ?? 0} />
-        <Stat label="Win %" value={`${a?.winPct ?? 0}%`} accent />
+        <Stat label="Win %" value={formatWinRate(a?.played ?? 0, a?.winPct ?? 0)} accent />
       </View>
 
       {/* Achievements */}

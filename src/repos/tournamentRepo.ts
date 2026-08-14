@@ -229,7 +229,7 @@ export async function listTournaments(clubId: string): Promise<TournamentRow[]> 
   return (data ?? []).map((row) => toTournamentRow(row as Record<string, unknown>));
 }
 
-export type TournamentListRow = TournamentRow & { clubName: string };
+export type TournamentListRow = TournamentRow & { clubName: string; entrantCount: number };
 
 /**
  * Every tournament across all of the user's clubs, newest first.
@@ -255,10 +255,29 @@ export async function listAllTournaments(): Promise<TournamentListRow[]> {
     .in("club_id", clubs.map((c) => c.id))
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
-  return (data ?? []).map((row) => {
-    const t = toTournamentRow(row as Record<string, unknown>);
-    return { ...t, clubName: nameOf.get(t.clubId) ?? "" };
-  });
+  const rows = (data ?? []).map((row) => toTournamentRow(row as Record<string, unknown>));
+
+  // One extra query for every tournament's entrant count, rather than one
+  // per row: a row-per-tournament loop would turn a Cups tab with a dozen
+  // tournaments into a dozen round trips.
+  const counts = new Map<string, number>();
+  if (rows.length > 0) {
+    const { data: entrantRows, error: eErr } = await supabase
+      .from("tournament_entrants")
+      .select("tournament_id")
+      .in("tournament_id", rows.map((t) => t.id));
+    if (eErr) throw new Error(eErr.message);
+    for (const r of entrantRows ?? []) {
+      const tid = (r as { tournament_id: string }).tournament_id;
+      counts.set(tid, (counts.get(tid) ?? 0) + 1);
+    }
+  }
+
+  return rows.map((t) => ({
+    ...t,
+    clubName: nameOf.get(t.clubId) ?? "",
+    entrantCount: counts.get(t.id) ?? 0,
+  }));
 }
 
 /** Create a real match for a bracket cell (singles or doubles), link it, return matchId. */

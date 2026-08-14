@@ -1,8 +1,15 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
-import { getMatch, MatchRecord, replayMatch } from "../../../src/repos/matchRepo";
-import type { MatchState } from "../../../src/engine";
+import { getMatch, loadEvents, MatchRecord } from "../../../src/repos/matchRepo";
+import type { MatchEvent } from "../../../src/engine";
+import { formatElapsed } from "../../../src/lib/elapsed";
+import {
+  buildRallyTimeline,
+  formatMatchDate,
+  formatMatchStatus,
+  matchDurationMs,
+} from "../../../src/lib/matchDetail";
 import PressableScale from "../../../src/components/PressableScale";
 import ShareCard from "../../../src/components/ShareCard";
 import Icon from "../../../src/components/Icon";
@@ -13,19 +20,20 @@ import { C, F } from "../../../src/theme";
 export default function MatchDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [match, setMatch] = useState<MatchRecord | null>(null);
-  const [state, setState] = useState<MatchState | null>(null);
+  const [events, setEvents] = useState<MatchEvent[]>([]);
   const cardRef = useRef<View>(null);
 
   useEffect(() => {
     if (!id) return;
     getMatch(id).then(setMatch);
-    replayMatch(id).then(setState);
+    loadEvents(id).then(setEvents);
   }, [id]);
 
   if (!match) return <View style={s.root} />;
   const names = (side: { name: string }[]) => side.map((p) => p.name).join(" / ");
   const scoreLine = (match.score_summary?.games ?? []).map((g) => `${g.A}-${g.B}`).join("   ");
   const onShare = () => shareMatchCard(cardRef).catch(() => toast("Couldn't share", "error"));
+  const timeline = buildRallyTimeline(events);
 
   return (
     <ScrollView style={s.root} contentContainerStyle={{ padding: 16, gap: 12 }}>
@@ -40,10 +48,26 @@ export default function MatchDetail() {
           <Text style={s.gameScore}>{g.A} – {g.B}</Text>
         </View>
       ))}
-      {state && (
+      <View style={s.card}>
+        <Text style={s.meta}>{formatMatchDate(match.created_at)} · {formatMatchStatus(match.status)}</Text>
+        {events.length > 0 && (
+          <Text style={s.meta}>Duration {formatElapsed(matchDurationMs(events))}</Text>
+        )}
+      </View>
+
+      {timeline.length > 0 && (
         <View style={s.card}>
-          <Text style={s.meta}>Total rallies: {state.rallies.length + state.gameHistory.reduce((n, g) => n + g.score.A + g.score.B, 0)}</Text>
-          <Text style={s.meta}>Status: {match.status}</Text>
+          <Text style={s.timelineTitle}>Rally history</Text>
+          {timeline.map((g) => (
+            <View key={g.game} style={s.timelineRow}>
+              <Text style={s.timelineGame}>Game {g.game}</Text>
+              <View style={s.timelineDots}>
+                {g.rallies.map((t, i) => (
+                  <View key={i} style={[s.timelineDot, { backgroundColor: t === "A" ? C.red : C.blue }]} />
+                ))}
+              </View>
+            </View>
+          ))}
         </View>
       )}
 
@@ -80,6 +104,11 @@ const s = StyleSheet.create({
   gameLbl: { color: C.text2, fontSize: 15 },
   gameScore: { color: C.text, fontSize: 16, fontWeight: "700", fontVariant: ["tabular-nums"] },
   meta: { color: C.text2, fontSize: 14 },
+  timelineTitle: { color: C.text, fontSize: 14, fontFamily: F.semibold, marginBottom: 6 },
+  timelineRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 4 },
+  timelineGame: { color: C.text2, fontSize: 13, width: 56 },
+  timelineDots: { flexDirection: "row", flexWrap: "wrap", gap: 4, flex: 1 },
+  timelineDot: { width: 8, height: 8, borderRadius: 4 },
   shareBtn: { flexDirection: "row", gap: 8, backgroundColor: C.red, borderRadius: 12, paddingVertical: 14, alignItems: "center", justifyContent: "center", marginTop: 4 },
   shareText: { color: C.text, fontFamily: F.semibold, fontSize: 16 },
   offscreen: { position: "absolute", left: -10000, top: 0 },

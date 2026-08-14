@@ -1,6 +1,5 @@
 import {
   isFirstRun,
-  MIN_MATCHES_FOR_RATES,
   pickNextSession,
   sessionDateLabel,
   sessionMetaLabel,
@@ -10,6 +9,7 @@ import {
   statTileValues,
   shouldShowFeatureCopy,
 } from "../src/home/dashboard";
+import { MIN_MATCHES_FOR_RATES } from "../src/lib/winRate";
 import type { ClubSession, SessionStatus } from "../src/repos/sessionRepo";
 import type { Club, ClubPlayer } from "../src/repos/clubRepo";
 import type { PlayerAnalytics } from "../src/analytics/player";

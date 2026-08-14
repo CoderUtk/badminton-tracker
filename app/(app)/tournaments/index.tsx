@@ -3,6 +3,7 @@ import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { listAllTournaments, type TournamentListRow } from "../../../src/repos/tournamentRepo";
 import { toast } from "../../../src/lib/toast";
+import { formatEntrantLabel } from "../../../src/lib/entrantLabel";
 import Icon from "../../../src/components/Icon";
 import { C, F, press, glow } from "../../../src/theme";
 
@@ -63,7 +64,7 @@ export default function TournamentsList() {
                 <Text style={s.name}>{item.name}</Text>
                 <Text style={s.meta}>
                   {item.clubName ? `${item.clubName} · ` : ""}
-                  {item.size}-player
+                  {formatEntrantLabel(item.entrantCount)}
                 </Text>
                 <View style={[s.statusPill, { backgroundColor: color + "22" }]}>
                   <View style={[s.statusDot, { backgroundColor: color }]} />

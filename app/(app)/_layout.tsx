@@ -1,8 +1,10 @@
 import React from "react";
 import { Tabs } from "expo-router";
+import { CommonActions, type NavigationState, type PartialState } from "@react-navigation/native";
 import Icon, { type IconName } from "../../src/components/Icon";
 import Logo from "../../src/components/Logo";
 import { C } from "../../src/theme";
+import { shouldResetTabStack } from "../../src/lib/tabReset";
 
 const icon = (name: IconName) =>
   function TabIcon({ color, size }: { color: string; size: number }) {
@@ -27,7 +29,30 @@ export default function AppTabs() {
       <Tabs.Screen name="index" options={{ title: "Home", tabBarIcon: icon("home") }} />
       <Tabs.Screen name="sessions" options={{ title: "Sessions", tabBarIcon: icon("calendar"), headerShown: false }} />
       <Tabs.Screen name="matches" options={{ title: "Matches", tabBarIcon: icon("badminton"), headerShown: false }} />
-      <Tabs.Screen name="tournaments" options={{ title: "Cups", tabBarIcon: icon("trophy"), headerShown: false }} />
+      <Tabs.Screen
+        name="tournaments"
+        options={{ title: "Cups", tabBarIcon: icon("trophy"), headerShown: false }}
+        listeners={({ navigation, route }) => ({
+          tabPress: (e) => {
+            const state = navigation.getState();
+            const routeIndex = state.routes.findIndex((r: { name: string }) => r.name === route.name);
+            const isFocused = routeIndex !== -1 && state.index === routeIndex;
+            const nested = state.routes[routeIndex]?.state as
+              | NavigationState
+              | PartialState<NavigationState>
+              | undefined;
+            if (isFocused && shouldResetTabStack(nested?.index)) {
+              const firstRouteName = nested?.routes?.[0]?.name;
+              if (!firstRouteName || !nested) return;
+              e.preventDefault();
+              navigation.dispatch({
+                ...CommonActions.reset({ index: 0, routes: [{ name: firstRouteName }] }),
+                target: nested.key,
+              });
+            }
+          },
+        })}
+      />
       <Tabs.Screen name="profile" options={{ title: "Profile", tabBarIcon: icon("person"), headerShown: false }} />
       <Tabs.Screen name="clubs" options={{ href: null, headerShown: false }} />
       <Tabs.Screen name="watch" options={{ href: null, headerShown: false }} />
