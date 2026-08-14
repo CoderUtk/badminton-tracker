@@ -84,9 +84,11 @@ export default function MatchScreen({
       setPausedSince(now);
       return;
     }
-    // Bank the span that just closed, then clear the open one. Both setters are
-    // called from the handler rather than from inside an updater: React invokes
-    // updaters twice in development, which would double-bank the span.
+    // Bank the span that just closed, then clear the open one. The functional
+    // updater is used deliberately: it is pure and idempotent under React's
+    // dev-mode double-invocation, and correct if several updates batch. Do NOT
+    // rewrite this as setPausedMs(pausedMs + ...) — that closes over a stale
+    // value and would be wrong under batching.
     setPausedMs((banked) => banked + (now - pausedSince));
     setPausedSince(null);
   }, [pausedSince]);
@@ -185,6 +187,7 @@ export default function MatchScreen({
       {banner ? (
         <Pressable
           style={s.banner}
+          disabled={paused}
           onPress={() => {
             if (state.phase === "game_over") dispatch({ type: "GAME_STARTED", at: Date.now() });
             else router.back();
@@ -321,9 +324,9 @@ export default function MatchScreen({
           <View style={s.serveSlot}>{state.servingTeam === "A" && <View style={[s.serveDot, { backgroundColor: C.red }]} />}</View>
           <Text style={[s.ribbonName, { color: C.red }]} numberOfLines={1}>{teamName("A")}</Text>
         </View>
-        <Text style={[s.ribbonScore, { color: C.red }, textGlow(C.red, 16)]}>{state.score.A}</Text>
+        <Text style={[s.ribbonScore, { color: C.red }, textGlow(C.red, 16)]} maxFontSizeMultiplier={1.2}>{state.score.A}</Text>
         <Text style={s.scoreDivider}>—</Text>
-        <Text style={[s.ribbonScore, { color: C.blue }, textGlow(C.blue, 16)]}>{state.score.B}</Text>
+        <Text style={[s.ribbonScore, { color: C.blue }, textGlow(C.blue, 16)]} maxFontSizeMultiplier={1.2}>{state.score.B}</Text>
         <View style={[s.ribbonTeam, s.ribbonTeamB]}>
           <Text style={[s.ribbonName, { color: C.blue }]} numberOfLines={1}>{teamName("B")}</Text>
           <View style={s.serveSlot}>{state.servingTeam === "B" && <View style={[s.serveDot, { backgroundColor: C.blue }]} />}</View>
@@ -339,35 +342,44 @@ export default function MatchScreen({
 
   return (
     <View style={s.root}>
-      {/* Landscape: controls flank the centered score in one full-width row (no
-          empty top corners). Portrait: controls row above the score. */}
-      {portrait ? (
-        <View style={s.top}>
-          <View style={s.controls}>{leftGroup}{rightGroup}</View>
-          {scoreBlock}
-        </View>
-      ) : (
-        <View style={s.topRow}>
-          {leftGroup}
-          <View style={s.scoreFill}>{scoreBlock}</View>
-          {rightGroup}
-        </View>
-      )}
-
-      {/* body: side rails (landscape) or court over a +1 row (portrait) */}
-      <View style={[s.body, portrait && s.bodyPortrait]}>
+      <View
+        style={s.fill}
+        // The scrim blocks touches, but a screen reader activates a node
+        // directly and never hit-tests, so without this a TalkBack user could
+        // still End or Leave a match that is supposed to be paused.
+        importantForAccessibility={paused ? "no-hide-descendants" : "auto"}
+        accessibilityElementsHidden={paused}
+      >
+        {/* Landscape: controls flank the centered score in one full-width row (no
+            empty top corners). Portrait: controls row above the score. */}
         {portrait ? (
-          <>
-            {centerBlock}
-            <View style={s.railsRow}>{railA}{railB}</View>
-          </>
+          <View style={s.top}>
+            <View style={s.controls}>{leftGroup}{rightGroup}</View>
+            {scoreBlock}
+          </View>
         ) : (
-          <>
-            {railA}
-            {centerBlock}
-            {railB}
-          </>
+          <View style={s.topRow}>
+            {leftGroup}
+            <View style={s.scoreFill}>{scoreBlock}</View>
+            {rightGroup}
+          </View>
         )}
+
+        {/* body: side rails (landscape) or court over a +1 row (portrait) */}
+        <View style={[s.body, portrait && s.bodyPortrait]}>
+          {portrait ? (
+            <>
+              {centerBlock}
+              <View style={s.railsRow}>{railA}{railB}</View>
+            </>
+          ) : (
+            <>
+              {railA}
+              {centerBlock}
+              {railB}
+            </>
+          )}
+        </View>
       </View>
 
       {paused && (
@@ -376,6 +388,7 @@ export default function MatchScreen({
           onPress={togglePause}
           accessibilityRole="button"
           accessibilityLabel="Match paused. Tap to resume."
+          accessibilityViewIsModal
         >
           <View style={s.pausedCard}>
             <Icon name="pause" color={C.text} size={28} />
@@ -396,6 +409,7 @@ export default function MatchScreen({
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg, padding: 8, gap: 6 },
+  fill: { flex: 1, gap: 6 },
   top: { gap: 6 },
   topRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 8 },
   scoreFill: { flex: 1, alignItems: "center" },

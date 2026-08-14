@@ -3,7 +3,7 @@ import { StyleSheet, TextInput, View, type TextInputProps } from "react-native";
 import Animated, { useAnimatedProps, useSharedValue } from "react-native-reanimated";
 import Icon from "./Icon";
 import { elapsedMs, formatElapsed } from "../lib/elapsed";
-import { C, F, space } from "../theme";
+import { C, F, SCOREBOARD_TYPE, space } from "../theme";
 
 // Reanimated can drive a TextInput's `text` prop natively; it cannot drive a
 // Text's children. This is the only way to update a string once a second
@@ -43,6 +43,10 @@ export default function ElapsedChip({
     // Paint immediately so the chip is never blank for up to a second, and so a
     // pause/resume shows its new frozen value without waiting for the interval.
     tick();
+    // Paused: the value cannot change, so scheduling a tick would write the
+    // same string to the native node every second on the one screen this
+    // component exists to keep idle (audit A7).
+    if (pausedSince !== null) return;
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [startedAt, pausedMs, pausedSince, text]);
@@ -77,7 +81,7 @@ const s = StyleSheet.create({
   // padding/margin zeroed because TextInput carries platform defaults that a
   // Text does not, and this has to sit on the same baseline the Text did.
   text: {
-    color: C.text2, fontSize: 12, fontFamily: F.body,
+    color: C.text2, fontSize: SCOREBOARD_TYPE.timer, fontFamily: F.body,
     fontVariant: ["tabular-nums"],
     padding: 0, margin: 0, minWidth: 58,
   },
