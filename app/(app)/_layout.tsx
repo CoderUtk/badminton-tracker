@@ -35,16 +35,16 @@ export default function AppTabs() {
         listeners={({ navigation, route }) => ({
           tabPress: (e) => {
             const state = navigation.getState();
-            const tabRoute = state.routes.find((r: { name: string }) => r.name === route.name);
-            const isFocused = tabRoute ? state.index === state.routes.indexOf(tabRoute) : false;
-            const nested = tabRoute?.state as
+            const routeIndex = state.routes.findIndex((r: { name: string }) => r.name === route.name);
+            const isFocused = routeIndex !== -1 && state.index === routeIndex;
+            const nested = state.routes[routeIndex]?.state as
               | NavigationState
               | PartialState<NavigationState>
               | undefined;
             if (isFocused && shouldResetTabStack(nested?.index)) {
-              e.preventDefault();
               const firstRouteName = nested?.routes?.[0]?.name;
               if (!firstRouteName || !nested) return;
+              e.preventDefault();
               navigation.dispatch({
                 ...CommonActions.reset({ index: 0, routes: [{ name: firstRouteName }] }),
                 target: nested.key,

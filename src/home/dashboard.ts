@@ -8,9 +8,6 @@ import type { Club, ClubPlayer } from "../repos/clubRepo";
 import type { PlayerAnalytics } from "../analytics/player";
 import { formatWinRate, MIN_MATCHES_FOR_RATES } from "../lib/winRate";
 
-// Re-export for backward compatibility with existing tests.
-export { MIN_MATCHES_FOR_RATES };
-
 
 /**
  * The soonest session that has not started yet. Note that listSessions()
@@ -84,7 +81,7 @@ export function statTileValues(analytics: PlayerAnalytics | null): {
   return {
     matches: String(played),
     winRate: formatWinRate(played, analytics?.winPct ?? 0),
-    streak: hasRates ? String(analytics!.longestWinStreak) : "—",
+    streak: hasRates ? String(analytics?.longestWinStreak ?? 0) : "—",
     hasRates,
   };
 }
