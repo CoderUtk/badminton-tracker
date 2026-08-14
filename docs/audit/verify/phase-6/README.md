@@ -102,11 +102,19 @@ With A1, A2, A3, A5, A6, A8 closed this phase (CODE-CONFIRMED, no live-device
 evidence — see call-outs above) and the two ad-hoc items resolved (CTA shrink shipped,
 truncation audit concluded with no fix needed), **this closes the last of the seven
 mobile-ux-refinement phases**. All 43 findings from the 2026-08-12 audit
-(`docs/audit/2026-08-12-ux-audit/AUDIT.md`) are now closed across Phases 1-6, per
-spec §12 (`docs/superpowers/specs/2026-08-13-mobile-ux-refinement-design.md`) — with
-the caveat that this phase's six findings and the CTA item rest on code review plus a
-clean `tsc`/`jest` run rather than live-device confirmation, unlike every prior phase
-that had device access.
+(`docs/audit/2026-08-12-ux-audit/AUDIT.md`) are now assigned and closed across
+Phases 1-6, per spec §12 (`docs/superpowers/specs/2026-08-13-mobile-ux-refinement-design.md`)
+— with the caveat that this phase's six findings and the CTA item rest on code review
+plus a clean `tsc`/`jest` run rather than live-device confirmation, unlike every prior
+phase that had device access.
+
+**One documented remainder:** M2 is recorded as *partially closed* in
+`docs/audit/verify/phase-4/README.md`, with a ten-site `segOn`/`chipOn` → `selected`
+token sweep (Phase 4b) outstanding, starting with `app/new-match.tsx`. Phase 4b was
+explicitly declined for this session — see `docs/superpowers/plans/2026-08-15-mobile-ux-phase-6.md`,
+"Not in this plan" section. So "all 43 findings closed" holds against the
+phase-assignment table (spec §12), not against the verification record in full — M2's
+remainder is still open.
 
 ## Files created
 
