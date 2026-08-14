@@ -31,7 +31,7 @@ no images.** Every finding below closes on code-and-typecheck evidence only.
 
 | Finding | Commit | Device evidence | What stands in for it | Verdict |
 |---|---|---|---|---|
-| **M2** | `7f2ede5`, `aebaf1e`, `7584042`, `6149f73` | None | Code read: `SegmentedControl.tsx` and three screens' selection styles now key off the neutral `selected`/`selectedText` theme tokens, not `C.red`/cyan | **CODE+TYPECHECK ONLY** |
+| **M2** | `7f2ede5`, `aebaf1e`, `7584042`, `6149f73` | None | Code read: `SegmentedControl.tsx` and three screens' selection styles now key off the neutral `selected`/`selectedText` theme tokens, not `C.red`/cyan — but the audit's own text names `app/new-match.tsx` as a site, and it (plus nine other sites) still fills selection with `C.red`/cyan; see "M2 — partially closed" below | **PARTIALLY CLOSED** |
 | **H7** | `740abd6` | None | Code read of `app/(app)/tournaments/new.tsx`'s `gamesRow` layout, plus an independent flexbox-math verification by the task reviewer during Task 5's review (see `progress.md`) | **CODE+TYPECHECK ONLY (reviewed)** |
 | **M9** | `b9e3c0b` | None | Code read of `app/(app)/sessions/[id].tsx`: Attendance/Games, Auto/Manual, and Doubles/Singles now use three visually distinct control styles; confirmed no dangling style references left behind | **CODE+TYPECHECK ONLY** |
 | **M1** | `facbf66` | None | Code read: all three remaining `Alert.alert` destructive-confirmation call sites (`src/screens/MatchScreen.tsx`, `app/(app)/matches/index.tsx`, `app/(app)/sessions/[id].tsx`) converted to `AppDialog`; confirmed no stray `Alert.` calls remain in any of the three touched files (`grep -rn "Alert\." src/screens/MatchScreen.tsx "app/(app)/matches/index.tsx" "app/(app)/sessions/[id].tsx"` returns nothing) | **CODE+TYPECHECK ONLY** |
@@ -72,6 +72,36 @@ refactors and recorded as such rather than credited to Phase 3):
 Both are recorded as closed by work that predates this phase (per Task 9's
 and Task 13's own measure-first framing), not claimed as new fixes.
 
+### M2 — partially closed: plan-scoping gap, not an implementation gap
+
+The audit's own M2 text (`docs/audit/2026-08-12-ux-audit/AUDIT.md`) reads:
+"selection is red on New match / New tournament Config, but cyan on the
+Entrants list." This phase's tasks fixed New tournament Config and the Entrants list, keying
+their selection styles off the neutral `selected`/`selectedText` theme
+tokens. But `app/new-match.tsx` — the first screen the audit names —
+was never touched, and neither were several other screens with the same
+red/cyan-selection pattern. A code search this pass found these surviving
+sites:
+
+- `app/new-match.tsx` (`segOn`: red — the audit-named screen, **not** fixed
+  this phase)
+- `src/components/TournamentConfigTab.tsx` (`segOn`: red)
+- `app/(app)/tournaments/edit/[id].tsx` (`segOn`: red, same literal)
+- `src/components/TournamentPlayersTab.tsx` (`chipOn`/`chipTextOn`: cyan —
+  the exact anti-pattern `theme.ts` documents as rejected)
+- `app/(app)/matches/index.tsx` (`fChipOn`: red)
+- `app/new-session.tsx` (`chipOn`: red)
+- `app/(app)/profile/index.tsx`, `app/welcome.tsx`,
+  `src/components/ClubPicker.tsx`, `src/components/TimePicker.tsx` (same
+  red-selection pattern)
+
+This is a plan-scoping gap, not an implementation gap — the tasks correctly
+touched exactly the files the plan named, but the plan under-scoped M2
+relative to the audit's own text, which named `new-match.tsx` explicitly. A
+follow-up phase (Phase 4b) should do a mechanical `segOn`/`chipOn` →
+`selected` token sweep over these ten sites. No such sweep was made as part
+of this fix; this is a documentation correction to the verdict only.
+
 ### H7 and P15 — reviewer-verified beyond the implementer's own read
 
 - **H7** (`740abd6`, `app/(app)/tournaments/new.tsx`): the task reviewer
@@ -110,7 +140,7 @@ this plan claims one).
 
 | Finding | Real device confirmation | Code+typecheck confirmation | Independent second read |
 |---|---|---|---|
-| M2 | No | Yes | No |
+| M2 | No | Partially (10 sites still red/cyan, see "M2 — partially closed") | No |
 | H7 | No | Yes | Yes (reviewer, flexbox math) |
 | M9 | No | Yes | No |
 | M1 | No | Yes | No |

@@ -90,7 +90,7 @@ export default function ClubSheet({
             busy={joining} disabled={!inviteCode.trim()}
             style={[s.btn, s.btnSecondary, !inviteCode.trim() && s.btnOff]} onPress={onJoin}
           >
-            <Text style={[s.btnText, s.btnSecondaryText]}>Join</Text>
+            <Text style={s.btnText}>Join</Text>
           </BusyButton>
         </View>
       </View>
@@ -113,6 +113,5 @@ const s = StyleSheet.create({
   btnOff: { opacity: 0.5 },
   btnText: { color: C.text, fontSize: 16, fontWeight: "700" },
   btnSecondary: { backgroundColor: C.cardHi, borderWidth: 1, borderColor: C.line },
-  btnSecondaryText: { color: C.text },
   err: { color: C.red, fontSize: 12.5, fontFamily: F.body },
 });

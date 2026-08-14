@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { createTournament, type MatchType } from "../../../src/repos/tournamentRepo";
 import { addGuestPlayer, listClubs, listPlayers, type ClubPlayer } from "../../../src/repos/clubRepo";
 import { drawSizeFor, startBlocker } from "../../../src/tournament/draw";
-import { C, F, press, selected, selectedText, unselectedText } from "../../../src/theme";
+import { C, F, press, selected, selectedText } from "../../../src/theme";
 import { toast } from "../../../src/lib/toast";
 import { validateName } from "../../../src/lib/validate";
 
