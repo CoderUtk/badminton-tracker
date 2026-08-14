@@ -41,8 +41,8 @@ export default function Friends() {
 
   useEffect(() => {
     const trimmed = username.trim();
-    if (trimmed === pickedUsername.current) { setResults([]); return; }
     if (trimmed.length < 2) { setResults([]); setSearching(false); return; }
+    if (trimmed === pickedUsername.current) { setResults([]); return; }
     setSearching(true);
     let cancelled = false;
     const t = setTimeout(() => {
