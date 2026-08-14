@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { createTournament, type MatchType } from "../../../src/repos/tournamentRepo";
 import { addGuestPlayer, listClubs, listPlayers, type ClubPlayer } from "../../../src/repos/clubRepo";
 import { drawSizeFor, startBlocker } from "../../../src/tournament/draw";
-import { C, F, press } from "../../../src/theme";
+import { C, F, press, selected, selectedText, unselectedText } from "../../../src/theme";
 import { toast } from "../../../src/lib/toast";
 import { validateName } from "../../../src/lib/validate";
 
@@ -248,9 +248,9 @@ const s = StyleSheet.create({
   h: { color: C.text, fontFamily: F.bold, fontSize: 14 },
   segRow: { flexDirection: "row", gap: 8 },
   segBtn: { flex: 1, alignItems: "center", paddingVertical: 11, backgroundColor: C.card, borderRadius: 10, borderWidth: 1, borderColor: C.line },
-  segOn: { borderColor: C.red, backgroundColor: "rgba(255,59,48,0.12)" },
+  segOn: selected,
   segText: { color: C.text2, fontFamily: F.semibold, fontSize: 15, textTransform: "capitalize" },
-  segTextOn: { color: C.text },
+  segTextOn: selectedText,
   stepRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
   stepBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, alignItems: "center", justifyContent: "center" },
   stepBtnText: { color: C.text, fontFamily: F.bold, fontSize: 20 },
@@ -259,7 +259,7 @@ const s = StyleSheet.create({
   gamesCol: { flex: 1, gap: 6 },
   empty: { color: C.text2, textAlign: "center", marginTop: 24 },
   player: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: C.card, borderRadius: 10, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: C.line },
-  playerOn: { borderColor: C.accent },
+  playerOn: { borderColor: C.lineHi, backgroundColor: C.cardHi },
   playerName: { color: C.text2, fontSize: 15, fontFamily: F.body },
   seed: { color: C.accent, fontFamily: F.semibold },
   create: { backgroundColor: C.red, borderRadius: 12, paddingVertical: 15, alignItems: "center" },
@@ -271,7 +271,7 @@ const s = StyleSheet.create({
   guestBtnText: { color: C.text, fontFamily: F.semibold, fontSize: 15 },
   tabRow: { flexDirection: "row", gap: 8 },
   tabBtn: { flex: 1, alignItems: "center", paddingVertical: 12, backgroundColor: C.card, borderRadius: 12, borderWidth: 1, borderColor: C.line },
-  tabOn: { borderColor: C.red, backgroundColor: "rgba(255,59,48,0.12)" },
+  tabOn: selected,
   tabText: { color: C.text2, fontFamily: F.semibold, fontSize: 15 },
   tabTextOn: { color: C.text },
 });
