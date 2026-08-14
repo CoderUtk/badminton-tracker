@@ -15,7 +15,7 @@ import Sheet from "../../../src/components/Sheet";
 import SegmentedControl from "../../../src/components/SegmentedControl";
 import SessionResultCard from "../../../src/components/share/SessionResultCard";
 import { captureAndShare } from "../../../src/lib/share/captureAndShare";
-import { C, space } from "../../../src/theme";
+import { C, selected, selectedText, space } from "../../../src/theme";
 import { toast } from "../../../src/lib/toast";
 import { useSession } from "../../../src/stores/session";
 
@@ -448,18 +448,18 @@ const s = StyleSheet.create({
   manualBox: { backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.line, padding: 12, gap: 8 },
   manualTeamRow: { flexDirection: "row", gap: 8 },
   manualSlot: { flex: 1, minHeight: 40, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: C.cardHi, borderWidth: 1, borderColor: C.line, borderStyle: "dashed" },
-  manualSlotOn: { backgroundColor: C.red, borderColor: C.red, borderStyle: "solid" },
+  manualSlotOn: { ...selected, borderStyle: "solid" },
   manualSlotText: { color: C.text2, fontSize: 13, fontWeight: "700" },
-  manualSlotTextOn: { color: C.text },
+  manualSlotTextOn: selectedText,
   addCourtBtn: { minHeight: 42, borderRadius: 10, backgroundColor: C.redDeep, alignItems: "center", justifyContent: "center" },
   addCourtText: { color: C.text, fontWeight: "800", fontSize: 14 },
   manualCourtRow: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: C.cardHi, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
   manualCourtText: { flex: 1, color: C.text, fontSize: 13, fontWeight: "600" },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   playerChip: { minHeight: 36, paddingHorizontal: 12, justifyContent: "center", alignItems: "center", borderRadius: 18, backgroundColor: C.cardHi, borderWidth: 1, borderColor: C.line },
-  playerChipOn: { backgroundColor: C.red, borderColor: C.red },
+  playerChipOn: selected,
   playerChipText: { color: C.text, fontWeight: "700", fontSize: 13 },
-  playerChipTextOn: { color: C.text },
+  playerChipTextOn: selectedText,
   games: { gap: 8, marginVertical: 4 }, gameCard: { backgroundColor: "#211819", borderColor: "#5B2524", borderWidth: 1, padding: 14, borderRadius: 14, gap: 3 }, court: { color: C.red, fontSize: 11, fontWeight: "900", letterSpacing: 0.8 }, teams: { color: C.text, fontSize: 16, fontWeight: "800" }, vs: { color: C.text2, fontSize: 13 }, scoreButton: { alignSelf: "flex-start", flexDirection: "row", gap: 6, marginTop: 7, paddingVertical: 9, paddingHorizontal: 13, borderRadius: 9, backgroundColor: C.red, alignItems: "center" }, scoreText: { color: C.text, fontWeight: "900", fontSize: 13 },
   matchRow: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: C.card, borderRadius: 12, padding: 13, borderWidth: 1, borderColor: C.line }, matchTeams: { color: C.text, fontSize: 15, fontWeight: "700" }, matchMeta: { color: C.text2, fontSize: 13, marginTop: 2 }, matchLive: { color: C.green, fontWeight: "800", fontSize: 12 }, matchDone: { color: C.text2, fontWeight: "800" },
   playerRow: { minHeight: 66, paddingVertical: 9, flexDirection: "row", alignItems: "center", borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line, gap: 10 }, avatar: { height: 34, width: 34, borderRadius: 17, backgroundColor: C.cardHi, alignItems: "center", justifyContent: "center" }, avatarIn: { backgroundColor: C.red }, avatarText: { color: C.text, fontWeight: "900" }, playerName: { flex: 1, color: C.text, fontSize: 16, fontWeight: "700" }, attendanceActions: { flexDirection: "row", gap: space.sm },
