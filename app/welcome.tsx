@@ -156,7 +156,7 @@ const s = StyleSheet.create({
   off: { opacity: 0.45 },
   handRow: { flexDirection: "row", gap: 8 },
   handChip: { flex: 1, backgroundColor: C.bgElev, borderRadius: 12, borderWidth: 1, borderColor: C.line, paddingVertical: 14, alignItems: "center" },
-  handChipOn: { backgroundColor: C.red, borderColor: C.red },
+  handChipOn: { backgroundColor: C.cardHi, borderColor: C.lineHi },
   handChipText: { color: C.text2, fontFamily: F.semibold, fontSize: 15 },
   handChipTextOn: { color: C.text },
 });

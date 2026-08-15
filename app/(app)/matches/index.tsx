@@ -210,7 +210,7 @@ const s = StyleSheet.create({
   filterBar: { paddingTop: 12, paddingBottom: 4 },
   filterRow: { paddingHorizontal: 16, gap: 8 },
   fChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: C.card, borderWidth: 1, borderColor: C.line },
-  fChipOn: { backgroundColor: C.red, borderColor: C.red },
+  fChipOn: { backgroundColor: C.cardHi, borderColor: C.lineHi },
   fChipText: { color: C.text2, fontSize: 13, fontWeight: "700" },
   fChipTextOn: { color: C.text },
   list: { padding: 16, paddingBottom: 32 },

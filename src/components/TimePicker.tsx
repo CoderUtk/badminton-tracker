@@ -94,7 +94,7 @@ const s = StyleSheet.create({
     minHeight: 36, justifyContent: "center", alignItems: "center",
     borderRadius: 10, marginVertical: 2,
   },
-  itemOn: { backgroundColor: C.red },
+  itemOn: { backgroundColor: C.cardHi, borderWidth: 1, borderColor: C.lineHi },
   itemText: { color: C.text, fontWeight: "700", fontSize: 14 },
   itemTextOn: { color: C.text },
 });

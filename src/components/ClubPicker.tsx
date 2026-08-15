@@ -97,7 +97,7 @@ const s = StyleSheet.create({
     minHeight: 52, paddingHorizontal: 12, borderRadius: 12,
     backgroundColor: C.bg,
   },
-  rowOn: { borderWidth: 1, borderColor: C.red },
+  rowOn: { borderWidth: 1, borderColor: C.lineHi, backgroundColor: C.cardHi },
   rowText: { flex: 1 },
   rowTitle: { color: C.text, fontSize: 16, fontWeight: "700" },
   rowHint: { color: C.text2, fontSize: 12 },

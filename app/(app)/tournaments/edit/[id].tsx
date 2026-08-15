@@ -118,7 +118,7 @@ const s = StyleSheet.create({
   input: { backgroundColor: C.card, color: C.text, borderRadius: 12, borderWidth: 1, borderColor: C.line, padding: 12, fontSize: 16 },
   segRow: { flexDirection: "row", gap: 8 },
   segBtn: { flex: 1, alignItems: "center", paddingVertical: 11, backgroundColor: C.card, borderRadius: 10, borderWidth: 1, borderColor: C.line },
-  segOn: { borderColor: C.red, backgroundColor: "rgba(255,59,48,0.12)" },
+  segOn: { borderColor: C.lineHi, backgroundColor: C.cardHi },
   segText: { color: C.text2, fontFamily: F.semibold, fontSize: 15 },
   segTextOn: { color: C.text },
   note: { color: C.text2, fontSize: 13, lineHeight: 19, marginTop: 8, fontFamily: F.body },

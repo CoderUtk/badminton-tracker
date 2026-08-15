@@ -481,7 +481,7 @@ const s = StyleSheet.create({
   seg: { flexDirection: "row", backgroundColor: C.card, borderRadius: 12, padding: 4, gap: 4 },
   segFill: { flex: 1 },
   segBtn: { flex: 1, borderRadius: 9, minHeight: 40, alignItems: "center", justifyContent: "center" },
-  segOn: { backgroundColor: C.red },
+  segOn: { backgroundColor: C.cardHi, borderWidth: 1, borderColor: C.lineHi },
   segText: { color: C.text2, fontSize: 15, fontWeight: "600" },
   segTextOn: { color: C.text },
   courtWrap: { flex: 1, minHeight: 200 },
