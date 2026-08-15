@@ -102,6 +102,14 @@ follow-up phase (Phase 4b) should do a mechanical `segOn`/`chipOn` →
 `selected` token sweep over these ten sites. No such sweep was made as part
 of this fix; this is a documentation correction to the verdict only.
 
+**Update 2026-08-15 (Phase 4b, commit `9221ab0`):** the sweep landed —
+nine of the ten listed sites now use the `cardHi`/`lineHi` selected recipe
+instead of red/cyan. `app/(app)/profile/index.tsx` was re-examined and
+excluded: its only `C.red` usage is the reminders `Switch`'s `trackColor`,
+which is a binary-toggle "on" color, not the `segOn`/`chipOn`
+selection-chip anti-pattern this sweep targets — that switch was already
+reviewed and passed as Phase 5's M7. M2 is now closed, no remainder.
+
 ### H7 and P15 — reviewer-verified beyond the implementer's own read
 
 - **H7** (`740abd6`, `app/(app)/tournaments/new.tsx`): the task reviewer
