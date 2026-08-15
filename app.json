@@ -66,6 +66,7 @@
       "expo-font",
       "./plugins/withQuietAndroidBuild",
       "./plugins/withReleaseSigning",
+      "./plugins/withWindowsCmakeShortPath",
       [
         "@sentry/react-native/expo",
         {
