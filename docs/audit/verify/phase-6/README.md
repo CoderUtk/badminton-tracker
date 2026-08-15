@@ -44,7 +44,13 @@ Using the same WCAG relative-luminance method as Phase 5's M5 (Task 1 Step 3):
 - Unselected segment labels (`Singles`/`Doubles`, points/best-of segments in
   `app/new-match.tsx`) and the four tournament tool buttons (Config/Players/Scorers/Ops
   in `app/(app)/tournaments/[id].tsx`): `C.text2` (`#9BA3B2`) on `C.card` (`#171A21`) —
-  **contrast ratio ≈ 6.86:1**, passes WCAG AA (4.5:1) with margin.
+  **contrast ratio ≈ 6.86:1**, passes WCAG AA (4.5:1) with margin. This is also the
+  audit's named `Manual pair` unselected label (a `Chip`, `app/(app)/sessions/[id].tsx`):
+  `Chip`'s `unselectedText` is the same `C.text2` on the same `C.card` (`theme.ts`), so
+  the identical ratio covers it — not a separate measurement. (`Chip`'s `disabled` state
+  applies `opacity: 0.4`, which does drop `Manual pair`'s effective contrast to roughly
+  2.1:1 when `!canDoubles` — WCAG 1.4.3 exempts disabled controls, so this is out of
+  A8's scope, noted here only so it isn't mistaken for an unmeasured gap.)
 - Locked-achievement description text (`C.text3` on `C.bgElev`,
   `src/components/BadgeGrid.tsx`): already measured in Phase 5 at **5.34:1**, passing —
   see `docs/audit/verify/phase-5/README.md`'s "M5 — locked-tile contrast" section; not

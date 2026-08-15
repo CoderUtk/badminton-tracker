@@ -310,6 +310,8 @@ export default function TournamentBracket() {
             onPress={onRefresh}
             disabled={refreshing}
             accessibilityLabel="Refresh tournament"
+            accessibilityRole="button"
+            accessibilityState={{ busy: refreshing, disabled: refreshing }}
           >
             {refreshing
               ? <ActivityIndicator size="small" color={C.text2} />

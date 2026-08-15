@@ -56,6 +56,14 @@ export default function CourtBox({
 
   const usesPlaceholder = !!edit && !edit.value.trim();
   const label = edit ? edit.value.trim() || edit.placeholder : name;
+  // A name is present as its own focusable Pressable below, and the serve
+  // dot carries its own accessibilityLabel — grouping this box under one
+  // `accessible` node would hide both from the accessibility tree (a
+  // focusable/labelled descendant under an `accessible` ancestor is not
+  // independently reachable). Only collapse the box into one node for the
+  // true empty-slot case, where the outer Pressable's onZonePress is the
+  // sole tap target.
+  const hasNamePressable = !edit?.editing && zone.playerIdx !== null && label !== null;
 
   return (
     <Pressable
@@ -76,7 +84,7 @@ export default function CourtBox({
       onPress={edit?.onZonePress}
       disabled={!edit || suppressed}
       pointerEvents={suppressed ? "none" : "auto"}
-      accessible={!!edit && !suppressed}
+      accessible={!!edit && !suppressed && !hasNamePressable}
       accessibilityElementsHidden={suppressed}
       importantForAccessibility={suppressed ? "no-hide-descendants" : "auto"}
     >
