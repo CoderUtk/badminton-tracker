@@ -35,7 +35,7 @@ export default function MatchDetail() {
   // The share card renders a decided match: no winner means no share control,
   // which is why ShareCardProps.winner is non-nullable.
   const games = match.score_summary?.games ?? [];
-  const canShare = match.status === "completed" && match.winner !== null && games.length > 0;
+  const canShare = match.status === "completed" && match.winner !== null && games.length > 0 && events.length > 0;
   const onShare = () => shareMatchCard(cardRef).catch(() => toast("Couldn't share", "error"));
   const timeline = buildRallyTimeline(events);
 

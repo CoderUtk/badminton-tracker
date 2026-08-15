@@ -2,7 +2,6 @@ import React, { forwardRef } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Logo from "./Logo";
-import StatTile from "./StatTile";
 import { formatGameScores, truncateName } from "../lib/share/cardData";
 import { formatShortDuration } from "../lib/share/matchStats";
 import { joinLinkDisplayDomain } from "../lib/shareJoin";
@@ -26,6 +25,32 @@ export type ShareCardProps = {
   /** Reserved for the upcoming profile-picture feature. Intentionally unused. */
   avatarUrl?: string | null;
 };
+
+/**
+ * Private to ShareCard: decoupled from the home screen's StatTile so this card's
+ * layout budget can't shift under it (see StatTile's minHeight history) and so the
+ * capture fallback's `const S = 3` scale-everything trick can reach it. Value is
+ * rendered above the label per spec §8 — the opposite order of StatTile.
+ */
+function Tile({
+  label, value, valueColor = C.text,
+}: {
+  label: string; value: string; valueColor?: string;
+}) {
+  return (
+    <View style={s.tile}>
+      <Text
+        style={[s.tileValue, { color: valueColor }]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.7}
+      >
+        {value}
+      </Text>
+      <Text style={s.tileLabel} numberOfLines={2}>{label}</Text>
+    </View>
+  );
+}
 
 /**
  * Fixed-size story card (9:16) captured off-screen for sharing. Render it in an
@@ -80,15 +105,18 @@ const ShareCard = forwardRef<View, ShareCardProps>(function ShareCard(
       </View>
 
       <View style={s.statRow}>
-        <StatTile label="TIME" value={formatShortDuration(stats.durationMs)} />
-        <StatTile label="RALLIES" value={String(stats.rallies)} />
-        <StatTile label="STREAK" value={String(stats.streak)} valueColor={C.accent} />
-        <StatTile label="LEAD CHANGES" value={String(stats.leadChanges)} />
+        <Tile label="TIME" value={formatShortDuration(stats.durationMs)} />
+        <Tile label="RALLIES" value={String(stats.rallies)} />
+        <Tile label="STREAK" value={String(stats.streak)} valueColor={C.accent} />
+        <Tile label="LEAD CHANGES" value={String(stats.leadChanges)} />
       </View>
 
       <View style={s.footer}>
-        <Text style={s.footerText}>{dateLabel}</Text>
-        {domain !== null && <Text style={s.footerLink}>{domain}</Text>}
+        <Logo size={14} showWordmark={false} />
+        <View style={s.footerTextRow}>
+          <Text style={s.footerText}>{dateLabel}</Text>
+          {domain !== null && <Text style={s.footerLink}>{domain}</Text>}
+        </View>
       </View>
     </View>
   );
@@ -123,7 +151,19 @@ const s = StyleSheet.create({
   chipLost: { borderColor: C.line },
   chipText: { color: C.text2, fontFamily: F.medium, fontSize: 11, fontVariant: ["tabular-nums"] },
   statRow: { flexDirection: "row", gap: 6 },
-  footer: { alignItems: "center", gap: 2 },
+  tile: {
+    flex: 1, backgroundColor: C.card, borderRadius: radius.md,
+    paddingVertical: 10, paddingHorizontal: 6, alignItems: "center", gap: 4,
+    minHeight: 66,
+  },
+  tileValue: { fontFamily: F.display, fontSize: 22, fontVariant: ["tabular-nums"] },
+  // C.text2, never C.text3 — #5C6472 on C.bg is ~2.9:1, below WCAG AA (see StatTile).
+  tileLabel: {
+    color: C.text2, fontFamily: F.medium, fontSize: 8, letterSpacing: 0.5,
+    textTransform: "uppercase", textAlign: "center",
+  },
+  footer: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
+  footerTextRow: { alignItems: "center", gap: 2 },
   footerText: { color: C.text3, fontFamily: F.medium, fontSize: 10, letterSpacing: 1 },
   footerLink: { color: C.text2, fontFamily: F.medium, fontSize: 10, letterSpacing: 1 },
 });
