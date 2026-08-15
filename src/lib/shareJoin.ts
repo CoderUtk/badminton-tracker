@@ -11,6 +11,18 @@ import { getMyProfile } from "../repos/profileRepo";
 const JOIN_LINK_DOMAIN = process.env.EXPO_PUBLIC_JOIN_LINK_DOMAIN;
 
 /**
+ * The domain to *display* on a share card, or null when unconfigured.
+ *
+ * Read at call time rather than module scope so it tracks the env var the way
+ * the tests (and an app restart) expect. Deliberately returns null instead of
+ * the badminton:// fallback shareJoinLink uses: a custom-scheme URL is a dead
+ * end for a stranger scrolling a story, so the card shows the wordmark alone.
+ */
+export function joinLinkDisplayDomain(): string | null {
+  return process.env.EXPO_PUBLIC_JOIN_LINK_DOMAIN || null;
+}
+
+/**
  * Turn a join path into a shareable link and hand it to the OS share sheet.
  * `action` is the clause after the sharer's name, e.g. `invited you to join
  * the roster` or `invited you to compete in "Nasdaq7"` — this function owns

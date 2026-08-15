@@ -44,3 +44,14 @@ test("uses the sharer's display name when signed in", async () => {
     message: '🏸 Hey,\nUtkarsh invited you to join "Smash Club" on CourtSide:\nbadminton://join/club/abc',
   });
 });
+
+test("joinLinkDisplayDomain returns the bare domain when configured", () => {
+  process.env.EXPO_PUBLIC_JOIN_LINK_DOMAIN = "courtside-links.vercel.app";
+  const { joinLinkDisplayDomain } = require("../src/lib/shareJoin");
+  expect(joinLinkDisplayDomain()).toBe("courtside-links.vercel.app");
+});
+
+test("joinLinkDisplayDomain returns null when unconfigured, so the card prints no link", () => {
+  const { joinLinkDisplayDomain } = require("../src/lib/shareJoin");
+  expect(joinLinkDisplayDomain()).toBeNull();
+});
