@@ -12,8 +12,10 @@ import Court from "../components/Court";
 import ElapsedChip from "../components/ElapsedChip";
 import Icon, { type IconName } from "../components/Icon";
 import PressableScale from "../components/PressableScale";
-import MatchResultCard from "../components/share/MatchResultCard";
+import ShareCard from "../components/ShareCard";
 import { captureAndShare } from "../lib/share/captureAndShare";
+import { formatMatchDate, matchDurationMs } from "../lib/matchDetail";
+import { leadChanges, longestStreak, totalRallies } from "../lib/share/matchStats";
 import {
   DEFAULT_SCORING_MODE,
   lockForMode,
@@ -408,9 +410,26 @@ export default function MatchScreen({
         </Pressable>
       )}
 
-      {state.phase === "match_over" && (
-        <View ref={shareCardRef} collapsable={false} style={s.offscreenCard}>
-          <MatchResultCard record={record} />
+      {/* Off-screen story poster captured by the banner's share button. Same
+          component the match-history screen shares, so both entry points emit
+          one image. gameHistory carries every finished game including the one
+          that just ended the match, so it is the games[] source here. */}
+      {state.phase === "match_over" && state.winner !== null && (
+        <View style={s.offscreenCard} pointerEvents="none">
+          <ShareCard
+            ref={shareCardRef}
+            teamA={teamName("A")}
+            teamB={teamName("B")}
+            winner={state.winner}
+            games={state.gameHistory.map((g) => g.score)}
+            stats={{
+              durationMs: matchDurationMs(events),
+              rallies: totalRallies(events),
+              streak: longestStreak(events, state.winner),
+              leadChanges: leadChanges(events),
+            }}
+            dateLabel={formatMatchDate(record.created_at)}
+          />
         </View>
       )}
 
