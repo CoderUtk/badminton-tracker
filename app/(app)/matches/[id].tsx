@@ -10,6 +10,7 @@ import {
   formatMatchStatus,
   matchDurationMs,
 } from "../../../src/lib/matchDetail";
+import { leadChanges, longestStreak, totalRallies } from "../../../src/lib/share/matchStats";
 import PressableScale from "../../../src/components/PressableScale";
 import ShareCard from "../../../src/components/ShareCard";
 import Icon from "../../../src/components/Icon";
@@ -31,7 +32,10 @@ export default function MatchDetail() {
 
   if (!match) return <View style={s.root} />;
   const names = (side: { name: string }[]) => side.map((p) => p.name).join(" / ");
-  const scoreLine = (match.score_summary?.games ?? []).map((g) => `${g.A}-${g.B}`).join("   ");
+  // The share card renders a decided match: no winner means no share control,
+  // which is why ShareCardProps.winner is non-nullable.
+  const games = match.score_summary?.games ?? [];
+  const canShare = match.status === "completed" && match.winner !== null && games.length > 0;
   const onShare = () => shareMatchCard(cardRef).catch(() => toast("Couldn't share", "error"));
   const timeline = buildRallyTimeline(events);
 
@@ -71,22 +75,32 @@ export default function MatchDetail() {
         </View>
       )}
 
-      <PressableScale style={s.shareBtn} onPress={onShare}>
-        <Icon name="trophy" color={C.text} size={18} />
-        <Text style={s.shareText}>Share to story</Text>
-      </PressableScale>
+      {canShare && (
+        <PressableScale style={s.shareBtn} onPress={onShare}>
+          <Icon name="trophy" color={C.text} size={18} />
+          <Text style={s.shareText}>Share to story</Text>
+        </PressableScale>
+      )}
 
       {/* Off-screen card captured for sharing. */}
-      <View style={s.offscreen} pointerEvents="none">
-        <ShareCard
-          ref={cardRef}
-          teamA={names(match.side_a)}
-          teamB={names(match.side_b)}
-          winner={match.winner}
-          scoreLine={scoreLine || "—"}
-          subtitle={`COURTSIDE · ${new Date(match.created_at).toLocaleDateString()}`}
-        />
-      </View>
+      {canShare && (
+        <View style={s.offscreen} pointerEvents="none">
+          <ShareCard
+            ref={cardRef}
+            teamA={names(match.side_a)}
+            teamB={names(match.side_b)}
+            winner={match.winner as "A" | "B"}
+            games={games}
+            stats={{
+              durationMs: matchDurationMs(events),
+              rallies: totalRallies(events),
+              streak: longestStreak(events, match.winner as "A" | "B"),
+              leadChanges: leadChanges(events),
+            }}
+            dateLabel={formatMatchDate(match.created_at)}
+          />
+        </View>
+      )}
     </ScrollView>
   );
 }
