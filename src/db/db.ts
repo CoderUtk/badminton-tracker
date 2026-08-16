@@ -62,6 +62,10 @@ const MIGRATIONS = [
   `alter table sessions_cache add column created_by text;`,
   MATCH_INDEXES_DDL,
   PROFILE_ANALYTICS_CACHE_DDL,
+  // Roster avatar. A SEPARATE migration entry appended to the list — editing
+  // an applied migration does not re-run it, so existing installs would never
+  // get the column.
+  `alter table club_players_cache add column avatar_url text;`,
 ];
 
 let dbPromise: Promise<SQLiteDatabase> | null = null;

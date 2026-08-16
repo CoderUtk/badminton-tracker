@@ -17,6 +17,30 @@ export interface ClubPlayer {
   club_id: string;
   profile_id: string | null;
   name: string;
+  /**
+   * The linked profile's avatar, or null for roster-only players who are not
+   * app users. Cached locally so share cards can render a photo without a
+   * network round trip during capture.
+   */
+  avatar_url: string | null;
+}
+
+type RosterRow = {
+  id: string;
+  club_id: string;
+  profile_id: string | null;
+  name: string;
+  /** PostgREST returns an embedded resource as an object or a 1-element array
+   *  depending on the cardinality it infers, so accept both. */
+  profiles?: { avatar_url: string | null } | { avatar_url: string | null }[] | null;
+};
+
+/** Flatten one club_players row (with its embedded profile) to cache columns. */
+export function rosterCacheRow(
+  r: RosterRow
+): [string, string, string | null, string, string | null] {
+  const embedded = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles;
+  return [r.id, r.club_id, r.profile_id, r.name, embedded?.avatar_url ?? null];
 }
 
 export async function createClub(name: string): Promise<string> {
@@ -63,7 +87,7 @@ export async function refreshClubs(): Promise<void> {
     const [clubs, members, players] = await Promise.all([
       supabase.from("clubs").select("id, name, invite_code, personal"),
       supabase.from("club_members").select("club_id, role, profile_id"),
-      supabase.from("club_players").select("id, club_id, profile_id, name"),
+      supabase.from("club_players").select("id, club_id, profile_id, name, profiles(avatar_url)"),
     ]);
     if (clubs.error || players.error) return; // stay on cache
     const uid = (await supabase.auth.getUser()).data.user?.id;
@@ -96,8 +120,8 @@ export async function refreshClubs(): Promise<void> {
         ]),
       );
       await insertMany(
-        db, "club_players_cache", ["id", "club_id", "profile_id", "name"],
-        (players.data ?? []).map((p) => [p.id, p.club_id, p.profile_id, p.name]),
+        db, "club_players_cache", ["id", "club_id", "profile_id", "name", "avatar_url"],
+        (players.data ?? []).map(rosterCacheRow),
       );
     });
     if (gainedClub) await clearSetting(MATCH_PULL_KEY);

@@ -137,8 +137,8 @@ describe("liveClubIds", () => {
 
 describe("resolveMyPlayerName", () => {
   const players: ClubPlayer[] = [
-    { id: "p1", club_id: "c1", profile_id: "me", name: "Utkarsh" },
-    { id: "p2", club_id: "c2", profile_id: "other", name: "Soham" },
+    { id: "p1", club_id: "c1", profile_id: "me", name: "Utkarsh", avatar_url: null },
+    { id: "p2", club_id: "c2", profile_id: "other", name: "Soham", avatar_url: null },
   ];
 
   test("prefers the club-player name matching my profile", () => {
@@ -158,14 +158,14 @@ describe("resolveMyPlayerName", () => {
   });
 
   test("ignores club players with a blank name", () => {
-    const blank: ClubPlayer[] = [{ id: "p9", club_id: "c1", profile_id: "me", name: "  " }];
+    const blank: ClubPlayer[] = [{ id: "p9", club_id: "c1", profile_id: "me", name: "  ", avatar_url: null }];
     expect(resolveMyPlayerName(blank, "me", "Fallback")).toBe("Fallback");
   });
 
   test("multiple matching club players -> deterministically picks the first", () => {
     const multi: ClubPlayer[] = [
-      { id: "p1", club_id: "c1", profile_id: "me", name: "Alpha" },
-      { id: "p2", club_id: "c2", profile_id: "me", name: "Beta" },
+      { id: "p1", club_id: "c1", profile_id: "me", name: "Alpha", avatar_url: null },
+      { id: "p2", club_id: "c2", profile_id: "me", name: "Beta", avatar_url: null },
     ];
     // listMyClubPlayers now orders by name, so callers can rely on array
     // order for determinism; resolveMyPlayerName just takes the first match.
