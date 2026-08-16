@@ -4,7 +4,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { supabase } from "../../../src/lib/supabase";
 import { useSession } from "../../../src/stores/session";
-import { getMyProfile, setDisplayName as saveProfileName, setProfileDetails, setUsername as saveProfileUsername, uploadAvatar, removeAvatar, type Hand } from "../../../src/repos/profileRepo";
+import { getMyProfile, setDisplayName as saveProfileName, setProfileDetails, setUsername as saveProfileUsername, uploadAvatar, removeAvatar, deleteMyAccount, type Hand } from "../../../src/repos/profileRepo";
 import SegmentedControl from "../../../src/components/SegmentedControl";
 import { validateName, validateUsername } from "../../../src/lib/validate";
 import { toast } from "../../../src/lib/toast";
@@ -49,6 +49,8 @@ export default function Profile() {
   const [editingUsername, setEditingUsername] = useState(false);
   const [usernameBusy, setUsernameBusy] = useState(false);
   const [selectedBadge, setSelectedBadge] = useState<EarnedBadge | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   useEffect(() => {
     void getMyProfile().then((p) => {
@@ -197,6 +199,24 @@ export default function Profile() {
       toast((e as Error).message || "Could not upload that picture", "error");
     } finally {
       setAvatarBusy(false);
+    }
+  };
+
+  const doDeleteAccount = async () => {
+    setConfirmingDelete(false);
+    setDeleteBusy(true);
+    try {
+      // Unregister push first: the token row cascades away with the profile,
+      // but the OS-level registration would otherwise keep this device
+      // subscribed under a profile_id that no longer exists.
+      await Promise.all([unregisterPushToken(), cancelReminders()]).catch(() => {});
+      await deleteMyAccount();
+      // No navigation and no success toast: deleteMyAccount signs out, and the
+      // root Gate swaps the whole tree to the welcome screen underneath us.
+    } catch (e) {
+      toast((e as Error).message || "Could not delete your account", "error");
+    } finally {
+      setDeleteBusy(false);
     }
   };
 
@@ -502,6 +522,21 @@ export default function Profile() {
           <Text style={s.signOutText}>Sign out</Text>
         </Pressable>
       )}
+
+      {/* Play policy requires an in-app path to delete the account and its
+          data. Kept plain and last so it can't be mistaken for sign out. */}
+      {session && (
+        <Pressable
+          style={[s.deleteAccount, deleteBusy && s.off]}
+          disabled={deleteBusy}
+          onPress={() => setConfirmingDelete(true)}
+          accessibilityLabel="Delete account"
+        >
+          <Text style={s.deleteAccountText}>
+            {deleteBusy ? "Deleting…" : "Delete account"}
+          </Text>
+        </Pressable>
+      )}
     </FormScreen>
     <Sheet
       visible={avatarSheetOpen}
@@ -523,6 +558,16 @@ export default function Profile() {
         { label: "Cancel", onPress: () => setConfirmingRemove(false) },
       ]}
       onClose={() => setConfirmingRemove(false)}
+    />
+    <Sheet
+      visible={confirmingDelete}
+      title="Delete your account?"
+      message="This permanently deletes your profile, stats, friends and club memberships. Matches and sessions you created stay for the other players, without your name on them. This cannot be undone."
+      actions={[
+        { label: "Delete permanently", onPress: () => void doDeleteAccount(), destructive: true },
+        { label: "Cancel", onPress: () => setConfirmingDelete(false) },
+      ]}
+      onClose={() => setConfirmingDelete(false)}
     />
     <BadgeSharePopup
       badge={selectedBadge}
@@ -604,4 +649,6 @@ const s = StyleSheet.create({
   startText: { color: C.text, fontWeight: "800", fontSize: 15 },
   signOut: { flexDirection: "row", gap: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 12, minHeight: 52, alignItems: "center", justifyContent: "center", marginTop: 4 },
   signOutText: { color: C.red, fontSize: 16, fontWeight: "700" },
+  deleteAccount: { alignItems: "center", justifyContent: "center", minHeight: 44, marginTop: 2 },
+  deleteAccountText: { color: C.text2, fontSize: 13.5, fontFamily: F.medium, textDecorationLine: "underline" },
 });

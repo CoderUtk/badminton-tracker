@@ -231,3 +231,49 @@ export async function setUsername(username: string): Promise<string> {
   announceProfileWrite();
   return data as string;
 }
+
+/**
+ * Permanently delete the signed-in account (Play's account-deletion
+ * requirement). Erases the server row via the delete_my_account RPC, wipes
+ * every local cache table, then signs out.
+ *
+ * Order matters: the RPC needs a live session, and the local wipe has to
+ * happen before sign-out, because the next account on this device would
+ * otherwise read the deleted user's cached matches and sessions.
+ */
+export async function deleteMyAccount(): Promise<void> {
+  if (!supabase) throw new Error("Sign in to delete your account");
+  const uid = (await supabase.auth.getUser()).data.user?.id;
+  if (!uid) throw new Error("Sign in to delete your account");
+
+  // The storage API is the only thing that deletes the avatar's bytes — the
+  // RPC cannot, because storage.protect_delete() rejects direct DELETEs on
+  // storage.objects. So this is not best-effort: if it fails, stop and let
+  // the user retry rather than delete the account and leave a publicly
+  // readable profile picture behind.
+  const { error: avatarError } = await supabase.storage.from("avatars").remove([`${uid}/avatar.jpg`]);
+  if (avatarError) throw new Error("Could not remove your profile picture — check your connection and try again");
+
+  const { error } = await supabase.rpc("delete_my_account");
+  if (error) throw new Error(error.message);
+
+  await wipeLocalData();
+  await supabase.auth.signOut();
+}
+
+/**
+ * Empties every local table. Reads the table list from sqlite_master rather
+ * than naming them, so a cache table added later is wiped without anyone
+ * remembering to update this list.
+ */
+async function wipeLocalData(): Promise<void> {
+  memo = null;
+  const db = await cacheDb();
+  if (!db) return;
+  const rows = await db.getAllAsync<{ name: string }>(
+    "select name from sqlite_master where type = 'table' and name not like 'sqlite_%'"
+  );
+  for (const { name } of rows) {
+    await db.runAsync(`delete from "${name}"`);
+  }
+}
