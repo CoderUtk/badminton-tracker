@@ -5,7 +5,7 @@ import { isStaleLive } from "../session/autoFinish";
 import { listRealClubs, type ClubPlayer } from "./clubRepo";
 import {
   endLiveMatchesForSession, listMatchesForClub, listMatchesForSession,
-  type MatchRecord,
+  type MatchRecord, type SidePlayer,
 } from "./matchRepo";
 
 export type SessionStatus = "scheduled" | "live" | "done" | "cancelled";
@@ -188,6 +188,17 @@ export async function endSession(id: string): Promise<void> {
 }
 
 export interface PlayerStat {
+  /**
+   * Stable identity for grouping. The club_player_id when the player is on a
+   * roster, otherwise `guest:<name>`.
+   *
+   * Grouping used to key on display name, which silently merged two players
+   * called "Rahul" into a single row with their records added together.
+   * Guests genuinely have no identity beyond their name, so two same-named
+   * guests still merge -- they are transient, un-rostered entries and giving
+   * them synthetic ids would change what a guest is.
+   */
+  id: string;
   name: string;
   wins: number;
   losses: number;
@@ -200,15 +211,21 @@ export interface SessionStats {
   players: PlayerStat[];
 }
 
+/** Grouping key for a player appearing on a match side. */
+export function playerStatId(p: SidePlayer): string {
+  return p.club_player_id ?? `guest:${p.name}`;
+}
+
 /** Aggregate per-player win/loss stats across a set of completed matches. */
 function aggregate(matches: MatchRecord[]): SessionStats {
   const done = matches.filter((m) => m.status === "completed");
-  const byName = new Map<string, PlayerStat>();
-  const bump = (name: string, field: "wins" | "losses") => {
-    const stat = byName.get(name) ?? { name, wins: 0, losses: 0, played: 0 };
+  const byId = new Map<string, PlayerStat>();
+  const bump = (p: SidePlayer, field: "wins" | "losses") => {
+    const id = playerStatId(p);
+    const stat = byId.get(id) ?? { id, name: p.name, wins: 0, losses: 0, played: 0 };
     stat[field] += 1;
     stat.played += 1;
-    byName.set(name, stat);
+    byId.set(id, stat);
   };
   let gameCount = 0;
   for (const m of done) {
@@ -216,14 +233,23 @@ function aggregate(matches: MatchRecord[]): SessionStats {
     if (!m.winner) continue;
     const winners = m.winner === "A" ? m.side_a : m.side_b;
     const losers = m.winner === "A" ? m.side_b : m.side_a;
-    winners.forEach((p) => bump(p.name, "wins"));
-    losers.forEach((p) => bump(p.name, "losses"));
+    winners.forEach((p) => bump(p, "wins"));
+    losers.forEach((p) => bump(p, "losses"));
   }
-  const players = [...byName.values()].sort(
-    (a, b) => b.wins - a.wins || b.played - a.played || a.name.localeCompare(b.name)
+  // id is the final tiebreak so two players with the same name AND the same
+  // record sort deterministically rather than by Map insertion order.
+  const players = [...byId.values()].sort(
+    (a, b) =>
+      b.wins - a.wins ||
+      b.played - a.played ||
+      a.name.localeCompare(b.name) ||
+      a.id.localeCompare(b.id)
   );
   return { matchCount: done.length, gameCount, players };
 }
+
+// Exported for the node-env unit tests; not part of the module's public API.
+export { aggregate as aggregateForTest };
 
 export async function getSessionStats(sessionId: string): Promise<SessionStats> {
   return aggregate(await listMatchesForSession(sessionId));

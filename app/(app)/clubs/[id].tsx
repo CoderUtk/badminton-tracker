@@ -93,7 +93,7 @@ export default function ClubDetail() {
       style={s.root}
       contentContainerStyle={s.content}
       data={stats?.players ?? []}
-      keyExtractor={(p) => p.name}
+      keyExtractor={(p) => p.id}
       ListHeaderComponent={
         <>
           <View style={s.hero}>

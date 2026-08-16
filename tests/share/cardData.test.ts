@@ -20,15 +20,15 @@ test("formatGameScores returns an empty array for a null summary", () => {
 
 test("topStandings returns at most n players, preserving input order", () => {
   const players: PlayerStat[] = [
-    { name: "A", wins: 5, losses: 1, played: 6 },
-    { name: "B", wins: 4, losses: 2, played: 6 },
-    { name: "C", wins: 3, losses: 3, played: 6 },
-    { name: "D", wins: 2, losses: 4, played: 6 },
+    { id: "cp-a", name: "A", wins: 5, losses: 1, played: 6 },
+    { id: "cp-b", name: "B", wins: 4, losses: 2, played: 6 },
+    { id: "cp-c", name: "C", wins: 3, losses: 3, played: 6 },
+    { id: "cp-d", name: "D", wins: 2, losses: 4, played: 6 },
   ];
   expect(topStandings(players, 3).map((p) => p.name)).toEqual(["A", "B", "C"]);
 });
 
 test("topStandings returns fewer than n when the input is shorter", () => {
-  const players: PlayerStat[] = [{ name: "A", wins: 1, losses: 0, played: 1 }];
+  const players: PlayerStat[] = [{ id: "cp-a", name: "A", wins: 1, losses: 0, played: 1 }];
   expect(topStandings(players, 3)).toHaveLength(1);
 });
