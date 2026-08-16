@@ -49,6 +49,16 @@ export const GRAD = {
   court: ["#1A2A2E", "#14202A"] as const,
 } as const;
 
+/**
+ * Accent rule for share cards. One rule, applied everywhere:
+ *
+ *   C.red    = identity and framing. Eyebrows, category pills, brand marks.
+ *   C.accent = the earned thing. Winning score, champion name, unlocked badge.
+ *
+ * textGlow(C.accent) is reserved for the single hero element on a card. More
+ * than one glowing element and neither reads as the point of the image.
+ */
+
 /** Neon glow presets — apply as shadow* props for a HUD feel. */
 export const glow = (color: string, radius = 14, opacity = 0.55) => ({
   shadowColor: color,
@@ -131,4 +141,24 @@ export const SCOREBOARD_TYPE = {
   rail: 22,
   name: 13,
   timer: 12,
+} as const;
+
+/**
+ * Type scale for the share cards, in points on the 1080x1920 capture canvas.
+ *
+ * Lives here rather than in each card's StyleSheet so the four cards cannot
+ * drift apart again: before this existed, the match card's hero numeral was
+ * ~324pt effective while every other card topped out at 56, so they did not
+ * read as the same product.
+ *
+ * The floor is 18. These cards are captured at 1080 wide and viewed at phone
+ * size after Instagram recompresses them, so small type disappears.
+ */
+export const CARD_TYPE = {
+  hero: 180,     // the single dominant numeral or name on a card
+  title: 56,     // card headline: SESSION RESULTS, badge title, champion name
+  subtitle: 30,  // secondary name, standings row name
+  body: 26,      // descriptive copy, chip text
+  label: 22,     // eyebrows, stat captions, runner-up label
+  caption: 18,   // date, watermark sub-line
 } as const;

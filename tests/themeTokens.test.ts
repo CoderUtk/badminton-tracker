@@ -1,5 +1,5 @@
 import { contrastRatio } from "../src/lib/contrast";
-import { C, danger, selected, space } from "../src/theme";
+import { C, CARD_TYPE, danger, selected, space } from "../src/theme";
 
 const AA = 4.5;
 // Every surface body or secondary text can sit on.
@@ -56,5 +56,27 @@ describe("selected recipe", () => {
     expect(selected.borderColor).toBe(C.lineHi);
     expect(selected.backgroundColor).not.toBe(C.accent);
     expect(selected.backgroundColor).not.toBe(C.red);
+  });
+});
+
+describe("share card type scale", () => {
+  const ORDER = ["hero", "title", "subtitle", "body", "label", "caption"] as const;
+
+  it("is strictly descending", () => {
+    const sizes = ORDER.map((k) => CARD_TYPE[k]);
+    for (let i = 1; i < sizes.length; i++) {
+      expect(sizes[i]).toBeLessThan(sizes[i - 1]);
+    }
+  });
+
+  it("keeps the hero clearly dominant over the card headline", () => {
+    // Below ~2x the headline the hero stops reading as the one thing that matters.
+    expect(CARD_TYPE.hero / CARD_TYPE.title).toBeGreaterThanOrEqual(2);
+  });
+
+  it("never drops below the 18pt floor for a 1080-wide capture", () => {
+    // 18pt at 1080 is ~6pt on a phone-sized preview. Anything smaller is
+    // unreadable once Instagram recompresses the image.
+    for (const k of ORDER) expect(CARD_TYPE[k]).toBeGreaterThanOrEqual(18);
   });
 });
