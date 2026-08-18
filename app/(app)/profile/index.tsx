@@ -12,7 +12,7 @@ import { formatWinRate } from "../../../src/lib/winRate";
 import { getPlayerAnalytics, type PlayerAnalytics } from "../../../src/repos/statsRepo";
 import Icon from "../../../src/components/Icon";
 import FormScreen from "../../../src/components/FormScreen";
-import BadgeGrid from "../../../src/components/BadgeGrid";
+import AchievementsSection from "../../../src/components/achievements/AchievementsSection";
 import BadgeSharePopup from "../../../src/components/BadgeSharePopup";
 import type { EarnedBadge } from "../../../src/achievements/types";
 import Sheet from "../../../src/components/Sheet";
@@ -417,12 +417,7 @@ export default function Profile() {
       </View>
 
       {/* Achievements */}
-      {a && (
-        <View style={s.card}>
-          <Text style={s.cardTitle}>Achievements</Text>
-          <BadgeGrid badges={badges} onPressBadge={setSelectedBadge} />
-        </View>
-      )}
+      {a && <AchievementsSection badges={badges} onPressBadge={setSelectedBadge} />}
 
       {a && a.played === 0 ? (
         <View style={s.emptyCard}>
