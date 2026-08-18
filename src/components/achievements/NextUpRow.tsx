@@ -50,6 +50,6 @@ const s = StyleSheet.create({
   title: { color: C.text, fontSize: 14, fontFamily: F.semibold, flexShrink: 1 },
   pct: { color: C.text2, fontSize: 12, fontFamily: F.medium },
   desc: { color: C.text3, fontSize: 12, fontFamily: F.body },
-  track: { width: "100%", height: 6, borderRadius: 3, backgroundColor: C.line, overflow: "hidden" },
-  fill: { height: "100%", borderRadius: 3, backgroundColor: C.accent },
+  track: { width: "100%", height: 6, borderRadius: radius.pill, backgroundColor: C.line, overflow: "hidden" },
+  fill: { height: "100%", borderRadius: radius.pill, backgroundColor: C.accent },
 });

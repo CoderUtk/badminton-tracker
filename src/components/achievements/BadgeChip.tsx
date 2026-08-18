@@ -106,8 +106,8 @@ const s = StyleSheet.create({
   titleActive: { color: C.text },
   titleLocked: { color: C.text2 },
   desc: { color: C.text3, fontSize: 12, fontFamily: F.body, textAlign: "center" },
-  track: { width: "100%", height: 4, borderRadius: 2, backgroundColor: C.line, marginTop: 2, overflow: "hidden" },
-  fill: { height: "100%", borderRadius: 2, backgroundColor: C.ghost },
+  track: { width: "100%", height: 4, borderRadius: radius.pill, backgroundColor: C.line, marginTop: 2, overflow: "hidden" },
+  fill: { height: "100%", borderRadius: radius.pill, backgroundColor: C.ghost },
   fillActive: { backgroundColor: C.accent },
   progressLabel: { color: C.text2, fontSize: 12, fontFamily: F.medium, marginTop: 2 },
 });
