@@ -123,7 +123,7 @@ export default function MatchDetail() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
+  root: { flex: 1 },
   card: { backgroundColor: C.card, borderRadius: 12, padding: 16, gap: 4 },
   team: { color: C.text, fontSize: 18, fontWeight: "700" },
   win: { color: C.green },

@@ -82,7 +82,7 @@ export default function Sessions() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg, padding: 16, gap: 14 },
+  root: { flex: 1, padding: 16, gap: 14 },
   cta: { flexDirection: "row", gap: 8, minHeight: 56, alignItems: "center", justifyContent: "center", backgroundColor: C.red, borderRadius: 14 },
   ctaText: { color: C.text, fontSize: 18, fontWeight: "800" },
   explanatory: {

@@ -72,7 +72,7 @@ export default function GuestHome() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg, padding: 22, gap: 16, justifyContent: "center" },
+  root: { flex: 1, padding: 22, gap: 16, justifyContent: "center" },
   hero: { alignItems: "center", gap: 8, marginBottom: 12 },
   eyebrow: { color: C.text3, fontFamily: F.medium, fontSize: 11, letterSpacing: 2.4 },
   headline: { color: C.text, fontFamily: F.display, fontSize: 24, lineHeight: 30, textAlign: "center" },

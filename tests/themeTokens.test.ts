@@ -1,5 +1,5 @@
-import { contrastRatio } from "../src/lib/contrast";
-import { C, CARD_TYPE, danger, selected, space } from "../src/theme";
+import { contrastRatio, relativeLuminance } from "../src/lib/contrast";
+import { BLOOM, C, CARD_TYPE, GRAD, GRAIN_OPACITY, carved, carvedFill, danger, selected, space } from "../src/theme";
 
 const AA = 4.5;
 // Every surface body or secondary text can sit on.
@@ -78,5 +78,64 @@ describe("share card type scale", () => {
     // 18pt at 1080 is ~6pt on a phone-sized preview. Anything smaller is
     // unreadable once Instagram recompresses the image.
     for (const k of ORDER) expect(CARD_TYPE[k]).toBeGreaterThanOrEqual(18);
+  });
+});
+
+/** Flattens `rgba(255,255,255,a)` over an opaque hex ground to a hex value. */
+function composite(overlay: string, ground: string): string {
+  const m = /^rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)$/.exec(overlay);
+  if (!m) throw new Error(`Expected an rgba() overlay, got "${overlay}"`);
+  const [r, g, b, a] = [+m[1], +m[2], +m[3], +m[4]];
+  const base = [1, 3, 5].map((i) => parseInt(ground.slice(i, i + 2), 16));
+  const mix = [r, g, b].map((c, i) => Math.round(c * a + base[i] * (1 - a)));
+  return `#${mix.map((c) => c.toString(16).padStart(2, "0")).join("")}`;
+}
+
+describe("carved surface", () => {
+  // The whole effect: fill falls off downward, top edge brighter than the rest.
+  it("falls off downward", () => {
+    const alpha = (c: string) => Number(/([\d.]+)\)$/.exec(c)![1]);
+    expect(alpha(carvedFill[0])).toBeGreaterThan(alpha(carvedFill[1]));
+  });
+
+  it("lights the top edge brighter than the frame", () => {
+    expect(carved.borderTopColor).toBe(C.lineHi);
+    expect(carved.borderColor).toBe(C.line);
+    expect(carved.borderTopColor).not.toBe(carved.borderColor);
+  });
+
+  // A translucent card means C.card is no longer the literal surface under
+  // body text, so the AA guarantees above have to be re-proved against what
+  // the carved fill actually composites to — on the darkest screen stop, which
+  // is the worst case (a card at the unlit bottom of a long scroll).
+  const darkest = GRAD.screen.reduce((a, b) => (a < b ? a : b));
+  const surface = composite(carvedFill[1], darkest);
+
+  for (const [name, token] of [["text", C.text], ["text2", C.text2], ["text3", C.text3]] as const) {
+    it(`${name} is still AA on a carved card (${surface})`, () => {
+      expect(contrastRatio(token, surface)).toBeGreaterThanOrEqual(AA);
+    });
+  }
+
+  it("never composites lighter than cardHi, which would outrank a selected card", () => {
+    // selected = C.cardHi. If a resting carved card were lighter, selection
+    // would read as the lower state.
+    const lit = composite(carvedFill[0], GRAD.screen[0]);
+    expect(relativeLuminance(lit)).toBeLessThan(relativeLuminance(C.cardHi));
+  });
+});
+
+describe("ambient blooms", () => {
+  it("stay below the level where the screen reads tinted, not lit", () => {
+    for (const b of BLOOM) expect(b.opacity).toBeLessThan(0.2);
+  });
+
+  it("uses brand hues only", () => {
+    for (const b of BLOOM) expect([C.accent, C.red]).toContain(b.color);
+  });
+
+  it("keeps grain subliminal", () => {
+    // Above ~0.08 the noise is legible as texture and reads as a dirty screen.
+    expect(GRAIN_OPACITY).toBeLessThan(0.08);
   });
 });

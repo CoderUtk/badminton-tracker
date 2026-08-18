@@ -100,7 +100,7 @@ export default function JoinClub() {
 
 const s = StyleSheet.create({
   scroll: { flexGrow: 1, justifyContent: "center", padding: 22, gap: 22 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: 24, backgroundColor: C.bg },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: 24 },
   hero: { alignItems: "center", gap: 10 },
   eyebrow: { color: C.text3, fontFamily: F.medium, fontSize: 11, letterSpacing: 2.4 },
   title: { color: C.text, fontFamily: F.display, fontSize: 27, textAlign: "center", letterSpacing: 0.2 },

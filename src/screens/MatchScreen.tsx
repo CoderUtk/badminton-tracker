@@ -468,7 +468,7 @@ export default function MatchScreen({
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg, padding: 8, gap: 6 },
+  root: { flex: 1, padding: 8, gap: 6 },
   fill: { flex: 1, gap: 6 },
   top: { gap: 6 },
   topRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 8 },

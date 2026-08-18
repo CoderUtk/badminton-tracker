@@ -157,9 +157,9 @@ export default function ClubPlayers() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
+  root: { flex: 1 },
   content: { padding: 16, gap: 8 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: C.bg },
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
   empty: { color: C.text2, fontSize: 15, lineHeight: 22, padding: 24, textAlign: "center" },
   addFriendBtn: {
     flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center",

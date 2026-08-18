@@ -121,8 +121,8 @@ export default function TournamentOps() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: C.bg },
+  root: { flex: 1 },
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
   header: { color: C.text, fontFamily: F.display, fontSize: 22, margin: 16, textAlign: "center" },
   content: { padding: 16, gap: 12 },
   empty: { color: C.text2, fontFamily: F.body, textAlign: "center", marginTop: 24 },

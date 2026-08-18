@@ -106,8 +106,8 @@ export default function JoinTournamentSpectator() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg, padding: 16, gap: 16 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: 24, backgroundColor: C.bg },
+  root: { flex: 1, padding: 16, gap: 16 },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: 24 },
   hero: { alignItems: "center", gap: 8 },
   eyebrow: { color: C.text3, fontFamily: F.medium, fontSize: 11, letterSpacing: 2.4 },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 8 },

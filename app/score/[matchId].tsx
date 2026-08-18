@@ -27,6 +27,6 @@ export default function ScoreRoute() {
     };
   }, []);
 
-  if (!matchId || !match) return <View style={{ flex: 1, backgroundColor: C.bg }} />;
+  if (!matchId || !match) return <View style={{ flex: 1 }} />;
   return <MatchScreen matchId={matchId} record={match} />;
 }

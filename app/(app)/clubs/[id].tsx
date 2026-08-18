@@ -207,9 +207,9 @@ export default function ClubDetail() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
+  root: { flex: 1 },
   content: { padding: 16, paddingBottom: 34, gap: 6 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: C.bg },
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
   muted: { color: C.text2 },
   hero: { backgroundColor: C.card, borderRadius: 18, padding: 18, gap: 6, borderWidth: 1, borderColor: C.line, position: "relative" },
   shareBtn: {

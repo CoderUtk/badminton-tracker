@@ -112,7 +112,7 @@ export default function EditTournament() {
 
 const s = StyleSheet.create({
   content: { padding: 16, gap: 10 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: C.bg },
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
   muted: { color: C.text2 },
   h: { color: C.text, fontFamily: F.bold, fontSize: 14, marginTop: 6 },
   input: { backgroundColor: C.card, color: C.text, borderRadius: 12, borderWidth: 1, borderColor: C.line, padding: 12, fontSize: 16 },

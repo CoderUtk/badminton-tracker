@@ -93,7 +93,7 @@ export default function GuestMatches() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
+  root: { flex: 1 },
   list: { padding: 16, gap: 10 },
   card: { backgroundColor: C.card, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: C.line, gap: 4 },
   cardLive: { borderColor: C.green },
@@ -107,7 +107,7 @@ const s = StyleSheet.create({
   liveScore: { color: C.green, fontSize: 20, fontFamily: F.display, minWidth: 30, textAlign: "right", fontVariant: ["tabular-nums"] },
   vs: { color: C.text3, fontSize: 12 },
   liveBadge: { color: C.green, fontSize: 12, fontWeight: "900", marginTop: 4 },
-  emptyRoot: { flex: 1, alignItems: "center", justifyContent: "center", gap: 8, padding: 24, backgroundColor: C.bg },
+  emptyRoot: { flex: 1, alignItems: "center", justifyContent: "center", gap: 8, padding: 24 },
   emptyTitle: { color: C.text, fontSize: 20, fontWeight: "900", marginTop: 4, fontFamily: F.display },
   emptyText: { color: C.text2, fontSize: 15, textAlign: "center", lineHeight: 22, marginBottom: 8 },
   emptyCta: { flexDirection: "row", gap: 8, backgroundColor: C.red, borderRadius: 14, minHeight: 52, paddingHorizontal: 28, alignItems: "center", justifyContent: "center" },

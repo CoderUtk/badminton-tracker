@@ -434,8 +434,8 @@ export default function SessionDetail() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg }, content: { padding: 16, paddingBottom: 34, gap: 8 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: C.bg }, muted: { color: C.text2, paddingVertical: 8 },
+  root: { flex: 1 }, content: { padding: 16, paddingBottom: 34, gap: 8 },
+  center: { flex: 1, alignItems: "center", justifyContent: "center" }, muted: { color: C.text2, paddingVertical: 8 },
   hero: { backgroundColor: C.card, borderRadius: 18, padding: 18, gap: 5, borderWidth: 1, borderColor: C.line, position: "relative" },
   deleteIconBtn: {
     position: "absolute", top: 14, right: 14, zIndex: 1,

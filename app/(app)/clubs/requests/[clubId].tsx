@@ -92,9 +92,9 @@ export default function ClubRequests() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
+  root: { flex: 1 },
   content: { padding: 16, gap: 8 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: C.bg },
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
   empty: { color: C.text2, fontSize: 15, lineHeight: 22, padding: 24, textAlign: "center" },
   row: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: C.card, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: C.line },
   avatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: C.cardHi, alignItems: "center", justifyContent: "center" },

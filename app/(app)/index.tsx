@@ -13,6 +13,7 @@ import {
   sessionMetaLabel, shouldShowFeatureCopy, statTileValues,
 } from "../../src/home/dashboard";
 import Icon from "../../src/components/Icon";
+import CarvedCard from "../../src/components/CarvedCard";
 import Logo from "../../src/components/Logo";
 import StatTile from "../../src/components/StatTile";
 import NextSessionCard from "../../src/components/NextSessionCard";
@@ -179,23 +180,24 @@ export default function Home() {
             </View>
 
             {clubs.length === 0 ? (
-              <Pressable
-                style={({ pressed }) => [s.emptyCta, pressed && press]}
-                onPress={() => setSheetOpen(true)}
-                accessibilityRole="button"
-              >
-                <Icon name="add" color={C.text} size={18} />
-                <Text style={s.emptyCtaText}>Create or join a club</Text>
+              <Pressable onPress={() => setSheetOpen(true)} accessibilityRole="button">
+                {({ pressed }) => (
+                  <CarvedCard style={s.emptyCta} pressed={pressed}>
+                    <Icon name="add" color={C.text} size={18} />
+                    <Text style={s.emptyCtaText}>Create or join a club</Text>
+                  </CarvedCard>
+                )}
               </Pressable>
             ) : (
               clubs.map((club) => (
                 <Pressable
                   key={club.id}
-                  style={({ pressed }) => [s.club, pressed && press]}
                   onPress={() => router.push(`/(app)/clubs/${club.id}`)}
                   accessibilityRole="button"
                   accessibilityLabel={club.name}
                 >
+                  {({ pressed }) => (
+                    <CarvedCard style={s.club} pressed={pressed}>
                   <View style={s.clubIcon}>
                     <Icon name="account-group" color={C.red} size={22} />
                   </View>
@@ -209,6 +211,8 @@ export default function Home() {
                     <View style={s.livePill}><Text style={s.livePillText}>LIVE</Text></View>
                   )}
                   <Icon name="chevron-forward" color={C.text2} size={20} />
+                    </CarvedCard>
+                  )}
                 </Pressable>
               ))
             )}
@@ -237,7 +241,8 @@ export default function Home() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
+  // No backgroundColor: the app-wide ground in app/_layout.tsx shows through.
+  root: { flex: 1 },
   content: { padding: 16, gap: 12, paddingBottom: 32 },
   greetRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 2 },
   greetEyebrow: { color: C.text3, fontSize: 11, fontFamily: F.medium, letterSpacing: 1.5 },
@@ -262,14 +267,10 @@ const s = StyleSheet.create({
     backgroundColor: C.red, alignItems: "center", justifyContent: "center",
   },
   emptyCta: {
-    flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center",
-    backgroundColor: C.card, borderRadius: 12, borderWidth: 1, borderColor: C.line, height: 56,
+    flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center", height: 56,
   },
   emptyCtaText: { color: C.text, fontSize: 16, fontFamily: F.semibold },
-  club: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    backgroundColor: C.card, borderRadius: 12, padding: 14,
-  },
+  club: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
   clubIcon: {
     width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,59,48,0.12)",
     alignItems: "center", justifyContent: "center",

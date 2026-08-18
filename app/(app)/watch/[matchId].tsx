@@ -35,7 +35,7 @@ export default function WatchMatch() {
 
   if (!state) {
     return (
-      <View style={{ flex: 1, backgroundColor: C.bg, justifyContent: "center", alignItems: "center" }}>
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <Text style={{ color: C.text2, fontFamily: F.body }}>{reconnecting ? "Reconnecting…" : "Waiting for the match…"}</Text>
       </View>
     );
@@ -44,7 +44,7 @@ export default function WatchMatch() {
   const name = (t: TeamId) => state.config.teams[t].map((p) => p.name).join(" / ");
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.bg, padding: 20, justifyContent: "center" }}>
+    <View style={{ flex: 1, padding: 20, justifyContent: "center" }}>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 24 }}>
         <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: state.phase === "match_over" ? C.ghost : C.red }} />
         <Text style={{ color: state.phase === "match_over" ? C.text2 : C.red, fontFamily: F.medium }}>

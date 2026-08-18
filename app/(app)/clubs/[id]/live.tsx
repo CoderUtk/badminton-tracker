@@ -29,7 +29,7 @@ export default function ClubLive() {
   }, [id]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.bg, padding: 16 }}>
+    <View style={{ flex: 1, padding: 16 }}>
       {items.length === 0 ? (
         <Text style={{ color: C.text2, textAlign: "center", marginTop: 48 }}>No live matches right now</Text>
       ) : (

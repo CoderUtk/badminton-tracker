@@ -9,8 +9,11 @@ export const C = {
   bgElev: "#12151B",
   card: "#171A21",
   cardHi: "#1F232C",
-  line: "#2A2F3A",
-  lineHi: "#3A4150",
+  // Translucent, not solid: a hairline now composites correctly over the screen
+  // gradient, a carved card, and a flat surface without being retuned per
+  // background. lineHi doubles as the top-edge highlight in `carved`.
+  line: "rgba(255,255,255,0.07)",
+  lineHi: "rgba(255,255,255,0.15)",
   // brand + semantic
   red: "#FF3B30",
   redDeep: "#B3261E",
@@ -20,7 +23,10 @@ export const C = {
   accent: "#22D3EE", // electric cyan — premium highlights + glow
   accentDeep: "#0E7490",
   // text
-  text: "#FFFFFF",
+  // Not #FFFFFF. Pure white on a near-black ground glares and reads like the
+  // OS high-contrast mode rather than a designed surface. Measures 16.5:1 on
+  // C.bg, so the drop costs nothing against AA.
+  text: "#F2F4F8",
   text2: "#9BA3B2",
   // Raised from #5C6472, which measured 3.24:1 on bg and 2.90:1 on cardHi —
   // the root of audit finding A8. This is the dimmest slate that still clears
@@ -42,7 +48,9 @@ export const F = {
 
 /** Gradients (for expo-linear-gradient). */
 export const GRAD = {
-  screen: ["#0C0E12", "#0F1319"] as const,
+  // Lit at the top, settling to base by the fold. Three stops, not two: a
+  // linear two-stop ramp reads as a gradient, an eased one reads as light.
+  screen: ["#0F1319", "#0A0C10", "#0C0E12"] as const,
   card: ["#1B1F27", "#141821"] as const,
   redCTA: ["#FF4D42", "#D42318"] as const,
   accent: ["#22D3EE", "#0E7490"] as const,
@@ -126,6 +134,47 @@ export const selected = {
 } as const;
 export const selectedText = { color: C.text } as const;
 export const unselectedText = { color: C.text2 } as const;
+
+/**
+ * Ambient blooms painted behind every screen by <ScreenBackground>. A dark UI
+ * needs an implied light source; without one the ground reads as a void and no
+ * amount of card polish rescues it. Cyan sits top-centre behind the header,
+ * red washes the top-right so the CTA has something to sit in.
+ *
+ * Opacities are deliberately under 0.2 — above that the wash starts competing
+ * with C.accent as a highlight and the screen looks tinted rather than lit.
+ */
+export const BLOOM = [
+  { color: C.accent, opacity: 0.16, cx: "50%", cy: "-8%", rx: "120%", ry: "52%" },
+  { color: C.red, opacity: 0.11, cx: "88%", cy: "6%", rx: "90%", ry: "40%" },
+] as const;
+
+/** Grain opacity. Low enough to be invisible as texture, high enough to break
+ *  the gradient banding that the blooms introduce on 6-bit Android panels. */
+export const GRAIN_OPACITY = 0.055;
+
+/**
+ * Carved surface. A card lit from above: translucent white fill that falls off
+ * downward, a bright top edge, a dark bottom shadow. Reads as cut from the
+ * screen rather than pasted onto it, which is the single biggest difference
+ * between a flat black app and one that looks expensive.
+ *
+ * Translucent rather than a flat colour on purpose — it composites over the
+ * screen gradient, so a card near the lit top of a screen is legitimately
+ * lighter than one near the bottom. `carvedFill` is the gradient for
+ * expo-linear-gradient; `carved` is the frame that goes around it.
+ */
+export const carvedFill = ["rgba(255,255,255,0.055)", "rgba(255,255,255,0.018)"] as const;
+export const carved = {
+  borderWidth: 1,
+  borderColor: C.line,
+  borderTopColor: C.lineHi,
+  shadowColor: "#000",
+  shadowOpacity: 0.5,
+  shadowRadius: 10,
+  shadowOffset: { width: 0, height: 4 },
+  elevation: 4,
+} as const;
 
 /**
  * Scoreboard type scale, in points.

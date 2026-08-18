@@ -1,7 +1,8 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import CarvedCard from "./CarvedCard";
 import Icon from "./Icon";
-import { C, F, press } from "../theme";
+import { C, F } from "../theme";
 
 /**
  * The upcoming-session card. Both strings are resolved by the caller — the club
@@ -16,11 +17,12 @@ export default function NextSessionCard({
 }) {
   return (
     <Pressable
-      style={({ pressed }) => [s.card, pressed && press]}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`Next session: ${title}, ${meta}`}
     >
+      {({ pressed }) => (
+        <CarvedCard style={s.card} pressed={pressed}>
       <View style={s.iconWrap}>
         <Icon name="calendar" color={C.accent} size={20} />
       </View>
@@ -29,15 +31,14 @@ export default function NextSessionCard({
         <Text style={s.meta} numberOfLines={1}>{meta}</Text>
       </View>
       <Icon name="chevron-forward" color={C.text2} size={20} />
+        </CarvedCard>
+      )}
     </Pressable>
   );
 }
 
 const s = StyleSheet.create({
-  card: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    backgroundColor: C.card, borderRadius: 12, padding: 14,
-  },
+  card: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
   iconWrap: {
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: "rgba(34,211,238,0.12)", alignItems: "center", justifyContent: "center",

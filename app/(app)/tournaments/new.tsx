@@ -247,7 +247,7 @@ export default function NewTournament() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg, padding: 16, gap: 10 },
+  root: { flex: 1, padding: 16, gap: 10 },
   input: { backgroundColor: C.card, color: C.text, borderRadius: 12, borderWidth: 1, borderColor: C.line, padding: 12, fontSize: 16 },
   h: { color: C.text, fontFamily: F.bold, fontSize: 14 },
   segRow: { flexDirection: "row", gap: 8 },

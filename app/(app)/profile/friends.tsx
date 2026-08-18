@@ -241,9 +241,9 @@ export default function Friends() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
+  root: { flex: 1 },
   content: { padding: 16, gap: 8 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: C.bg },
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
   addRow: { flexDirection: "row", gap: 8, marginBottom: 8 },
   input: {
     flex: 1, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 12,

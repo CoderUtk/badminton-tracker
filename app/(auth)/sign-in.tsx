@@ -199,7 +199,7 @@ export default function SignIn() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
+  root: { flex: 1 },
   scroll: { flexGrow: 1, justifyContent: "center", padding: 22, gap: 22 },
   center: { alignItems: "center", justifyContent: "center", gap: 12, padding: 24 },
 

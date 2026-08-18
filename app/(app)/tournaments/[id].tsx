@@ -264,7 +264,7 @@ export default function TournamentBracket() {
     }
   };
 
-  if (!tournament) return <View style={{ flex: 1, backgroundColor: C.bg }} />;
+  if (!tournament) return <View style={{ flex: 1 }} />;
 
   // Built the active tab's entire element tree on every render, so
   // TournamentPlayersTab and friends were reconstructed on every 15s poll tick
@@ -307,7 +307,7 @@ export default function TournamentBracket() {
     );
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.bg, padding: 12 }}>
+    <View style={{ flex: 1, padding: 12 }}>
       <Stack.Screen
         options={{
           // Trigger only. The menu Sheet is mounted in the body below: a Sheet

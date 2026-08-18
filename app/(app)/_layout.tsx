@@ -1,9 +1,11 @@
 import React from "react";
 import { Tabs } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CommonActions, type NavigationState, type PartialState } from "@react-navigation/native";
 import Icon, { type IconName } from "../../src/components/Icon";
 import Logo from "../../src/components/Logo";
 import { C } from "../../src/theme";
+import { headerInset } from "../../src/lib/headerInset";
 import { shouldResetTabStack } from "../../src/lib/tabReset";
 
 const icon = (name: IconName) =>
@@ -12,23 +14,33 @@ const icon = (name: IconName) =>
   };
 
 export default function AppTabs() {
+  const insets = useSafeAreaInsets();
   return (
     <Tabs
       screenOptions={{
         animation: "shift",
-        headerStyle: { backgroundColor: C.bg },
+        // Floating header so the ground reads through it. Only the Home tab
+        // shows this header — every other tab hosts its own stack with
+        // headerShown: false — so the matching inset is on that screen alone.
+        headerTransparent: true,
+        headerShadowVisible: false,
         headerTintColor: C.text,
         tabBarStyle: { backgroundColor: C.card, borderTopColor: C.line },
         tabBarActiveTintColor: C.red,
         tabBarInactiveTintColor: C.text2,
-        sceneStyle: { backgroundColor: C.bg },
+        sceneStyle: { backgroundColor: "transparent" },
         headerTitle: () => <Logo size={24} />,
         headerTitleAlign: "center",
       }}
     >
       <Tabs.Screen
         name="index"
-        options={{ title: "Home", tabBarIcon: icon("home"), tabBarAccessibilityLabel: "Home" }}
+        options={{
+          title: "Home",
+          tabBarIcon: icon("home"),
+          tabBarAccessibilityLabel: "Home",
+          sceneStyle: { paddingTop: headerInset(insets.top) },
+        }}
       />
       <Tabs.Screen
         name="sessions"

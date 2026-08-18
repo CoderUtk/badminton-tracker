@@ -473,7 +473,7 @@ export default function NewMatch() {
 const s = StyleSheet.create({
   // paddingBottom now comes from useScreenInsets at render time (audit H3):
   // the nav bar was clipping the bottom 32dp of the Start scoring CTA.
-  root: { flex: 1, backgroundColor: C.bg, padding: 16, gap: 12 },
+  root: { flex: 1, padding: 16, gap: 12 },
   belowCourt: { gap: 12 },
   topRow: { flexDirection: "row", gap: 8, alignItems: "center" },
   // No flex here: inside the column-laid-out format groups it would stretch the

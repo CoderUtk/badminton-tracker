@@ -83,7 +83,7 @@ export default function TournamentsList() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg, padding: 16, gap: 12 },
+  root: { flex: 1, padding: 16, gap: 12 },
   newBtn: { flexDirection: "row", gap: 6, alignItems: "center", justifyContent: "center", backgroundColor: C.red, borderRadius: 12, paddingVertical: 14 },
   newText: { color: C.text, fontFamily: F.semibold, fontSize: 16 },
   empty: { color: C.text2, textAlign: "center", marginTop: 40 },

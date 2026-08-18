@@ -30,4 +30,4 @@ export default function FormScreen({
   );
 }
 
-const s = StyleSheet.create({ root: { flex: 1, backgroundColor: C.bg } });
+const s = StyleSheet.create({ root: { flex: 1 } });

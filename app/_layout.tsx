@@ -24,6 +24,8 @@ import { configureNotificationHandling, syncPushRegistration } from "../src/lib/
 import { notificationRoute } from "../src/lib/notificationRoute";
 import AnimatedSplash from "../src/components/AnimatedSplash";
 import Toaster from "../src/components/Toaster";
+import ScreenBackground from "../src/components/ScreenBackground";
+import { headerInset } from "../src/lib/headerInset";
 import { consumePendingLink, setPendingLink } from "../src/lib/pendingLink";
 import { joinRouteFor, parseJoinTarget } from "../src/lib/joinLink";
 import { isGuestAllowedSegments } from "../src/lib/gateRedirect";
@@ -235,11 +237,21 @@ function RootLayout() {
       <StatusBar style="light" />
       {!splashDone && <AnimatedSplash onFinish={() => setSplashDone(true)} />}
       <Gate>
+        {/* One ground for the whole app. Anchoring it above the navigator
+            rather than per screen means the light source is fixed to the
+            device, not re-cast on every push — and a screen transition slides
+            content across a stable ground instead of cross-fading two of them. */}
+        <ScreenBackground>
         <Stack
           screenOptions={{
-            headerStyle: { backgroundColor: C.bg },
+            // Floating header so the ground above reads through it. No
+            // paddingTop here: every screen in this stack except the two modals
+            // below hides its header, and a global inset would open a dead gap
+            // at the top of all of them. The modals carry their own.
+            headerTransparent: true,
             headerTintColor: C.text,
-            contentStyle: { backgroundColor: C.bg },
+            headerShadowVisible: false,
+            contentStyle: { backgroundColor: "transparent" },
           }}
         >
           <Stack.Screen name="(app)" options={{ headerShown: false }} />
@@ -253,9 +265,27 @@ function RootLayout() {
             name="score/[matchId]"
             options={{ headerShown: false, presentation: "fullScreenModal", orientation: "all" }}
           />
-          <Stack.Screen name="new-match" options={{ title: "New match", presentation: "modal" }} />
-          <Stack.Screen name="new-session" options={{ title: "Plan session", presentation: "modal" }} />
+          {/* The only two headered screens in this stack, so the inset lives
+              here rather than in screenOptions. headerInset's "modal" mode
+              takes no safe-area value — a sheet is already inset from the top
+              of the display — which is why this file needs no insets hook
+              above the navigator, where no SafeAreaProvider exists yet. */}
+          <Stack.Screen
+            name="new-match"
+            options={{
+              title: "New match", presentation: "modal",
+              contentStyle: { backgroundColor: "transparent", paddingTop: headerInset(0, "modal") },
+            }}
+          />
+          <Stack.Screen
+            name="new-session"
+            options={{
+              title: "Plan session", presentation: "modal",
+              contentStyle: { backgroundColor: "transparent", paddingTop: headerInset(0, "modal") },
+            }}
+          />
         </Stack>
+        </ScreenBackground>
       </Gate>
     </SessionProvider>
     <Toaster />

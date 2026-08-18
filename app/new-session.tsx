@@ -145,7 +145,7 @@ export default function NewSession() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg }, content: { padding: 16, gap: 10 },
+  root: { flex: 1 }, content: { padding: 16, gap: 10 },
   intro: { color: C.text2, fontSize: 15, lineHeight: 22, marginBottom: 8 },
   label: { color: C.text, fontSize: 16, fontWeight: "800", marginTop: 5 },
   input: { minHeight: 52, borderRadius: 12, borderWidth: 1, borderColor: C.line, backgroundColor: C.card, color: C.text, paddingHorizontal: 14, fontSize: 16 },

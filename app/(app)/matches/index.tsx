@@ -206,7 +206,7 @@ export default function Matches() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
+  root: { flex: 1 },
   filterBar: { paddingTop: 12, paddingBottom: 4 },
   filterRow: { paddingHorizontal: 16, gap: 8 },
   fChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: C.card, borderWidth: 1, borderColor: C.line },
