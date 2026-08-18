@@ -1,9 +1,11 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { LayoutChangeEvent, Pressable, StyleSheet, Text, View } from "react-native";
 import BadgeResultCard from "./share/BadgeResultCard";
 import Icon from "./Icon";
 import type { EarnedBadge } from "../achievements/types";
 import { captureAndShare } from "../lib/share/captureAndShare";
+import { preloadAvatars } from "../lib/share/avatars";
+import { getMyProfile } from "../repos/profileRepo";
 import { C, F, radius } from "../theme";
 
 const CARD_W = 1080;
@@ -35,6 +37,17 @@ export default function BadgeSharePopup({
 }) {
   const shareCardRef = useRef<View>(null);
   const [containerSize, setContainerSize] = useState<{ w: number; h: number } | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  // A badge belongs to the signed-in user, so its avatar is the user's own —
+  // no roster lookup needed here.
+  useEffect(() => {
+    let cancelled = false;
+    void getMyProfile().then((p) => {
+      if (!cancelled) setAvatarUrl(p?.avatarUrl ?? null);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   const onContainerLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
@@ -42,6 +55,13 @@ export default function BadgeSharePopup({
   };
 
   if (!badge) return null;
+
+  const onShare = async () => {
+    // Must complete before captureRef fires, or the offscreen Avatar's
+    // network Image can still be empty when the PNG is baked.
+    await preloadAvatars([avatarUrl]);
+    await captureAndShare(shareCardRef);
+  };
 
   // Nothing measured yet (first frame) — render off-screen-sized-zero
   // rather than flashing an oversized card before layout settles.
@@ -65,10 +85,10 @@ export default function BadgeSharePopup({
             <Text style={s.title} numberOfLines={1}>{badge.title}</Text>
             <View style={[s.previewClip, { width: previewW, height: previewH }]}>
               <View style={{ width: CARD_W, height: CARD_H, transform: [{ scale: previewScale }], transformOrigin: "0 0", position: "absolute", left: 0, top: 0 }}>
-                <BadgeResultCard badge={badge} playerName={playerName} />
+                <BadgeResultCard badge={badge} playerName={playerName} avatarUrl={avatarUrl} />
               </View>
             </View>
-            <Pressable style={s.shareBtn} onPress={() => void captureAndShare(shareCardRef)}>
+            <Pressable style={s.shareBtn} onPress={() => void onShare()}>
               <Icon name="share-social-outline" color={C.text} size={18} />
               <Text style={s.shareText}>Share to story</Text>
             </Pressable>
@@ -76,7 +96,7 @@ export default function BadgeSharePopup({
         </View>
       )}
       <View ref={shareCardRef} collapsable={false} style={s.offscreen}>
-        <BadgeResultCard badge={badge} playerName={playerName} />
+        <BadgeResultCard badge={badge} playerName={playerName} avatarUrl={avatarUrl} />
       </View>
     </View>
   );

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
@@ -7,7 +7,7 @@ import {
   type MatchType, type TournamentRow,
 } from "../../../src/repos/tournamentRepo";
 import { getMatch, type MatchRecord } from "../../../src/repos/matchRepo";
-import { getClub } from "../../../src/repos/clubRepo";
+import { getClub, listMyClubPlayers } from "../../../src/repos/clubRepo";
 import type {
   TournamentJoinRequest, TournamentStaff,
 } from "../../../src/repos/tournamentStaffRepo";
@@ -25,6 +25,7 @@ import TournamentPlayersTab from "../../../src/components/TournamentPlayersTab";
 import TournamentScorersTab from "../../../src/components/TournamentScorersTab";
 import TournamentResultCard from "../../../src/components/share/TournamentResultCard";
 import { captureAndShare } from "../../../src/lib/share/captureAndShare";
+import { avatarMap, preloadAvatars } from "../../../src/lib/share/avatars";
 import { toast } from "../../../src/lib/toast";
 import { C, F, press, selected } from "../../../src/theme";
 
@@ -58,6 +59,14 @@ export default function TournamentBracket() {
   // depending on — and being torn down/recreated by — the state it writes.
   const liveMatchesRef = useRef<Map<string, MatchRecord>>(new Map());
   const [liveMatches, setLiveMatches] = useState<Map<string, MatchRecord>>(new Map());
+  const [avatars, setAvatars] = useState<Record<string, string | null>>({});
+
+  // Roster avatars, keyed by club player id (never name — two entrants can
+  // share a display name). listMyClubPlayers is a local cache read, no
+  // network round trip.
+  useEffect(() => {
+    void listMyClubPlayers().then((players) => setAvatars(avatarMap(players)));
+  }, []);
 
   // Guards every setState against a chain that resolves after a newer focus
   // (or after unmount) has already started.
@@ -205,20 +214,24 @@ export default function TournamentBracket() {
   // Memoised together: these ran on every render, including two more Math.max
   // sweeps and two linear finds over the entrant list, and the 15s poll made
   // that a timer-driven cost even when nothing had changed.
-  const { champ, champName, runnerUpName } = useMemo(() => {
+  const { champ, champName, champClubPlayerId, runnerUpName, runnerUpClubPlayerId } = useMemo(() => {
     const c = bracketStatus(bracket).champion;
     const maxR = bracket.length ? Math.max(...bracket.map((m) => m.round)) : 0;
     const finalMatch = bracket.find((m) => m.round === maxR && m.index === 0);
     const runnerUpId = finalMatch && c
       ? (finalMatch.entrantA === c ? finalMatch.entrantB : finalMatch.entrantA)
       : null;
-    const nameOf = new Map(entrants.map((e) => [e.id, e.name]));
+    const entrantOf = new Map(entrants.map((e) => [e.id, e]));
     return {
       champ: c,
-      champName: c ? nameOf.get(c) ?? null : null,
-      runnerUpName: runnerUpId ? nameOf.get(runnerUpId) ?? "Runner-up" : "TBD",
+      champName: c ? entrantOf.get(c)?.name ?? null : null,
+      champClubPlayerId: c ? entrantOf.get(c)?.clubPlayerId ?? null : null,
+      runnerUpName: runnerUpId ? entrantOf.get(runnerUpId)?.name ?? "Runner-up" : "TBD",
+      runnerUpClubPlayerId: runnerUpId ? entrantOf.get(runnerUpId)?.clubPlayerId ?? null : null,
     };
   }, [bracket, entrants]);
+  const champAvatarUrl = champClubPlayerId ? avatars[champClubPlayerId] ?? null : null;
+  const runnerUpAvatarUrl = runnerUpClubPlayerId ? avatars[runnerUpClubPlayerId] ?? null : null;
   const isAdmin = clubRole === "owner" || clubRole === "admin" || isTournamentAdmin;
   // A legacy draft created before the two-phase split can already hold a
   // full bracket (status flipped to "live" only on the first finished
@@ -322,7 +335,15 @@ export default function TournamentBracket() {
       {champName ? (
         <>
           <Text style={{ color: C.red, fontFamily: F.semibold, marginBottom: 8 }}>🏆 Champion: {champName}</Text>
-          <PressableScale style={s.shareButton} onPress={() => void captureAndShare(shareCardRef)}>
+          <PressableScale
+            style={s.shareButton}
+            onPress={() => void (async () => {
+              // Must complete before captureRef fires, or the offscreen
+              // Avatars' network Images can still be empty when captured.
+              await preloadAvatars([champAvatarUrl, runnerUpAvatarUrl]);
+              await captureAndShare(shareCardRef);
+            })()}
+          >
             <Icon name="share-social-outline" size={18} color={C.text} />
             <Text style={s.shareButtonText}>Share Champion Card</Text>
           </PressableScale>
@@ -330,8 +351,8 @@ export default function TournamentBracket() {
             <TournamentResultCard
               tournamentName={tournament.name}
               date={tournament.createdAt}
-              champion={{ name: champName }}
-              runnerUp={{ name: runnerUpName }}
+              champion={{ name: champName, avatarUrl: champAvatarUrl }}
+              runnerUp={{ name: runnerUpName, avatarUrl: runnerUpAvatarUrl }}
             />
           </View>
         </>
