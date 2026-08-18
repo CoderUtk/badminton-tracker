@@ -1,17 +1,19 @@
 import React, { useMemo } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import Svg, { Line } from "react-native-svg";
+import Svg, { Path } from "react-native-svg";
 import type { BracketMatch, Entrant } from "../tournament/types";
 import { gamesWonBy } from "../tournament/score";
-import { bracketCellLabel } from "../tournament/bracketLabel";
+import { bracketCellLabel, elbowPath, roundName } from "../tournament/bracketLabel";
+import CarvedCard from "./CarvedCard";
 import Icon from "./Icon";
-import { C, F } from "../theme";
+import { C, F, glow, radius, textGlow } from "../theme";
 
 const CELL_W = 150;
 const CELL_H = 84;
 const GAP_Y = 20;
 const COL_GAP = 44;
 const SLOT = CELL_H + GAP_Y;
+const HEADER_H = 30;
 
 type Centers = Map<string, number>; // `${round}:${index}` -> centerY
 
@@ -54,6 +56,11 @@ type CellProps = {
  * be a single inline .map with no memo boundary anywhere: opening a sheet or
  * toggling `refreshing` re-rendered every cell, and the 15s poll did the same
  * on a timer whether or not anything had changed.
+ *
+ * Colour follows the rule in theme.ts: C.accent is the earned thing, C.red is
+ * the thing happening now. So the champion glows cyan and a live match is red,
+ * matching the live dot that has always sat in the corner of it. This is the
+ * reverse of what the cell used to do.
  */
 const BracketCell = React.memo(function BracketCell({
   cell, nameA, nameB, top, left, maxRound, liveScore, onPress,
@@ -72,48 +79,79 @@ const BracketCell = React.memo(function BracketCell({
       onPress={() => onPress?.(cell)}
       accessibilityLabel={cellLabel}
       accessibilityRole={onPress && (cell.entrantA || cell.entrantB) ? "button" : undefined}
-      style={[
-        s.cell,
-        { left, top, borderColor: live ? C.accent : isChampCell ? C.red : C.line },
-      ]}
+      style={[s.cellWrap, { left, top }]}
     >
-      {cell.court ? (
-        <View style={s.courtChip}>
-          <Text style={s.courtChipText}>C{cell.court}</Text>
-        </View>
-      ) : null}
-      {(["A", "B"] as const).map((side) => {
-        const eid = side === "A" ? cell.entrantA : cell.entrantB;
-        const label = side === "A" ? nameA : nameB;
-        const won = !!cell.winnerEntrant && cell.winnerEntrant === eid;
-        const wonGames = games.length ? gamesWonBy(games, side) : 0;
-        return (
-          <View key={side} style={s.sideRow}>
-            {won && isChampCell ? <Icon name="trophy" color={C.red} size={12} /> : null}
-            <Text
-              numberOfLines={1}
-              style={[s.sideName, won ? s.sideNameWon : s.sideNameLost]}
-            >
-              {label}
-            </Text>
-            {wonGames > 0 ? (
-              <Text style={[s.gamesPill, won ? s.gamesPillWon : s.gamesPillLost]}>
-                {wonGames}
-              </Text>
-            ) : null}
+      <CarvedCard
+        r={radius.md}
+        style={{
+          ...s.cell,
+          ...(live ? { borderColor: C.red } : null),
+          ...(isChampCell ? { borderColor: C.accent, ...glow(C.accent, 12, 0.4) } : null),
+        }}
+      >
+        {cell.court ? (
+          <View style={s.courtChip}>
+            <Text style={s.courtChipText}>C{cell.court}</Text>
           </View>
-        );
-      })}
-      {live && current ? (
-        <Text style={s.liveScore}>{current.A}-{current.B}</Text>
-      ) : null}
-      {!live && cell.winnerEntrant && games.length ? (
-        <Text numberOfLines={1} style={s.finalScores}>
-          {games.map((g) => `${g.A}-${g.B}`).join("  ")}
-        </Text>
-      ) : null}
-      {live ? <View style={s.liveDot} /> : null}
+        ) : null}
+        {(["A", "B"] as const).map((side) => {
+          const eid = side === "A" ? cell.entrantA : cell.entrantB;
+          const label = side === "A" ? nameA : nameB;
+          const won = !!cell.winnerEntrant && cell.winnerEntrant === eid;
+          // Only recede once the match is decided. Dimming a side of an
+          // undecided cell would read as "this one is losing".
+          const lost = !!cell.winnerEntrant && !won;
+          const wonGames = games.length ? gamesWonBy(games, side) : 0;
+          return (
+            <View key={side} style={[s.sideRow, lost && s.sideRowLost]}>
+              {won && isChampCell ? <Icon name="trophy" color={C.accent} size={12} /> : null}
+              <Text
+                numberOfLines={1}
+                style={[
+                  s.sideName,
+                  won ? s.sideNameWon : s.sideNameLost,
+                  won && isChampCell ? s.sideNameChamp : null,
+                ]}
+              >
+                {label}
+              </Text>
+              {wonGames > 0 ? (
+                <Text style={[s.gamesPill, won ? s.gamesPillWon : s.gamesPillLost]}>
+                  {wonGames}
+                </Text>
+              ) : null}
+            </View>
+          );
+        })}
+        {live && current ? (
+          <Text style={s.liveScore}>{current.A}-{current.B}</Text>
+        ) : null}
+        {!live && cell.winnerEntrant && games.length ? (
+          <Text numberOfLines={1} style={s.finalScores}>
+            {games.map((g) => `${g.A}-${g.B}`).join("  ")}
+          </Text>
+        ) : null}
+        {live ? <View style={s.liveDot} /> : null}
+      </CarvedCard>
     </TouchableOpacity>
+  );
+});
+
+/**
+ * Column heading: which round this is, and how much of it is settled. Without
+ * one, a 16-entrant bracket is four scrolling columns of identical boxes with
+ * nothing on screen saying which of them is the final.
+ */
+const RoundHeader = React.memo(function RoundHeader({
+  round, maxRound, decided, total, hasLive,
+}: { round: number; maxRound: number; decided: number; total: number; hasLive: boolean }) {
+  return (
+    <View style={s.headerCell}>
+      <Text style={[s.headerName, hasLive && s.headerNameActive]} numberOfLines={1}>
+        {roundName(round, maxRound)}
+      </Text>
+      <Text style={s.headerCount}>{decided}/{total}</Text>
+    </View>
   );
 });
 
@@ -140,6 +178,19 @@ export default function BracketView({
     () => bracket.filter((m) => m.round < maxRound),
     [bracket, maxRound]
   );
+  const rounds = useMemo(
+    () =>
+      Array.from({ length: maxRound }, (_, i) => {
+        const cells = bracket.filter((m) => m.round === i + 1);
+        return {
+          round: i + 1,
+          total: cells.length,
+          decided: cells.filter((m) => m.winnerEntrant).length,
+          hasLive: cells.some((m) => m.matchId && !m.winnerEntrant),
+        };
+      }),
+    [bracket, maxRound]
+  );
   const dims = useMemo(() => {
     const r1Count = bracket.filter((m) => m.round === 1).length;
     return {
@@ -152,53 +203,75 @@ export default function BracketView({
 
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator>
-      <ScrollView showsVerticalScrollIndicator style={{ maxHeight: dims.totalH + 8 }}>
-        <View style={{ width: dims.totalW, height: dims.totalH }}>
-          <Svg
-            width={dims.totalW}
-            height={dims.totalH}
-            style={StyleSheet.absoluteFill}
-          >
-            {lines.map((m) => {
-              const y1 = centers.get(`${m.round}:${m.index}`)!;
-              const childIndex = Math.floor(m.index / 2);
-              const y2 = centers.get(`${m.round + 1}:${childIndex}`)!;
-              return (
-                <Line
-                  key={`l${m.id}`}
-                  x1={colX(m.round) + CELL_W}
-                  y1={y1}
-                  x2={colX(m.round + 1)}
-                  y2={y2}
-                  stroke={C.line}
-                  strokeWidth={1.5}
-                />
-              );
-            })}
-          </Svg>
-          {bracket.map((m) => (
-            <BracketCell
-              key={m.id}
-              cell={m}
-              nameA={m.entrantA ? nameOf.get(m.entrantA) ?? "?" : "—"}
-              nameB={m.entrantB ? nameOf.get(m.entrantB) ?? "?" : "—"}
-              left={colX(m.round)}
-              top={centers.get(`${m.round}:${m.index}`)! - CELL_H / 2}
-              maxRound={maxRound}
-              liveScore={m.matchId ? liveScores?.get(m.matchId) : undefined}
-              onPress={onCellPress}
-            />
+      {/* The header rail sits inside the horizontal scroll but outside the
+          vertical one, so it tracks the columns sideways and stays in place
+          while the user scrolls down a tall bracket. */}
+      <View>
+        <View style={[s.headerRow, { width: dims.totalW }]}>
+          {rounds.map((r) => (
+            <RoundHeader key={r.round} maxRound={maxRound} {...r} />
           ))}
         </View>
-      </ScrollView>
+        <ScrollView showsVerticalScrollIndicator style={{ maxHeight: dims.totalH + 8 }}>
+          <View style={{ width: dims.totalW, height: dims.totalH }}>
+            <Svg
+              width={dims.totalW}
+              height={dims.totalH}
+              style={StyleSheet.absoluteFill}
+            >
+              {lines.map((m) => {
+                const y1 = centers.get(`${m.round}:${m.index}`)!;
+                const childIndex = Math.floor(m.index / 2);
+                const y2 = centers.get(`${m.round + 1}:${childIndex}`)!;
+                const d = elbowPath(colX(m.round) + CELL_W, y1, colX(m.round + 1), y2);
+                // An edge lights only once somebody has actually advanced along it.
+                const lit = !!m.winnerEntrant;
+                return (
+                  <React.Fragment key={`l${m.id}`}>
+                    {lit ? (
+                      // SVG has no cheap shadow primitive, so the bloom is a
+                      // wide faint stroke drawn under the real one.
+                      <Path d={d} stroke={C.accent} strokeWidth={6} strokeOpacity={0.12} fill="none" />
+                    ) : null}
+                    <Path
+                      d={d}
+                      stroke={lit ? C.accent : C.line}
+                      strokeWidth={lit ? 2 : 1.5}
+                      fill="none"
+                    />
+                  </React.Fragment>
+                );
+              })}
+            </Svg>
+            {bracket.map((m) => (
+              <BracketCell
+                key={m.id}
+                cell={m}
+                nameA={m.entrantA ? nameOf.get(m.entrantA) ?? "?" : "—"}
+                nameB={m.entrantB ? nameOf.get(m.entrantB) ?? "?" : "—"}
+                left={colX(m.round)}
+                top={centers.get(`${m.round}:${m.index}`)! - CELL_H / 2}
+                maxRound={maxRound}
+                liveScore={m.matchId ? liveScores?.get(m.matchId) : undefined}
+                onPress={onCellPress}
+              />
+            ))}
+          </View>
+        </ScrollView>
+      </View>
     </ScrollView>
   );
 }
 
 const s = StyleSheet.create({
+  headerRow: { flexDirection: "row", height: HEADER_H },
+  headerCell: { width: CELL_W, marginRight: COL_GAP, justifyContent: "center" },
+  headerName: { color: C.text3, fontFamily: F.display, fontSize: 11, letterSpacing: 1 },
+  headerNameActive: { color: C.text },
+  headerCount: { color: C.ghost, fontFamily: F.medium, fontSize: 9, marginTop: 1 },
+  cellWrap: { position: "absolute", width: CELL_W, height: CELL_H },
   cell: {
-    position: "absolute", width: CELL_W, height: CELL_H,
-    backgroundColor: C.card, borderRadius: 10, borderWidth: 1,
+    flex: 1,
     justifyContent: "center", paddingHorizontal: 10, paddingVertical: 8, gap: 2,
   },
   courtChip: {
@@ -207,16 +280,20 @@ const s = StyleSheet.create({
   },
   courtChipText: { color: C.text2, fontSize: 9, fontFamily: F.semibold },
   sideRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+  // The loser recedes, so the winner reads as the row rather than as a
+  // slightly brighter grey next to a slightly duller one.
+  sideRowLost: { opacity: 0.45 },
   sideName: { flex: 1, fontSize: 13 },
   sideNameWon: { color: C.text, fontFamily: F.semibold },
   sideNameLost: { color: C.text2, fontFamily: F.body },
+  sideNameChamp: { color: C.accent, ...textGlow(C.accent, 10) },
   gamesPill: {
     color: C.bg, fontSize: 9, fontFamily: F.semibold, minWidth: 14,
     textAlign: "center", borderRadius: 7, paddingHorizontal: 3,
   },
-  gamesPillWon: { backgroundColor: C.red },
+  gamesPillWon: { backgroundColor: C.accent },
   gamesPillLost: { backgroundColor: C.text2 },
-  liveScore: { color: C.accent, fontSize: 12, fontFamily: F.semibold, marginTop: 2 },
+  liveScore: { color: C.red, fontSize: 12, fontFamily: F.semibold, marginTop: 2 },
   finalScores: { color: C.text2, fontSize: 10, marginTop: 2 },
   liveDot: {
     position: "absolute", right: 8, top: 6,
