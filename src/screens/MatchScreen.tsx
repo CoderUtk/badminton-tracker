@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import * as Haptics from "expo-haptics";
 import * as ScreenOrientation from "expo-screen-orientation";
@@ -6,6 +6,7 @@ import { useKeepAwake } from "expo-keep-awake";
 import { useFocusEffect, useRouter } from "expo-router";
 import { gameScoreState, MatchState, pointSituation, serverName, TeamId } from "../engine";
 import type { MatchRecord } from "../repos/matchRepo";
+import { listMyClubPlayers, ClubPlayer } from "../repos/clubRepo";
 import { useMatchStore } from "../stores/matchStore";
 import AppDialog from "../components/AppDialog";
 import Court from "../components/Court";
@@ -16,6 +17,7 @@ import ShareCard from "../components/ShareCard";
 import { captureAndShare } from "../lib/share/captureAndShare";
 import { formatMatchDate, matchDurationMs } from "../lib/matchDetail";
 import { leadChanges, longestStreak, totalRallies } from "../lib/share/matchStats";
+import { avatarMap, preloadAvatars } from "../lib/share/avatars";
 import {
   DEFAULT_SCORING_MODE,
   lockForMode,
@@ -73,6 +75,13 @@ export default function MatchScreen({
   const [orientationMode, setOrientationMode] = useState<OrientationMode>(DEFAULT_SCORING_MODE);
   const [orientationSheetOpen, setOrientationSheetOpen] = useState(false);
   const [confirmingEnd, setConfirmingEnd] = useState(false);
+  const [roster, setRoster] = useState<ClubPlayer[]>([]);
+  useEffect(() => {
+    listMyClubPlayers().then(setRoster);
+  }, []);
+  const avatars = useMemo(() => avatarMap(roster), [roster]);
+  const withAvatars = (players: { id: string; name: string }[]) =>
+    players.map((p) => ({ name: p.name, avatarUrl: avatars[p.id] ?? null }));
 
   // Local and non-persisted, deliberately. MatchEvent is reduced by the engine,
   // synced to Supabase and replayed by undo and autoFinish; a UI affordance must
@@ -204,7 +213,16 @@ export default function MatchScreen({
               <Text style={s.bannerSub}>Tap to close</Text>
               <PressableScale
                 style={s.shareButton}
-                onPress={(e) => { e.stopPropagation(); void captureAndShare(shareCardRef); }}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  void (async () => {
+                    await preloadAvatars([
+                      ...withAvatars(state.config.teams.A),
+                      ...withAvatars(state.config.teams.B),
+                    ].map((p) => p.avatarUrl));
+                    await captureAndShare(shareCardRef);
+                  })();
+                }}
               >
                 <Icon name="share-social-outline" size={20} color={C.text} />
                 <Text style={s.shareButtonText}>Share to Story</Text>
@@ -420,6 +438,8 @@ export default function MatchScreen({
             ref={shareCardRef}
             teamA={teamName("A")}
             teamB={teamName("B")}
+            sideA={withAvatars(state.config.teams.A)}
+            sideB={withAvatars(state.config.teams.B)}
             winner={state.winner}
             games={state.gameHistory.map((g) => g.score)}
             stats={{
