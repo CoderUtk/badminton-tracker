@@ -5,15 +5,17 @@ import { toast } from "../toast";
 import { shareToInstagramStory } from "./shareToInstagramStory";
 
 /**
- * width/height pin the capture to Instagram's native story size instead of
- * letting it fall out of the view's layout size. Without them a card laid out
- * smaller than 1080×1920 (ShareCard is 360×640) uploads soft, because
- * Instagram upscales it. Every card this is called with is 9:16, so pinning
- * both axes scales rather than distorts.
+ * Capture a rendered card view to a PNG and hand it on.
+ *
+ * No resize options: every share card renders at CardShell's native
+ * 1080x1920, which is Instagram's story size, so the capture is 1:1. Passing
+ * width/height here would ask react-native-view-shot to rescale an image that
+ * is already the right size, which it implements as a crop on some Android
+ * versions.
  */
 export async function captureAndShare(viewRef: RefObject<View | null>): Promise<void> {
   try {
-    const uri = await captureRef(viewRef, { format: "png", quality: 1, width: 1080, height: 1920 });
+    const uri = await captureRef(viewRef, { format: "png", quality: 1 });
     await shareToInstagramStory(uri);
   } catch {
     toast("Couldn't create the share image", "error");

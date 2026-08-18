@@ -4,15 +4,17 @@ import { captureRef } from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
 
 /**
- * Capture a rendered card view to a PNG and hand it to the OS share sheet.
+ * Capture a rendered card view to a PNG and hand it on.
  *
- * width/height force the 360×640 card up to Instagram's native story size.
- * Without them the capture matches the layout size and every upload gets
- * upscaled 3× by Instagram, which is what made the old card look soft.
+ * No resize options: every share card renders at CardShell's native
+ * 1080x1920, which is Instagram's story size, so the capture is 1:1. Passing
+ * width/height here would ask react-native-view-shot to rescale an image that
+ * is already the right size, which it implements as a crop on some Android
+ * versions.
  */
 export async function shareMatchCard(ref: RefObject<View | null>): Promise<void> {
   if (!ref.current) return;
-  const uri = await captureRef(ref, { format: "png", quality: 1, width: 1080, height: 1920 });
+  const uri = await captureRef(ref, { format: "png", quality: 1 });
   if (await Sharing.isAvailableAsync()) {
     await Sharing.shareAsync(uri, { mimeType: "image/png", dialogTitle: "Share match" });
   }
