@@ -1,5 +1,9 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import Animated, {
+  Easing, FadeInLeft, useAnimatedStyle, useReducedMotion, useSharedValue,
+  withRepeat, withTiming,
+} from "react-native-reanimated";
 import Svg, { Path } from "react-native-svg";
 import type { BracketMatch, Entrant } from "../tournament/types";
 import { gamesWonBy } from "../tournament/score";
@@ -19,6 +23,35 @@ const GAP_Y = 20;
 const COL_GAP = 44;
 const SLOT = CELL_H + GAP_Y;
 const HEADER_H = 30;
+/** Per-round entrance offset. Columns arrive in the order play flows. */
+const STAGGER_MS = 60;
+
+/**
+ * The live marker. A static dot said "this match exists"; a breathing one says
+ * it is happening right now, which is the only thing on a bracket that changes
+ * while you are looking at it.
+ *
+ * Opacity and scale only, so it stays on the compositor.
+ */
+function LiveDot({ reduced }: { reduced: boolean }) {
+  const p = useSharedValue(0);
+  useEffect(() => {
+    if (reduced) return;
+    p.value = withRepeat(
+      withTiming(1, { duration: 900, easing: Easing.inOut(Easing.quad) }),
+      -1,
+      true
+    );
+  }, [reduced, p]);
+  const pulse = useAnimatedStyle(() => ({
+    opacity: 0.45 + p.value * 0.55,
+    transform: [{ scale: 0.85 + p.value * 0.35 }],
+  }));
+  // Not the animated node with a frozen shared value: that would leave the dot
+  // parked at the dim end of its own pulse for anyone who asked for less motion.
+  if (reduced) return <View style={s.liveDot} />;
+  return <Animated.View style={[s.liveDot, pulse]} />;
+}
 
 type Centers = Map<string, number>; // `${round}:${index}` -> centerY
 
@@ -55,6 +88,7 @@ type CellProps = {
   left: number;
   maxRound: number;
   liveScore: BracketLiveScore | undefined;
+  reduced: boolean;
   onPress?: (cell: BracketMatch) => void;
 };
 
@@ -95,7 +129,7 @@ function SideName({ name, won, champ }: { name: string; won: boolean; champ: boo
  * reverse of what the cell used to do.
  */
 const BracketCell = React.memo(function BracketCell({
-  cell, nameA, nameB, seedA, seedB, top, left, maxRound, liveScore, onPress,
+  cell, nameA, nameB, seedA, seedB, top, left, maxRound, liveScore, reduced, onPress,
 }: CellProps) {
   const live = !!cell.matchId && !cell.winnerEntrant;
   const isChampCell = cell.round === maxRound && !!cell.winnerEntrant;
@@ -115,12 +149,18 @@ const BracketCell = React.memo(function BracketCell({
   const cellLabel = `Round ${cell.round}${courtDesc}, ${bracketCellLabel(cell, nameA, nameB)}`;
 
   return (
+    <Animated.View
+      style={[s.cellWrap, { left, top }]}
+      // Round 1 first, the final last: the bracket assembles in the direction
+      // play runs rather than appearing all at once.
+      entering={reduced ? undefined : FadeInLeft.delay((cell.round - 1) * STAGGER_MS).duration(220)}
+    >
     <TouchableOpacity
       disabled={!onPress || (!cell.entrantA && !cell.entrantB)}
       onPress={() => onPress?.(cell)}
       accessibilityLabel={cellLabel}
       accessibilityRole={onPress && (cell.entrantA || cell.entrantB) ? "button" : undefined}
-      style={[s.cellWrap, { left, top }]}
+      style={s.cellTouch}
     >
       <CarvedCard
         r={radius.md}
@@ -180,9 +220,10 @@ const BracketCell = React.memo(function BracketCell({
             {games.map((g) => `${g.A}-${g.B}`).join("  ")}
           </Text>
         ) : null}
-        {live ? <View style={s.liveDot} /> : null}
+        {live ? <LiveDot reduced={reduced} /> : null}
       </CarvedCard>
     </TouchableOpacity>
+    </Animated.View>
   );
 });
 
@@ -217,6 +258,8 @@ export default function BracketView({
 }) {
   // Every hook runs before the empty-bracket early return below — a
   // conditional return placed above them would violate the rules of hooks.
+  // Read once here rather than per cell: a 16-entrant bracket has 15 of them.
+  const reduced = useReducedMotion();
   const maxRound = useMemo(
     () => (bracket.length ? Math.max(...bracket.map((m) => m.round)) : 0),
     [bracket]
@@ -305,6 +348,7 @@ export default function BracketView({
                 top={centers.get(`${m.round}:${m.index}`)! - CELL_H / 2}
                 maxRound={maxRound}
                 liveScore={m.matchId ? liveScores?.get(m.matchId) : undefined}
+                reduced={reduced}
                 onPress={onCellPress}
               />
             ))}
@@ -322,6 +366,7 @@ const s = StyleSheet.create({
   headerNameActive: { color: C.text },
   headerCount: { color: C.ghost, fontFamily: F.medium, fontSize: 9, marginTop: 1 },
   cellWrap: { position: "absolute", width: CELL_W, height: CELL_H },
+  cellTouch: { flex: 1 },
   cell: {
     flex: 1,
     justifyContent: "center", paddingHorizontal: 10, paddingVertical: 8, gap: 2,
