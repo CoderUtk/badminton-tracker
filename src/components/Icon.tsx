@@ -32,7 +32,7 @@ export type IconName =
   | "log-out-outline" | "swap-horizontal" | "swap-vertical"
   | "share-social-outline" | "create-outline"
   | "ellipse" | "trash-outline"
-  | "information-circle-outline" | "hand-left-outline"
+  | "information-circle-outline" | "hand-left-outline" | "lock-closed-outline"
   | "phone-portrait-outline" | "phone-landscape-outline" | "sync-outline"
   | "checkmark" | "checkmark-circle"
   // MaterialCommunityIcons
