@@ -3,13 +3,18 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-nati
 import Svg, { Path } from "react-native-svg";
 import type { BracketMatch, Entrant } from "../tournament/types";
 import { gamesWonBy } from "../tournament/score";
-import { bracketCellLabel, elbowPath, roundName } from "../tournament/bracketLabel";
+import {
+  bracketCellLabel, elbowPath, isUpset, roundName, splitPairName,
+} from "../tournament/bracketLabel";
 import CarvedCard from "./CarvedCard";
 import Icon from "./Icon";
 import { C, F, glow, radius, textGlow } from "../theme";
 
-const CELL_W = 150;
-const CELL_H = 84;
+// Wide enough for a doubles pair on two lines beside a seed chip. At the old
+// 150 a pair truncated to "Ana / B…" and the bracket read as a list of
+// initials.
+const CELL_W = 176;
+const CELL_H = 88;
 const GAP_Y = 20;
 const COL_GAP = 44;
 const SLOT = CELL_H + GAP_Y;
@@ -44,12 +49,39 @@ type CellProps = {
   cell: BracketMatch;
   nameA: string;
   nameB: string;
+  seedA?: number;
+  seedB?: number;
   top: number;
   left: number;
   maxRound: number;
   liveScore: BracketLiveScore | undefined;
   onPress?: (cell: BracketMatch) => void;
 };
+
+/**
+ * The name half of a side: one line for singles, two for a doubles pair.
+ *
+ * Two lines rather than a joined-and-truncated string because "Ana / Bo" at
+ * this width loses the second player entirely, and the second player is half
+ * the team.
+ */
+function SideName({ name, won, champ }: { name: string; won: boolean; champ: boolean }) {
+  const parts = splitPairName(name);
+  const tone = [
+    won ? s.sideNameWon : s.sideNameLost,
+    won && champ ? s.sideNameChamp : null,
+  ];
+  if (parts.length === 1) {
+    return <Text numberOfLines={1} style={[s.sideName, ...tone]}>{name}</Text>;
+  }
+  return (
+    <View style={s.pairCol}>
+      {parts.map((p, i) => (
+        <Text key={i} numberOfLines={1} style={[s.sideName, s.pairLine, ...tone]}>{p}</Text>
+      ))}
+    </View>
+  );
+}
 
 /**
  * One bracket cell. Extracted and memoised because the whole bracket used to
@@ -63,12 +95,21 @@ type CellProps = {
  * reverse of what the cell used to do.
  */
 const BracketCell = React.memo(function BracketCell({
-  cell, nameA, nameB, top, left, maxRound, liveScore, onPress,
+  cell, nameA, nameB, seedA, seedB, top, left, maxRound, liveScore, onPress,
 }: CellProps) {
   const live = !!cell.matchId && !cell.winnerEntrant;
   const isChampCell = cell.round === maxRound && !!cell.winnerEntrant;
+  const empty = !cell.entrantA && !cell.entrantB;
   const games = liveScore?.scoreSummary?.games ?? [];
   const current = liveScore?.scoreSummary?.current;
+
+  const winnerSeed = cell.winnerEntrant === cell.entrantA ? seedA
+    : cell.winnerEntrant === cell.entrantB ? seedB : undefined;
+  const loserSeed = cell.winnerEntrant === cell.entrantA ? seedB
+    : cell.winnerEntrant === cell.entrantB ? seedA : undefined;
+  // Only a contested match can be an upset, so a bye (one entrant, winner
+  // already set) is excluded by requiring both sides.
+  const upset = !!cell.entrantA && !!cell.entrantB && isUpset(winnerSeed, loserSeed);
 
   const courtDesc = cell.court ? `, Court ${cell.court}` : "";
   const cellLabel = `Round ${cell.round}${courtDesc}, ${bracketCellLabel(cell, nameA, nameB)}`;
@@ -85,6 +126,10 @@ const BracketCell = React.memo(function BracketCell({
         r={radius.md}
         style={{
           ...s.cell,
+          // The court chip is absolutely positioned over the top-left corner,
+          // so a cell that has one needs its content pushed clear of it.
+          ...(cell.court ? { paddingTop: 20 } : null),
+          ...(empty ? s.cellEmpty : null),
           ...(live ? { borderColor: C.red } : null),
           ...(isChampCell ? { borderColor: C.accent, ...glow(C.accent, 12, 0.4) } : null),
         }}
@@ -97,24 +142,28 @@ const BracketCell = React.memo(function BracketCell({
         {(["A", "B"] as const).map((side) => {
           const eid = side === "A" ? cell.entrantA : cell.entrantB;
           const label = side === "A" ? nameA : nameB;
+          const seed = side === "A" ? seedA : seedB;
           const won = !!cell.winnerEntrant && cell.winnerEntrant === eid;
           // Only recede once the match is decided. Dimming a side of an
           // undecided cell would read as "this one is losing".
           const lost = !!cell.winnerEntrant && !won;
           const wonGames = games.length ? gamesWonBy(games, side) : 0;
+          if (!eid) {
+            return (
+              <View key={side} style={s.sideRow}>
+                <Text style={s.tbd}>TBD</Text>
+              </View>
+            );
+          }
           return (
             <View key={side} style={[s.sideRow, lost && s.sideRowLost]}>
               {won && isChampCell ? <Icon name="trophy" color={C.accent} size={12} /> : null}
-              <Text
-                numberOfLines={1}
-                style={[
-                  s.sideName,
-                  won ? s.sideNameWon : s.sideNameLost,
-                  won && isChampCell ? s.sideNameChamp : null,
-                ]}
-              >
-                {label}
-              </Text>
+              {seed != null ? (
+                // Amber only on the side that caused the upset: tinting both
+                // would say the match was an upset without saying who did it.
+                <Text style={[s.seedChip, upset && won && s.seedChipUpset]}>{seed}</Text>
+              ) : null}
+              <SideName name={label} won={won} champ={isChampCell} />
               {wonGames > 0 ? (
                 <Text style={[s.gamesPill, won ? s.gamesPillWon : s.gamesPillLost]}>
                   {wonGames}
@@ -174,6 +223,7 @@ export default function BracketView({
   );
   const centers = useMemo(() => computeCenters(bracket, maxRound), [bracket, maxRound]);
   const nameOf = useMemo(() => new Map(entrants.map((e) => [e.id, e.name])), [entrants]);
+  const seedOf = useMemo(() => new Map(entrants.map((e) => [e.id, e.seed])), [entrants]);
   const lines = useMemo(
     () => bracket.filter((m) => m.round < maxRound),
     [bracket, maxRound]
@@ -249,6 +299,8 @@ export default function BracketView({
                 cell={m}
                 nameA={m.entrantA ? nameOf.get(m.entrantA) ?? "?" : "—"}
                 nameB={m.entrantB ? nameOf.get(m.entrantB) ?? "?" : "—"}
+                seedA={m.entrantA ? seedOf.get(m.entrantA) : undefined}
+                seedB={m.entrantB ? seedOf.get(m.entrantB) : undefined}
                 left={colX(m.round)}
                 top={centers.get(`${m.round}:${m.index}`)! - CELL_H / 2}
                 maxRound={maxRound}
@@ -274,6 +326,9 @@ const s = StyleSheet.create({
     flex: 1,
     justifyContent: "center", paddingHorizontal: 10, paddingVertical: 8, gap: 2,
   },
+  // A slot nobody can reach yet reads as pending rather than as a card that
+  // failed to load.
+  cellEmpty: { borderStyle: "dashed", borderColor: C.line },
   courtChip: {
     position: "absolute", left: 8, top: 6, backgroundColor: C.cardHi,
     borderRadius: 6, paddingHorizontal: 5, paddingVertical: 1,
@@ -284,6 +339,19 @@ const s = StyleSheet.create({
   // slightly brighter grey next to a slightly duller one.
   sideRowLost: { opacity: 0.45 },
   sideName: { flex: 1, fontSize: 13 },
+  pairCol: { flex: 1 },
+  // Two names in the space one used to take, so the pair has to give up two
+  // points of size and all of its line leading.
+  pairLine: { fontSize: 11, lineHeight: 13 },
+  seedChip: {
+    color: C.text3, fontSize: 9, fontFamily: F.semibold, minWidth: 14,
+    textAlign: "center", borderRadius: radius.sm, paddingHorizontal: 3,
+    backgroundColor: C.cardHi,
+  },
+  seedChipUpset: { color: C.bg, backgroundColor: C.amber },
+  tbd: {
+    flex: 1, color: C.ghost, fontSize: 11, fontFamily: F.medium, letterSpacing: 1,
+  },
   sideNameWon: { color: C.text, fontFamily: F.semibold },
   sideNameLost: { color: C.text2, fontFamily: F.body },
   sideNameChamp: { color: C.accent, ...textGlow(C.accent, 10) },

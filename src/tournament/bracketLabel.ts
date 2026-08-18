@@ -77,3 +77,28 @@ export function elbowPath(
     `H${x2}`,
   ].join(" ");
 }
+
+/**
+ * Splits an entrant's display name into its players. Entrant.name is a
+ * pre-joined "Ana / Bo" string for doubles (see sideOf in tournamentRepo), so
+ * a bracket cell that wants to lay the two names out on their own lines has to
+ * take them back apart. Singles return a single-element array.
+ */
+export function splitPairName(name: string): string[] {
+  const parts = name.split(" / ").map((p) => p.trim()).filter(Boolean);
+  return parts.length > 1 ? parts : [name];
+}
+
+/**
+ * True when the decided match went against the seeding — the winner carries a
+ * numerically larger seed than the loser. Both sides must be present and the
+ * match decided; a bye is not an upset.
+ *
+ * Seeds are 1-based and lower is stronger, so the comparison reads backwards
+ * from the usual "bigger wins" intuition, which is exactly why it lives here
+ * behind a name instead of inline in the cell.
+ */
+export function isUpset(winnerSeed?: number, loserSeed?: number): boolean {
+  if (winnerSeed == null || loserSeed == null) return false;
+  return winnerSeed > loserSeed;
+}
