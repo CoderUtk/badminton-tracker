@@ -4,7 +4,8 @@ import CardShell from "./CardShell";
 import Avatar from "./Avatar";
 import { truncateName, topStandings } from "../../lib/share/cardData";
 import type { ClubSession, SessionStats } from "../../repos/sessionRepo";
-import { C, F, radius } from "../../theme";
+import { formatMatchDate } from "../../lib/matchDetail";
+import { C, F, radius, CARD_TYPE } from "../../theme";
 
 export default function SessionResultCard({
   session,
@@ -21,7 +22,7 @@ export default function SessionResultCard({
     <CardShell>
       <View style={s.root}>
         <Text style={s.title}>SESSION RESULTS</Text>
-        <Text style={s.date}>{new Date(session.starts_at).toLocaleDateString()}</Text>
+        <Text style={s.date}>{formatMatchDate(session.starts_at)}</Text>
         <View style={s.rows}>
           {top.map((p, i) => (
             <View key={p.name} style={s.row}>
@@ -39,14 +40,14 @@ export default function SessionResultCard({
 
 const s = StyleSheet.create({
   root: { width: "100%", alignItems: "center", gap: 32 },
-  title: { color: C.text, fontFamily: F.display, fontSize: 56, letterSpacing: 1 },
-  date: { color: C.text3, fontFamily: F.body, fontSize: 24, marginBottom: 16 },
+  title: { color: C.text, fontFamily: F.display, fontSize: CARD_TYPE.title, letterSpacing: 1 },
+  date: { color: C.text3, fontFamily: F.body, fontSize: CARD_TYPE.caption, marginBottom: 16 },
   rows: { width: "100%", gap: 20 },
   row: {
     flexDirection: "row", alignItems: "center", gap: 20,
     backgroundColor: C.card, borderRadius: radius.md, padding: 22,
   },
-  rank: { color: C.text2, fontFamily: F.display, fontSize: 36, width: 46 },
-  name: { flex: 1, color: C.text, fontFamily: F.semibold, fontSize: 30 },
-  record: { color: C.text2, fontFamily: F.medium, fontSize: 28 },
+  rank: { color: C.text2, fontFamily: F.display, fontSize: CARD_TYPE.title, width: 46, fontVariant: ["tabular-nums"] },
+  name: { flex: 1, color: C.text, fontFamily: F.semibold, fontSize: CARD_TYPE.subtitle },
+  record: { color: C.text2, fontFamily: F.medium, fontSize: CARD_TYPE.subtitle, fontVariant: ["tabular-nums"] },
 });

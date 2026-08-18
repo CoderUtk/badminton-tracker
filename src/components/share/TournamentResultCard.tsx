@@ -4,7 +4,8 @@ import CardShell from "./CardShell";
 import Avatar from "./Avatar";
 import Icon from "../Icon";
 import { truncateName } from "../../lib/share/cardData";
-import { C, F, glow, textGlow } from "../../theme";
+import { formatMatchDate } from "../../lib/matchDetail";
+import { C, F, CARD_TYPE, textGlow } from "../../theme";
 
 export default function TournamentResultCard({
   tournamentName,
@@ -32,7 +33,7 @@ export default function TournamentResultCard({
           <Text style={s.runnerUpName}>{truncateName(runnerUp.name)}</Text>
         </View>
         <Text style={s.tournamentName}>{tournamentName}</Text>
-        <Text style={s.date}>{new Date(date).toLocaleDateString()}</Text>
+        <Text style={s.date}>{formatMatchDate(date)}</Text>
       </View>
     </CardShell>
   );
@@ -43,13 +44,12 @@ const s = StyleSheet.create({
   pill: {
     flexDirection: "row", alignItems: "center", gap: 8,
     backgroundColor: C.red, borderRadius: 999, paddingHorizontal: 18, paddingVertical: 8,
-    ...glow(C.accent, 14, 0.5),
   },
-  pillText: { color: C.text, fontFamily: F.bold, fontSize: 16, letterSpacing: 1 },
-  championName: { color: C.accent, fontFamily: F.display, fontSize: 56, textAlign: "center", ...textGlow(C.accent, 14) },
-  runnerUpLabel: { color: C.text3, fontFamily: F.medium, fontSize: 14, letterSpacing: 1, marginTop: 16 },
+  pillText: { color: C.text, fontFamily: F.bold, fontSize: CARD_TYPE.label, letterSpacing: 1 },
+  championName: { color: C.accent, fontFamily: F.display, fontSize: CARD_TYPE.title, textAlign: "center", ...textGlow(C.accent, 14) },
+  runnerUpLabel: { color: C.text3, fontFamily: F.medium, fontSize: CARD_TYPE.label, letterSpacing: 1, marginTop: 16 },
   runnerUpRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  runnerUpName: { color: C.text2, fontFamily: F.semibold, fontSize: 24 },
-  tournamentName: { color: C.text, fontFamily: F.semibold, fontSize: 24, marginTop: 20, textAlign: "center" },
-  date: { color: C.text3, fontFamily: F.body, fontSize: 18 },
+  runnerUpName: { color: C.text2, fontFamily: F.semibold, fontSize: CARD_TYPE.subtitle },
+  tournamentName: { color: C.text, fontFamily: F.semibold, fontSize: CARD_TYPE.subtitle, marginTop: 20, textAlign: "center" },
+  date: { color: C.text3, fontFamily: F.body, fontSize: CARD_TYPE.caption },
 });
