@@ -3,7 +3,7 @@
     "name": "CourtSide",
     "slug": "badminton-tracker",
     "owner": "coderutk",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "scheme": "badminton",
     "icon": "./assets/icon.png",
@@ -14,13 +14,16 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.navalo.courtside",
       "infoPlist": {
-        "LSApplicationQueriesSchemes": ["instagram-stories", "instagram"]
+        "LSApplicationQueriesSchemes": [
+          "instagram-stories",
+          "instagram"
+        ]
       }
     },
     "android": {
       "package": "com.navalo.courtside",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 14,
+      "versionCode": 17,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundImage": "./assets/adaptive-background.png",
