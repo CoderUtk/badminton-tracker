@@ -166,7 +166,15 @@ export default function ClubDetail() {
       }
       renderItem={({ item, index }) => (
         <View style={s.row}>
-          <Text style={s.rank}>{index === 0 ? "🏆" : `${index + 1}`}</Text>
+          {index === 0 ? (
+            // Labelled, because the icon is the only thing marking first place
+            // — the emoji it replaced at least announced itself as a trophy.
+            <View style={s.rankIcon} accessibilityLabel="First place">
+              <Icon name="trophy" color={C.accent} size={15} />
+            </View>
+          ) : (
+            <Text style={s.rank}>{index + 1}</Text>
+          )}
           <Text style={s.boardName} numberOfLines={1}>{item.name}</Text>
           <Text style={s.wl}>{item.wins}–{item.losses}</Text>
           <Text style={[s.pct, s.pctCol]}>{winPct(item)}</Text>
@@ -235,6 +243,7 @@ const s = StyleSheet.create({
   pctCol: { width: 52, textAlign: "right" },
   row: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12, paddingHorizontal: 4, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line },
   rank: { color: C.text2, width: 26, textAlign: "center", fontWeight: "800", fontSize: 15 },
+  rankIcon: { width: 26, alignItems: "center" },
   boardName: { flex: 1, color: C.text, fontSize: 16, fontWeight: "700" },
   wl: { color: C.text, fontSize: 15, fontWeight: "700", fontVariant: ["tabular-nums"] },
   pct: { color: C.text2, fontSize: 14, fontWeight: "800", fontVariant: ["tabular-nums"] },

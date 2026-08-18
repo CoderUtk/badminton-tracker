@@ -334,7 +334,10 @@ export default function TournamentBracket() {
       </View>
       {champName ? (
         <>
-          <Text style={{ color: C.red, fontFamily: F.semibold, marginBottom: 8 }}>🏆 Champion: {champName}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 }}>
+            <Icon name="trophy" color={C.accent} size={16} />
+            <Text style={{ color: C.accent, fontFamily: F.semibold }}>Champion: {champName}</Text>
+          </View>
           <PressableScale
             style={s.shareButton}
             onPress={() => void (async () => {
