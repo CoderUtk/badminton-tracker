@@ -8,7 +8,7 @@ import {
   deleteSession, endSession, getSession, getSessionStats, listAttendance, setAttendance, updateSessionStatus,
   type Attendance, type ClubSession, type SessionStats,
 } from "../../../src/repos/sessionRepo";
-import { getClub } from "../../../src/repos/clubRepo";
+import { getClub, listMyClubPlayers } from "../../../src/repos/clubRepo";
 import AppDialog from "../../../src/components/AppDialog";
 import Icon from "../../../src/components/Icon";
 import Chip from "../../../src/components/Chip";
@@ -16,6 +16,8 @@ import Sheet from "../../../src/components/Sheet";
 import SegmentedControl from "../../../src/components/SegmentedControl";
 import SessionResultCard from "../../../src/components/share/SessionResultCard";
 import { captureAndShare } from "../../../src/lib/share/captureAndShare";
+import { avatarMap, preloadAvatars } from "../../../src/lib/share/avatars";
+import { topStandings } from "../../../src/lib/share/cardData";
 import { C, selected, selectedText, space } from "../../../src/theme";
 import { toast } from "../../../src/lib/toast";
 import { useSession } from "../../../src/stores/session";
@@ -31,6 +33,7 @@ export default function SessionDetail() {
   const [attendance, setAttendanceRows] = useState<Attendance[]>([]);
   const [matches, setMatches] = useState<MatchRow[]>([]);
   const [stats, setStats] = useState<SessionStats | null>(null);
+  const [avatarUrls, setAvatarUrls] = useState<Record<string, string | null>>({});
   const [round, setRound] = useState(0);
   const [matchups, setMatchups] = useState<GeneratedMatch[]>([]);
   const [tab, setTab] = useState<Tab>("attendance");
@@ -60,7 +63,10 @@ export default function SessionDetail() {
         return st ? { ...m, live: st.score } : m;
       })));
       setStats(next.status === "done" ? await getSessionStats(next.id) : null);
-      if (next.status === "done") setTab("games");
+      if (next.status === "done") {
+        setTab("games");
+        setAvatarUrls(avatarMap(await listMyClubPlayers()));
+      }
     }
   }, [id]);
   useFocusEffect(useCallback(() => { void reload(); }, [reload]));
@@ -128,6 +134,12 @@ export default function SessionDetail() {
         teamB: match.teamB.map((p) => p.name).join(","),
       },
     });
+  };
+  const shareSummary = async () => {
+    if (!stats) return;
+    const top = topStandings(stats.players, 3);
+    await preloadAvatars(top.map((p) => avatarUrls[p.id]));
+    await captureAndShare(shareCardRef);
   };
   const finishSession = () => setConfirmingFinish(true);
   const onConfirmFinish = async () => {
@@ -209,7 +221,7 @@ export default function SessionDetail() {
                   ))}
                 </View>
               )}
-              <Pressable style={s.shareBtn} onPress={() => void captureAndShare(shareCardRef)}>
+              <Pressable style={s.shareBtn} onPress={() => void shareSummary()}>
                 <Icon name="trophy-outline" color={C.text} size={17} />
                 <Text style={s.shareText}>Share to story</Text>
               </Pressable>
@@ -217,7 +229,7 @@ export default function SessionDetail() {
           )}
           {done && stats && (
             <View ref={shareCardRef} collapsable={false} style={s.offscreenCard}>
-              <SessionResultCard session={session} stats={stats} />
+              <SessionResultCard session={session} stats={stats} avatarUrls={avatarUrls} />
             </View>
           )}
 

@@ -14,6 +14,8 @@ export default function SessionResultCard({
 }: {
   session: ClubSession;
   stats: SessionStats;
+  /** Keyed by PlayerStat.id, never by name - two players in a club can share
+   *  a display name, and a name key hands one of them the other's photo. */
   avatarUrls?: Record<string, string | null>;
 }) {
   const top = topStandings(stats.players, 3);
@@ -27,7 +29,7 @@ export default function SessionResultCard({
           {top.map((p, i) => (
             <View key={p.name} style={s.row}>
               <Text style={s.rank}>{i + 1}</Text>
-              <Avatar name={p.name} avatarUrl={avatarUrls[p.name]} size={64} />
+              <Avatar name={p.name} avatarUrl={avatarUrls[p.id]} size={64} />
               <Text style={s.name}>{truncateName(p.name)}</Text>
               <Text style={s.record}>{p.wins}-{p.losses}</Text>
             </View>
