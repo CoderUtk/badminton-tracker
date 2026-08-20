@@ -284,6 +284,7 @@ function RootLayout() {
           <Stack.Screen name="(app)" options={{ headerShown: false }} />
           <Stack.Screen name="(auth)/sign-in" options={{ headerShown: false }} />
           <Stack.Screen name="welcome" options={{ headerShown: false }} />
+          <Stack.Screen name="tour" options={{ headerShown: false }} />
           <Stack.Screen name="guest" options={{ headerShown: false }} />
           <Stack.Screen name="join/club/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="join/tournament/[id]" options={{ headerShown: false }} />
