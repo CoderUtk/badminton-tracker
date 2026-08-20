@@ -111,7 +111,10 @@ function SideName({ name, won, champ }: { name: string; won: boolean; champ: boo
   return (
     <View style={s.pairCol}>
       {parts.map((p, i) => (
-        <Text key={i} numberOfLines={1} style={[s.sideName, s.pairLine, ...tone]}>{p}</Text>
+        // Deliberately not s.sideName: its flex:1 is for claiming width in the
+        // row. Inside this column that same flex makes both lines try to fill
+        // the column's height, and they render on top of each other.
+        <Text key={i} numberOfLines={1} style={[s.pairLine, ...tone]}>{p}</Text>
       ))}
     </View>
   );
