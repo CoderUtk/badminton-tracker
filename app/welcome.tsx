@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
 import { completeOnboarding, getMyProfile, type Hand } from "../src/repos/profileRepo";
+import { hasSeenTabTour } from "../src/lib/tabTour";
 import { validateName } from "../src/lib/validate";
 import { toast } from "../src/lib/toast";
 import { consumePendingLink } from "../src/lib/pendingLink";
@@ -58,7 +59,14 @@ export default function Welcome() {
       // display name — honour it instead of always landing on home.
       const path = consumePendingLink();
       const target = path ? parseJoinTarget(path) : null;
-      router.replace(target ? joinRouteFor(target) : "/");
+      const destination = target ? joinRouteFor(target) : "/";
+      if (await hasSeenTabTour()) {
+        router.replace(destination as never);
+      } else {
+        // First run: show the tab tour, carrying the real destination along so
+        // a join link tapped before sign-up still lands correctly once it finishes.
+        router.replace({ pathname: "/tour", params: { target: destination } } as never);
+      }
     } catch (e) {
       toast((e as Error).message || "Could not save your name", "error");
     } finally {
