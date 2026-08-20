@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { AppState, Platform, Pressable, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Stack, usePathname, useRouter, useSegments } from "expo-router";
+import { DarkTheme, ThemeProvider } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import * as Notifications from "expo-notifications";
@@ -35,6 +36,31 @@ import { C, F } from "../src/theme";
 
 // Keep the native splash up until the JS animated splash takes over.
 void SplashScreen.preventAutoHideAsync();
+
+/**
+ * Navigation theme. Without one, React Navigation uses its built-in
+ * DefaultTheme — which is light, and paints colors.background
+ * (rgb(242,242,242)) in every navigator container. `contentStyle` and
+ * `sceneStyle` only make the *scenes* transparent, so a stack screen showed
+ * the ground correctly while every tab screen sat on that grey, near-white
+ * C.text going invisible against it.
+ *
+ * background is transparent rather than C.bg on purpose: ScreenBackground is
+ * mounted above the navigator and is the single ground for the app, so every
+ * navigator container has to let it through rather than paint over it.
+ */
+const navTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: "transparent",
+    card: C.card,
+    text: C.text,
+    border: C.line,
+    primary: C.red,
+    notification: C.red,
+  },
+};
 initObservability();
 
 function CrashFallback({ resetError }: { resetError: () => void }) {
@@ -242,6 +268,7 @@ function RootLayout() {
             device, not re-cast on every push — and a screen transition slides
             content across a stable ground instead of cross-fading two of them. */}
         <ScreenBackground>
+        <ThemeProvider value={navTheme}>
         <Stack
           screenOptions={{
             // Floating header so the ground above reads through it. No
@@ -285,6 +312,7 @@ function RootLayout() {
             }}
           />
         </Stack>
+        </ThemeProvider>
         </ScreenBackground>
       </Gate>
     </SessionProvider>
