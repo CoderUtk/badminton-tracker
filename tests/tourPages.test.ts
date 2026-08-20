@@ -11,10 +11,19 @@ test("the welcome page has no tab icon", () => {
   expect(TOUR_PAGES[0].icon).toBeNull();
 });
 
-test("every tab page has an icon and non-empty headline and body", () => {
-  for (const page of TOUR_PAGES.slice(1)) {
-    expect(page.icon).not.toBeNull();
-    expect(page.headline.length).toBeGreaterThan(0);
-    expect(page.body.length).toBeGreaterThan(0);
-  }
+test("headline and body copy matches the approved strings exactly", () => {
+  expect(TOUR_PAGES.map((p) => p.headline)).toEqual([
+    "Welcome to CourtSide", "Home", "Sessions", "Matches", "Tournaments", "Profile",
+  ]);
+  expect(TOUR_PAGES.map((p) => p.body)).toEqual([
+    "A quick look at what you can do.",
+    "Your next session and quick stats, at a glance.",
+    "Plan practice, track attendance, run drills.",
+    "Score live matches, keep history, see form.",
+    "Run brackets, track standings, share results.",
+    "Your stats, badges, and account settings.",
+  ]);
+  expect(TOUR_PAGES.map((p) => p.icon)).toEqual([
+    null, "home", "calendar", "badminton", "trophy", "person",
+  ]);
 });

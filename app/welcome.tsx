@@ -54,13 +54,14 @@ export default function Welcome() {
     setBusy(true);
     try {
       const ageValue = age.trim() ? Number(age.trim()) : null;
+      const seen = await hasSeenTabTour();
       await completeOnboarding(name, ageValue, hand);
       // Gate may have re-parked a join destination while this profile lacked a
       // display name — honour it instead of always landing on home.
       const path = consumePendingLink();
       const target = path ? parseJoinTarget(path) : null;
       const destination = target ? joinRouteFor(target) : "/";
-      if (await hasSeenTabTour()) {
+      if (seen) {
         router.replace(destination as never);
       } else {
         // First run: show the tab tour, carrying the real destination along so
