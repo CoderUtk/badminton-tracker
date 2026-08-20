@@ -408,6 +408,17 @@ export default function Profile() {
         </View>
       </Pressable>
 
+      <Pressable style={s.card} onPress={() => router.push("/tour")}>
+        <View style={s.reminderRow}>
+          <Icon name="information-circle-outline" color={C.red} size={22} />
+          <View style={{ flex: 1 }}>
+            <Text style={s.cardTitle}>Show tab tour</Text>
+            <Text style={s.reminderSub}>Replay the app walkthrough.</Text>
+          </View>
+          <Icon name="chevron-forward" color={C.text2} size={20} />
+        </View>
+      </Pressable>
+
       {/* Headline stats */}
       <View style={s.statGrid}>
         <Stat label="Played" value={a?.played ?? 0} />
