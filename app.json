@@ -3,7 +3,7 @@
     "name": "CourtSide",
     "slug": "badminton-tracker",
     "owner": "coderutk",
-    "version": "1.3.0",
+    "version": "1.4.0",
     "orientation": "portrait",
     "scheme": "badminton",
     "icon": "./assets/icon.png",
@@ -23,7 +23,7 @@
     "android": {
       "package": "com.navalo.courtside",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 17,
+      "versionCode": 19,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundImage": "./assets/adaptive-background.png",
