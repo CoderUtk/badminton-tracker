@@ -11,6 +11,10 @@ expo-env.d.ts
 
 # Native
 .kotlin/
+
+# store-assets scratch (raw device captures + composited html embed account email)
+store-assets/raw/
+store-assets/composite/
 *.orig.*
 *.jks
 *.p8
@@ -89,6 +93,10 @@ keystore.txt
 *.keystore
 *.jks
 
+# EAS's local-credentials override (credentialsSource: "local"). References
+# the same upload keystore by absolute path plus its passwords in plaintext.
+credentials.json
+
 # Firebase service-account keys for FCM V1. These are real credentials and
 # reach EAS through `eas credentials`, never through git. The download is named
 # <project>-firebase-adminsdk-<hash>.json, which the google-service-account*
@@ -100,3 +108,5 @@ bugs.txt
 features.txt
 ui_changes.txt
 .worktrees/
+.vercel
+.env*
