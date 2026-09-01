@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Pressable, ScrollView, StyleSheet, Text, View,
+  Platform, Pressable, ScrollView, StyleSheet, Text, View,
 } from "react-native";
 import Animated, { useAnimatedStyle, useDerivedValue, useSharedValue } from "react-native-reanimated";
 import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
@@ -376,7 +376,9 @@ export default function NewMatch() {
       const side = (t: "A" | "B") => config.teams[t].map((p) => ({ club_player_id: null, name: p.name }));
       const id = await createMatch(config, side("A"), side("B"), clubId, params.sessionId ?? null);
       await saveLastLineup({ doubles, namesDoubles, namesSingles, points, bestOf, clubId });
-      if (isGuest) await recordGuestMatch(id);
+      // Web guest history reads straight from guest_matches (RLS-scoped); the
+      // localStorage id list is native-only.
+      if (isGuest && Platform.OS !== "web") await recordGuestMatch(id);
       router.replace(`/score/${id}`);
     } catch (e) {
       toast((e as Error).message || "Could not start the match", "error");

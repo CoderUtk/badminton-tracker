@@ -1,8 +1,8 @@
 import React, { useCallback, useState } from "react";
-import { FlatList, StyleSheet, Text, View } from "react-native";
+import { FlatList, Platform, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter, Stack } from "expo-router";
 import { getGuestMatchIds } from "../../src/lib/guestMatches";
-import { getMatch, MatchRecord } from "../../src/repos/matchRepo";
+import { getMatch, listMatches, MatchRecord } from "../../src/repos/matchRepo";
 import type { TeamId } from "../../src/engine";
 import Icon from "../../src/components/Icon";
 import PressableScale from "../../src/components/PressableScale";
@@ -44,12 +44,22 @@ export default function GuestMatches() {
     useCallback(() => {
       let live = true;
       void (async () => {
-        const ids = await getGuestMatchIds();
-        const rows = await Promise.all(ids.map((id) => getMatch(id)));
-        if (live) setMatches(rows.filter((m): m is MatchRecord => m !== null));
+        // Web: RLS scopes listMatches() to this anon user, so no local id list.
+        // Native: guest history is a session-scoped id list (native listMatches
+        // would also return matches from a previous signed-in account on a
+        // shared device).
+        const rows =
+          Platform.OS === "web"
+            ? await listMatches()
+            : (await Promise.all((await getGuestMatchIds()).map((id) => getMatch(id)))).filter(
+                (m): m is MatchRecord => m !== null,
+              );
+        if (live) setMatches(rows);
       })();
-      return () => { live = false; };
-    }, [])
+      return () => {
+        live = false;
+      };
+    }, []),
   );
 
   if (matches.length === 0) {
