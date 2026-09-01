@@ -93,3 +93,61 @@ test("loadEvents returns the parsed event of each row in seq order", async () =>
   const events = await loadEvents("m1");
   expect(events).toEqual([{ type: "MATCH_STARTED" }, { type: "POINT" }]);
 });
+
+// ---- Task 3 ----
+import { updateLiveScore, endMatchEarly, listMatches } from "../src/repos/matchRepo.web";
+import type { MatchState } from "../src/engine";
+
+/** Bare MatchState good enough for the repo's summary/winner logic. */
+function stateFixture(over: Partial<MatchState>): MatchState {
+  return {
+    phase: "playing",
+    score: { A: 0, B: 0 },
+    gamesWon: { A: 0, B: 0 },
+    gameHistory: [],
+    winner: null,
+    ...over,
+  } as MatchState;
+}
+
+test("updateLiveScore writes score_summary and targets live rows only", async () => {
+  mockSupabase = makeFake({});
+  await updateLiveScore("m1", stateFixture({ score: { A: 5, B: 3 }, gameHistory: [] }));
+  const update = mockSupabase!.calls.find((c) => c[0] === "update");
+  expect(update?.[1]).toHaveProperty("score_summary");
+  expect(update?.[1]).not.toHaveProperty("status");
+});
+
+test("endMatchEarly falls back to the current game leader when games are level", async () => {
+  mockSupabase = makeFake({});
+  await endMatchEarly(
+    "m1",
+    stateFixture({ phase: "playing", score: { A: 15, B: 9 }, gamesWon: { A: 0, B: 0 }, winner: null }),
+  );
+  const update = mockSupabase!.calls.find((c) => c[0] === "update");
+  expect(update?.[1]).toMatchObject({ status: "completed", winner: "A" });
+  expect(update?.[1].score_summary.games).toContainEqual({ A: 15, B: 9 });
+});
+
+test("listMatches returns [] when the anon session is not ready", async () => {
+  mockSupabase = makeFake({ user: null });
+  expect(await listMatches()).toEqual([]);
+});
+
+test("loadEvents throws when the query returns an error", async () => {
+  mockSupabase = {
+    calls: [],
+    auth: { getUser: () => Promise.resolve({ data: { user: null }, error: null }) },
+    from: () => {
+      const p: any = {
+        select: () => p,
+        eq: () => p,
+        order: () => p,
+        then: (res: any, rej: any) =>
+          Promise.resolve({ data: null, error: { message: "boom" } }).then(res, rej),
+      };
+      return p;
+    },
+  } as any;
+  await expect(loadEvents("m1")).rejects.toThrow("boom");
+});
