@@ -1,5 +1,7 @@
 import * as Crypto from "expo-crypto";
 import { supabase } from "../lib/supabase";
+import { captureError } from "../lib/observability";
+import { toast } from "../lib/toast";
 import type { MatchConfig, MatchEvent, MatchState, TeamId } from "../engine";
 import { replay } from "../engine";
 
@@ -15,7 +17,7 @@ export function mapRow(row: Record<string, any>): MatchRecord {
     config: row.config as MatchConfig,
     side_a: row.side_a as SidePlayer[],
     side_b: row.side_b as SidePlayer[],
-    status: row.status,
+    status: row.status as MatchRecord["status"],
     winner: (row.winner as TeamId) ?? null,
     score_summary: row.score_summary ?? null,
     created_at: new Date(row.created_at).getTime(),
@@ -48,15 +50,21 @@ export async function appendEvent(matchId: string, seq: number, event: MatchEven
   if (!supabase) return;
   // ignoreDuplicates makes a re-dispatched seq a no-op, mirroring native
   // "insert or ignore".
-  await supabase
+  const { error } = await supabase
     .from("guest_match_events")
     .upsert({ match_id: matchId, seq, event }, { onConflict: "match_id,seq", ignoreDuplicates: true });
+  if (error) captureError(new Error(error.message), { area: "matchRepo.web" });
 }
 
 /** Undo: physically remove events after the kept seq. No sync concept on web. */
 export async function removeEventsAfter(matchId: string, lastKeptSeq: number): Promise<void> {
   if (!supabase) return;
-  await supabase.from("guest_match_events").delete().eq("match_id", matchId).gt("seq", lastKeptSeq);
+  const { error } = await supabase
+    .from("guest_match_events")
+    .delete()
+    .eq("match_id", matchId)
+    .gt("seq", lastKeptSeq);
+  if (error) captureError(new Error(error.message), { area: "matchRepo.web" });
 }
 
 export async function loadEvents(matchId: string): Promise<MatchEvent[]> {
@@ -66,7 +74,10 @@ export async function loadEvents(matchId: string): Promise<MatchEvent[]> {
     .select("event")
     .eq("match_id", matchId)
     .order("seq", { ascending: true });
-  if (error) throw new Error(error.message);
+  if (error) {
+    captureError(new Error(error.message), { area: "matchRepo.web" });
+    return [];
+  }
   return (data ?? []).map((r) => r.event as MatchEvent);
 }
 
@@ -77,17 +88,24 @@ export async function getMatch(matchId: string): Promise<MatchRecord | null> {
     .select("*")
     .eq("id", matchId)
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) {
+    captureError(new Error(error.message), { area: "matchRepo.web" });
+    return null;
+  }
   return data ? mapRow(data) : null;
 }
 
 export async function finalizeMatch(matchId: string, state: MatchState): Promise<void> {
   if (!supabase) return;
   const summary = { games: state.gameHistory.map((g) => g.score) };
-  await supabase
+  const { error } = await supabase
     .from("guest_matches")
     .update({ status: "completed", winner: state.winner, score_summary: summary })
     .eq("id", matchId);
+  if (error) {
+    captureError(new Error(error.message), { area: "matchRepo.web" });
+    toast("Could not save the match — check your connection.", "error");
+  }
 }
 
 /**
@@ -101,11 +119,12 @@ export async function updateLiveScore(matchId: string, state: MatchState): Promi
     games: state.gameHistory.map((g) => g.score),
     current: { A: state.score.A, B: state.score.B },
   };
-  await supabase
+  const { error } = await supabase
     .from("guest_matches")
     .update({ score_summary: summary })
     .eq("id", matchId)
     .eq("status", "live");
+  if (error) captureError(new Error(error.message), { area: "matchRepo.web" });
 }
 
 /**
@@ -130,22 +149,30 @@ export async function endMatchEarly(matchId: string, state: MatchState): Promise
         : state.score.A > state.score.B
           ? "A"
           : "B");
-  await supabase
+  const { error } = await supabase
     .from("guest_matches")
     .update({ status: "completed", winner, score_summary: { games } })
     .eq("id", matchId);
+  if (error) {
+    captureError(new Error(error.message), { area: "matchRepo.web" });
+    toast("Could not save the match — check your connection.", "error");
+  }
 }
 
 export async function listMatches(): Promise<MatchRecord[]> {
   if (!supabase) return [];
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return [];
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("guest_matches")
     .select("*")
     .eq("created_by", auth.user.id)
     .order("created_at", { ascending: false })
     .limit(100);
+  if (error) {
+    captureError(new Error(error.message), { area: "matchRepo.web" });
+    return [];
+  }
   return (data ?? []).map(mapRow);
 }
 

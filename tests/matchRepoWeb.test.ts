@@ -1,6 +1,5 @@
 // This suite imports src/repos/matchRepo.web.ts explicitly (jest has no metro
 // platform resolution). The existing suite keeps importing "matchRepo" -> .ts.
-jest.mock("react-native", () => ({ Platform: { OS: "web" } }));
 
 let mockSupabase: ReturnType<typeof makeFake> | null;
 jest.mock("../src/lib/supabase", () => ({
@@ -9,13 +8,21 @@ jest.mock("../src/lib/supabase", () => ({
   },
 }));
 
+jest.mock("../src/lib/observability", () => ({ captureError: jest.fn() }));
+
 /**
  * Minimal stand-in for the supabase-js query builder. Every chain method
  * returns the same thenable object; the terminal value is `result`. Mutating
- * calls are pushed to `calls` for assertions.
+ * calls and predicate calls (eq/gt) are pushed to `calls` for assertions.
  */
-function makeFake(opts: { user?: { id: string } | null; row?: any; events?: any[] }) {
+function makeFake(opts: {
+  user?: { id: string } | null;
+  row?: any;
+  events?: any[];
+  error?: { message: string };
+}) {
   const calls: any[][] = [];
+  const err = opts.error ?? null;
   const build = (result: any) => {
     const p: any = {
       insert: (v: any) => (calls.push(["insert", v]), p),
@@ -23,8 +30,8 @@ function makeFake(opts: { user?: { id: string } | null; row?: any; events?: any[
       update: (v: any) => (calls.push(["update", v]), p),
       delete: () => (calls.push(["delete"]), p),
       select: () => p,
-      eq: () => p,
-      gt: () => p,
+      eq: (col: string, val: any) => (calls.push(["eq", col, val]), p),
+      gt: (col: string, val: any) => (calls.push(["gt", col, val]), p),
       order: () => p,
       limit: () => p,
       maybeSingle: () => Promise.resolve(result),
@@ -37,16 +44,18 @@ function makeFake(opts: { user?: { id: string } | null; row?: any; events?: any[
     auth: { getUser: () => Promise.resolve({ data: { user: opts.user ?? null }, error: null }) },
     from: (table: string) =>
       table === "guest_match_events"
-        ? build({ data: opts.events ?? [], error: null })
-        : build({ data: opts.row ?? null, error: null }),
+        ? build({ data: err ? null : opts.events ?? [], error: err })
+        : build({ data: err ? null : opts.row ?? null, error: err }),
   };
 }
 
-import { mapRow, createMatch, loadEvents } from "../src/repos/matchRepo.web";
+import { mapRow, createMatch, loadEvents, getMatch, removeEventsAfter } from "../src/repos/matchRepo.web";
+import { captureError } from "../src/lib/observability";
 import { defaultConfig } from "../src/engine";
 
 afterEach(() => {
   mockSupabase = null;
+  (captureError as jest.Mock).mockClear();
 });
 
 test("mapRow converts created_at to epoch ms and passes jsonb through", () => {
@@ -94,6 +103,25 @@ test("loadEvents returns the parsed event of each row in seq order", async () =>
   expect(events).toEqual([{ type: "MATCH_STARTED" }, { type: "POINT" }]);
 });
 
+test("loadEvents fails soft: returns [] and logs when the query errors", async () => {
+  mockSupabase = makeFake({ error: { message: "boom" } });
+  expect(await loadEvents("m1")).toEqual([]);
+  expect(captureError as jest.Mock).toHaveBeenCalledWith(expect.any(Error), { area: "matchRepo.web" });
+});
+
+test("getMatch fails soft: returns null and logs when the query errors", async () => {
+  mockSupabase = makeFake({ error: { message: "boom" } });
+  expect(await getMatch("m1")).toBeNull();
+  expect(captureError as jest.Mock).toHaveBeenCalledWith(expect.any(Error), { area: "matchRepo.web" });
+});
+
+test("removeEventsAfter targets the match and only rows past the kept seq", async () => {
+  mockSupabase = makeFake({});
+  await removeEventsAfter("m1", 7);
+  expect(mockSupabase!.calls).toContainEqual(["eq", "match_id", "m1"]);
+  expect(mockSupabase!.calls).toContainEqual(["gt", "seq", 7]);
+});
+
 // ---- Task 3 ----
 import { updateLiveScore, endMatchEarly, listMatches } from "../src/repos/matchRepo.web";
 import type { MatchState } from "../src/engine";
@@ -116,6 +144,7 @@ test("updateLiveScore writes score_summary and targets live rows only", async ()
   const update = mockSupabase!.calls.find((c) => c[0] === "update");
   expect(update?.[1]).toHaveProperty("score_summary");
   expect(update?.[1]).not.toHaveProperty("status");
+  expect(mockSupabase!.calls).toContainEqual(["eq", "status", "live"]);
 });
 
 test("endMatchEarly falls back to the current game leader when games are level", async () => {
@@ -134,20 +163,8 @@ test("listMatches returns [] when the anon session is not ready", async () => {
   expect(await listMatches()).toEqual([]);
 });
 
-test("loadEvents throws when the query returns an error", async () => {
-  mockSupabase = {
-    calls: [],
-    auth: { getUser: () => Promise.resolve({ data: { user: null }, error: null }) },
-    from: () => {
-      const p: any = {
-        select: () => p,
-        eq: () => p,
-        order: () => p,
-        then: (res: any, rej: any) =>
-          Promise.resolve({ data: null, error: { message: "boom" } }).then(res, rej),
-      };
-      return p;
-    },
-  } as any;
-  await expect(loadEvents("m1")).rejects.toThrow("boom");
+test("listMatches scopes the query to the current user", async () => {
+  mockSupabase = makeFake({ user: { id: "user-9" }, row: [] });
+  await listMatches();
+  expect(mockSupabase!.calls).toContainEqual(["eq", "created_by", "user-9"]);
 });
