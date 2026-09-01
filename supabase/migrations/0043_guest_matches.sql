@@ -19,7 +19,11 @@ create table public.guest_matches (
   winner        text check (winner in ('A', 'B')),
   score_summary jsonb,            -- denormalised from replay() for list rendering
   created_by    uuid not null references auth.users (id) on delete cascade,
-  created_at    timestamptz not null default now()
+  created_at    timestamptz not null default now(),
+  -- Bound anon-owned writes: RLS holds but any visitor can insert rows.
+  check (pg_column_size(config) < 8192),
+  check (pg_column_size(side_a) < 4096),
+  check (pg_column_size(side_b) < 4096)
 );
 
 create table public.guest_match_events (
@@ -27,6 +31,8 @@ create table public.guest_match_events (
   seq        int not null,
   event      jsonb not null,
   created_at timestamptz not null default now(),
+  check (seq >= 0 and seq < 5000),
+  check (pg_column_size(event) < 4096),
   primary key (match_id, seq)
 );
 
@@ -53,13 +59,3 @@ create policy "own guest match events"
     select 1 from public.guest_matches m
     where m.id = guest_match_events.match_id and m.created_by = auth.uid()
   ));
-
--- Retention: anon rows accumulate one owner per guest device. Hard-delete
--- matches older than 30 days; guest_match_events cascades. Requires the
--- pg_cron extension enabled on the project (Database -> Extensions).
-select cron.schedule(
-  'purge-guest-matches',
-  '17 3 * * *',
-  $$ delete from public.guest_matches
-     where created_at < now() - interval '30 days' $$
-);
