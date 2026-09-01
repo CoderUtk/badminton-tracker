@@ -39,6 +39,7 @@ function TeamLine({ item, team }: { item: MatchRecord; team: TeamId }) {
 export default function GuestMatches() {
   const router = useRouter();
   const [matches, setMatches] = useState<MatchRecord[]>([]);
+  const [loaded, setLoaded] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -54,13 +55,18 @@ export default function GuestMatches() {
             : (await Promise.all((await getGuestMatchIds()).map((id) => getMatch(id)))).filter(
                 (m): m is MatchRecord => m !== null,
               );
-        if (live) setMatches(rows);
+        if (live) {
+          setMatches(rows);
+          setLoaded(true);
+        }
       })();
       return () => {
         live = false;
       };
     }, []),
   );
+
+  if (!loaded) return null;
 
   if (matches.length === 0) {
     return (
