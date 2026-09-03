@@ -429,11 +429,11 @@ git commit -m "feat(share): CardShell reads the join domain from config, hides Q
 - Consumes: everything from Tasks 1-3, merged to the production branch.
 - Produces: a recorded pass/fail of the deep-link fix and App Links on the live origin.
 
-**Status 2026-09-03: DONE.** Only two optional checks left: device-side App Links (`adb`, needs a versionCode-bumped build) and Lighthouse. Everything required is complete and verified live.
+**Status 2026-09-03: DONE.** Site live on `courtside-links.vercel.app`, deep-link 404 fixed, Play Console URLs moved, `courtside-privacy` retired, Lighthouse clean. One optional check left: device-side App Links (`adb`), which needs a versionCode-bumped build to exist.
 
-Live commits beyond the merge (`fb8b42e`): `6ec9d8e` (rebuild trigger), `89dc01b` + `c1ebf6b` (`vercel.json` fixes — see Step 2 note).
+Live commits beyond the merge (`fb8b42e`): `6ec9d8e` (rebuild trigger), `89dc01b` + `c1ebf6b` (`vercel.json` fixes — see Step 2 note), `9d7d81e` (meta description + `robots.txt` for Lighthouse SEO).
 
-- [x] **Step 1: Reconfigure the Vercel project** — took path (a). The project owning `courtside-links.vercel.app` is named **`badminton-tracker`** (org `coderutks-projects`), already git-connected to `CoderUtk/badminton-tracker` on `master`. Changed **Root Directory** `web` → empty (repo root). Framework Preset already "Other". `courtside-privacy` project NOT yet deleted — see Remaining.
+- [x] **Step 1: Reconfigure the Vercel project** — took path (a). The project owning `courtside-links.vercel.app` is named **`badminton-tracker`** (org `coderutks-projects`), already git-connected to `CoderUtk/badminton-tracker` on `master`. Changed **Root Directory** `web` → empty (repo root). Framework Preset already "Other". `courtside-privacy` deleted in Step 5b.
 
 - [x] **Step 1b: Build-time env vars** — added all 4 to the `badminton-tracker` project as **Config** type, scoped **Production + Preview + Development**:
   `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_JOIN_LINK_DOMAIN` (`courtside-links.vercel.app`), `EXPO_PUBLIC_SENTRY_DSN`. `SENTRY_AUTH_TOKEN` deliberately omitted.
@@ -459,11 +459,11 @@ Live commits beyond the merge (`fb8b42e`): `6ec9d8e` (rebuild trigger), `89dc01b
 
 - [~] **Step 6: Android App Links verification**
   - [x] Statement-list test — **PASS**. `curl "https://digitalassetlinks.googleapis.com/v1/statements:list?source.web.site=https://courtside-links.vercel.app&relation=delegate_permission/common.handle_all_urls"` returns all **3** fingerprints for `com.navalo.courtside`, no errors.
-  - [ ] Device check — REMAINING. `adb shell pm get-app-links com.navalo.courtside` after installing a build with a bumped `versionCode` (`autoVerify` re-runs on install/update only — will not verify against the current store build).
+  - [ ] Device check — DEFERRED (not blocking). `adb shell pm get-app-links com.navalo.courtside` after installing a build with a bumped `versionCode` (`autoVerify` re-runs on install/update only — nothing to verify against until the next build ships).
 
-- [ ] **Step 7: Lighthouse** — REMAINING (optional; PWA criteria already substantively verified in Step 3 — manifest served with valid type, SW registered, cache headers correct). Chrome DevTools → Lighthouse → PWA against `https://courtside-links.vercel.app`.
+- [x] **Step 7: Lighthouse** — run 2026-09-03 (chrome-devtools, mobile, navigation). **Accessibility 100 / Best Practices 100 / SEO 100.** Core Web Vitals: LCP 1.6s, CLS 0.03, TTFB 28ms — all green. Lighthouse v12 dropped the PWA category; manifest/SW/headers were verified via curl in Step 3. Initial run scored SEO 82 (missing meta description + `robots.txt`); fixed in `9d7d81e` (`public/index.html` `<meta name="description">`, new `public/robots.txt`), re-run → SEO 100. Remaining 1 fail (`llms-txt`) is the experimental "Agentic Browsing" category, not standard SEO.
 
-- [x] **Step 8: Record results** — recorded here (Steps 3-4, 6 statement test) and in session memory `web-deploy-consolidation-task4-pending`.
+- [x] **Step 8: Record results** — recorded here (Steps 3-4, 6 statement test, 7) and in session memory `web-deploy-consolidation-task4-pending`.
 
 ---
 
