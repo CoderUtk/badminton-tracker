@@ -438,9 +438,24 @@ In the Vercel dashboard, one of:
 
 End state: exactly one git-connected Vercel project, Root Directory `.`, Framework Preset "Other" (Vercel reads `vercel.json` for build/output), serving `dist/`.
 
+- [ ] **Step 1b: Set the build-time env vars on the Vercel project**
+
+`EXPO_PUBLIC_*` vars are inlined into the bundle at `expo export` time. `.env` is gitignored, so a git-connected Vercel build has none of them — without this step the first deploy ships an app with no Supabase config (offline-only), blank share-card QR blocks, and no web crash reporting.
+
+In the Vercel project → **Settings → Environment Variables**, add for **Production + Preview** (values are the current `.env` entries):
+
+- `EXPO_PUBLIC_SUPABASE_URL`
+- `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+- `EXPO_PUBLIC_JOIN_LINK_DOMAIN` = `courtside-links.vercel.app`
+- `EXPO_PUBLIC_SENTRY_DSN`
+
+Do NOT add `SENTRY_AUTH_TOKEN` or any non-`EXPO_PUBLIC_` secret — the web build does not need them.
+
 - [ ] **Step 2: Deploy**
 
-Merge the branch to `master` and push (Vercel auto-builds), or run `npx vercel --prod` from the repo root. Wait for the build to finish green. Record the deployment URL.
+Merge the branch to `master` and push (Vercel auto-builds — preferred), or run `npx vercel --prod` from the repo root. Wait for the build to finish green. Record the deployment URL.
+
+If deploying via `npx vercel` CLI: confirm `.vercelignore` excludes `.env*` first (it does as of this branch) — the CLI uses `.vercelignore`, not `.gitignore`, for the upload set.
 
 - [ ] **Step 3: Curl the live origin**
 

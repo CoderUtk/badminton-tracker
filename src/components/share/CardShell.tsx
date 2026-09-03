@@ -3,15 +3,17 @@ import { StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import QRCode from "react-native-qrcode-svg";
 import Logo from "../Logo";
+import { joinLinkDisplayDomain } from "../../lib/shareJoin";
 import { C, F, GRAD, radius } from "../../theme";
 
 const CANVAS_W = 1080;
 const CANVAS_H = 1920;
 const TOP_MARGIN = 130;
 const BOTTOM_MARGIN = 360;
-const JOIN_URL = "https://courtside-links.vercel.app/join";
 
 export default function CardShell({ children }: { children: React.ReactNode }) {
+  const domain = joinLinkDisplayDomain();
+
   return (
     <View style={s.canvas}>
       <LinearGradient colors={GRAD.court} style={StyleSheet.absoluteFill} />
@@ -19,13 +21,15 @@ export default function CardShell({ children }: { children: React.ReactNode }) {
         <Logo size={44} />
       </View>
       <View style={s.safeZone}>{children}</View>
-      <View style={s.watermark}>
-        <View style={s.qrBox}>
-          <QRCode value={JOIN_URL} size={140} color={C.bg} backgroundColor={C.text} />
+      {domain && (
+        <View style={s.watermark}>
+          <View style={s.qrBox}>
+            <QRCode value={`https://${domain}`} size={140} color={C.bg} backgroundColor={C.text} />
+          </View>
+          <Text style={s.link}>{domain}</Text>
+          <Text style={s.linkSub}>Scan to join CourtSide</Text>
         </View>
-        <Text style={s.link}>courtside-links.vercel.app/join</Text>
-        <Text style={s.linkSub}>Scan to join CourtSide</Text>
-      </View>
+      )}
     </View>
   );
 }

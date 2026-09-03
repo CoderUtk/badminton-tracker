@@ -58,6 +58,7 @@ the export is a plain web page:
 - App identity: name `CourtSide`, short name `CourtSide`, URL scheme `badminton`
   (native only — irrelevant to the manifest), hosting = Cloudflare Workers
   static assets via the existing `wrangler.jsonc`.
+  > **Superseded 2026-09-03:** the web app is hosted on Vercel (one git-connected project serving `dist/`), not Cloudflare. `wrangler.jsonc` and `public/_headers` were removed; the cache rules moved into `vercel.json`. See `docs/superpowers/specs/2026-09-03-web-deploy-consolidation-design.md`.
 - The iOS install hint renders only when ALL of: `Platform.OS === "web"`,
   the UA is iOS Safari (not Chrome/Firefox on iOS, not Android, not desktop),
   the app is not already running standalone, and the user has not dismissed it

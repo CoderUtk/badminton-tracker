@@ -1,7 +1,10 @@
-# The privacy site is the only thing this project deploys. Vercel uploads the
-# whole root directory otherwise — 2.5GB of node_modules and worktrees, which
-# trips the 100MB file limit — and everything outside site/ is source we have
-# no reason to hand to a static host.
-/*
-!/site
-!/vercel.json
+node_modules
+.claude
+.superpowers
+dist
+android
+ios
+graphify-out
+*.log
+.env*
+!.env.example
