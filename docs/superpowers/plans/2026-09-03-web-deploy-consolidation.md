@@ -451,12 +451,11 @@ Live commits beyond the merge (`fb8b42e`): `6ec9d8e` (rebuild trigger), `89dc01b
 
 - [x] **Step 4: Browser check** — `https://courtside-links.vercel.app/join/tournament/e839862b-d4cb-4d3e-845c-22d50f8eb5ae/spectator` (the original 404 report) renders the CourtSide **Spectating** view (tournament bracket, live Supabase data), zero console errors. Not a Vercel 404.
 
-- [ ] **Step 5: Update the Play Console URLs** — REMAINING (needs Play Console login).
-  In Google Play Console → the app → App content / Store presence:
-  - **Data deletion URL**: `https://courtside-privacy.vercel.app/delete-account` → `https://courtside-links.vercel.app/delete-account`
-  - **Privacy policy URL**: `https://courtside-privacy.vercel.app` (or `/`) → `https://courtside-links.vercel.app/privacy`
+- [x] **Step 5: Update the Play Console URLs** — submitted 2026-09-03 (data-safety change goes through a short review).
+  - **Privacy policy URL** → `https://courtside-links.vercel.app/privacy` (live, serves "CourtSide — Privacy Policy")
+  - **Data deletion URL** → `https://courtside-links.vercel.app/delete-account` (live)
 
-- [ ] **Step 5b: Retire `courtside-privacy`** — REMAINING. After Step 5 lands, delete the `courtside-privacy` Vercel project (still exists, still git-connected to the same repo, builds redundantly on every push). Do NOT delete before Step 5 or the old data-deletion URL 404s.
+- [ ] **Step 5b: Retire `courtside-privacy`** — REMAINING (Vercel dashboard). Now unblocked (Step 5 done). Delete the `courtside-privacy` Vercel project — still exists, still git-connected to the same repo, builds redundantly on every push.
 
 - [~] **Step 6: Android App Links verification**
   - [x] Statement-list test — **PASS**. `curl "https://digitalassetlinks.googleapis.com/v1/statements:list?source.web.site=https://courtside-links.vercel.app&relation=delegate_permission/common.handle_all_urls"` returns all **3** fingerprints for `com.navalo.courtside`, no errors.
