@@ -429,70 +429,42 @@ git commit -m "feat(share): CardShell reads the join domain from config, hides Q
 - Consumes: everything from Tasks 1-3, merged to the production branch.
 - Produces: a recorded pass/fail of the deep-link fix and App Links on the live origin.
 
-- [ ] **Step 1: Reconfigure the Vercel project**
+**Status 2026-09-03: DONE except Play Console + device App Links + Lighthouse (see "Remaining" below).**
 
-In the Vercel dashboard, one of:
+Live commits beyond the merge (`fb8b42e`): `6ec9d8e` (rebuild trigger), `89dc01b` + `c1ebf6b` (`vercel.json` fixes — see Step 2 note).
 
-- **(a)** Take the existing `web` project (currently rooted at `web/`, owning `courtside-links.vercel.app`): set **Root Directory** to `.` (repo root), connect it to the GitHub repo with production branch `master`, confirm the `courtside-links.vercel.app` domain is on it. Then **delete the `courtside-privacy` project** (or at least unassign its domain) — its pages now ship from this one.
-- **(b)** Create a fresh project from the repo root, git-connected to `master`, and move/alias `courtside-links.vercel.app` onto it. Retire both `web` and `courtside-privacy`.
+- [x] **Step 1: Reconfigure the Vercel project** — took path (a). The project owning `courtside-links.vercel.app` is named **`badminton-tracker`** (org `coderutks-projects`), already git-connected to `CoderUtk/badminton-tracker` on `master`. Changed **Root Directory** `web` → empty (repo root). Framework Preset already "Other". `courtside-privacy` project NOT yet deleted — see Remaining.
 
-End state: exactly one git-connected Vercel project, Root Directory `.`, Framework Preset "Other" (Vercel reads `vercel.json` for build/output), serving `dist/`.
+- [x] **Step 1b: Build-time env vars** — added all 4 to the `badminton-tracker` project as **Config** type, scoped **Production + Preview + Development**:
+  `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_JOIN_LINK_DOMAIN` (`courtside-links.vercel.app`), `EXPO_PUBLIC_SENTRY_DSN`. `SENTRY_AUTH_TOKEN` deliberately omitted.
 
-- [ ] **Step 1b: Set the build-time env vars on the Vercel project**
+- [x] **Step 2: Deploy** — git push auto-build. **`vercel.json` needed two fixes after merge**: the plan's `{ "source": "/(.*)", "destination": "/index.html" }` rewrite was silently **inert** on Vercel (`cleanUrls: true` forbids the `.html` destination and/or Vercel auto-applied Expo framework routing). Fix = Expo's official Vercel SPA config: added `"framework": null` and changed the rewrite to `{ "source": "/:path*", "destination": "/" }`. `headers` and `cleanUrls` worked the whole time; only `rewrites` was dropped. Final production deployment: `c1ebf6b`, Ready.
 
-`EXPO_PUBLIC_*` vars are inlined into the bundle at `expo export` time. `.env` is gitignored, so a git-connected Vercel build has none of them — without this step the first deploy ships an app with no Supabase config (offline-only), blank share-card QR blocks, and no web crash reporting.
+- [x] **Step 3: Curl the live origin** — all pass:
+  - deep links `/join/tournament/<id>/spectator`, `/join/club/<id>`, `/join/tournament/<id>/scorer`, `/matches`, `/guest` → `200`, each serves the app shell (`id="root"` present)
+  - `/sw.js` `200` `application/javascript` + `Cache-Control: no-cache`
+  - `/manifest.webmanifest` `200` `application/manifest+json` + `no-cache`
+  - `/favicon.ico` `200`; `/metadata.json` `200`
+  - `/.well-known/assetlinks.json` `200` `application/json`
+  - `/privacy` `200`, `/delete-account` `200`
+  - `/` `Cache-Control: no-cache`; `/_expo/*` `public, max-age=31536000, immutable`
 
-In the Vercel project → **Settings → Environment Variables**, add for **Production + Preview** (values are the current `.env` entries):
+- [x] **Step 4: Browser check** — `https://courtside-links.vercel.app/join/tournament/e839862b-d4cb-4d3e-845c-22d50f8eb5ae/spectator` (the original 404 report) renders the CourtSide **Spectating** view (tournament bracket, live Supabase data), zero console errors. Not a Vercel 404.
 
-- `EXPO_PUBLIC_SUPABASE_URL`
-- `EXPO_PUBLIC_SUPABASE_ANON_KEY`
-- `EXPO_PUBLIC_JOIN_LINK_DOMAIN` = `courtside-links.vercel.app`
-- `EXPO_PUBLIC_SENTRY_DSN`
+- [ ] **Step 5: Update the Play Console URLs** — REMAINING (needs Play Console login).
+  In Google Play Console → the app → App content / Store presence:
+  - **Data deletion URL**: `https://courtside-privacy.vercel.app/delete-account` → `https://courtside-links.vercel.app/delete-account`
+  - **Privacy policy URL**: `https://courtside-privacy.vercel.app` (or `/`) → `https://courtside-links.vercel.app/privacy`
 
-Do NOT add `SENTRY_AUTH_TOKEN` or any non-`EXPO_PUBLIC_` secret — the web build does not need them.
+- [ ] **Step 5b: Retire `courtside-privacy`** — REMAINING. After Step 5 lands, delete the `courtside-privacy` Vercel project (still exists, still git-connected to the same repo, builds redundantly on every push). Do NOT delete before Step 5 or the old data-deletion URL 404s.
 
-- [ ] **Step 2: Deploy**
+- [~] **Step 6: Android App Links verification**
+  - [x] Statement-list test — **PASS**. `curl "https://digitalassetlinks.googleapis.com/v1/statements:list?source.web.site=https://courtside-links.vercel.app&relation=delegate_permission/common.handle_all_urls"` returns all **3** fingerprints for `com.navalo.courtside`, no errors.
+  - [ ] Device check — REMAINING. `adb shell pm get-app-links com.navalo.courtside` after installing a build with a bumped `versionCode` (`autoVerify` re-runs on install/update only — will not verify against the current store build).
 
-Merge the branch to `master` and push (Vercel auto-builds — preferred), or run `npx vercel --prod` from the repo root. Wait for the build to finish green. Record the deployment URL.
+- [ ] **Step 7: Lighthouse** — REMAINING (optional; PWA criteria already substantively verified in Step 3 — manifest served with valid type, SW registered, cache headers correct). Chrome DevTools → Lighthouse → PWA against `https://courtside-links.vercel.app`.
 
-If deploying via `npx vercel` CLI: confirm `.vercelignore` excludes `.env*` first (it does as of this branch) — the CLI uses `.vercelignore`, not `.gitignore`, for the upload set.
-
-- [ ] **Step 3: Curl the live origin**
-
-```bash
-BASE=https://courtside-links.vercel.app
-curl -sI $BASE/sw.js | grep -i cache-control                 # expect: no-cache
-curl -sI $BASE/ | grep -i cache-control                      # expect: no-cache
-curl -sI "$BASE/_expo/static/js/web/" -o /dev/null           # (informational)
-curl -s $BASE/.well-known/assetlinks.json | head -c 80       # expect: the JSON array
-curl -sI $BASE/.well-known/assetlinks.json | grep -i content-type   # expect: application/json
-curl -s -o /dev/null -w "spectator deep link: %{http_code}\n" "$BASE/join/tournament/x/spectator"   # expect: 200
-curl -s -o /dev/null -w "delete-account: %{http_code}\n" "$BASE/delete-account"     # expect: 200
-curl -s -o /dev/null -w "privacy: %{http_code}\n" "$BASE/privacy"                   # expect: 200
-```
-
-- [ ] **Step 4: Browser check**
-
-Open `https://courtside-links.vercel.app/join/tournament/<a real tournament id>/spectator` in a browser. Expect: the app loads and shows the spectate view (or the app's own "tournament not found" state for a bogus id) — NOT a Vercel 404 page.
-
-- [ ] **Step 5: Update the Play Console URLs**
-
-In Google Play Console → the app → Store presence / App content:
-- **Data deletion URL**: change from `https://courtside-privacy.vercel.app/delete-account` to `https://courtside-links.vercel.app/delete-account`.
-- **Privacy policy URL**: change from `https://courtside-privacy.vercel.app` (or `/`) to `https://courtside-links.vercel.app/privacy`.
-
-- [ ] **Step 6: Android App Links verification**
-
-- Run the statement-list test: `https://developers.google.com/digital-asset-links/tools/generator` — source `https://courtside-links.vercel.app`, target `com.navalo.courtside`, all three fingerprints. Expect: success for at least the Play App Signing fingerprint.
-- On a device with the next build installed (`autoVerify` re-runs on install/update — this needs a `versionCode` bump and a new build, so it will not verify against the *current* store build): `adb shell pm get-app-links com.navalo.courtside` → the `courtside-links.vercel.app` domain shows `verified`.
-
-- [ ] **Step 7: Lighthouse**
-
-Chrome DevTools → Lighthouse → PWA category against `https://courtside-links.vercel.app`. Expect: installable, service worker detected, manifest valid — unchanged from the PWA work.
-
-- [ ] **Step 8: Record results**
-
-Note the outcome of Steps 3-7 in the PR description or a short entry under `docs/`. If any curl in Step 3 fails on a header, the fix is in `vercel.json` `headers` (re-check the `source` pattern against Vercel's path-matching docs) — redeploy and re-verify.
+- [x] **Step 8: Record results** — recorded here (Steps 3-4, 6 statement test) and in session memory `web-deploy-consolidation-task4-pending`.
 
 ---
 
