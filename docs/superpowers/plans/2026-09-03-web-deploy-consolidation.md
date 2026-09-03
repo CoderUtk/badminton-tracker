@@ -429,7 +429,7 @@ git commit -m "feat(share): CardShell reads the join domain from config, hides Q
 - Consumes: everything from Tasks 1-3, merged to the production branch.
 - Produces: a recorded pass/fail of the deep-link fix and App Links on the live origin.
 
-**Status 2026-09-03: DONE except Play Console + device App Links + Lighthouse (see "Remaining" below).**
+**Status 2026-09-03: DONE.** Only two optional checks left: device-side App Links (`adb`, needs a versionCode-bumped build) and Lighthouse. Everything required is complete and verified live.
 
 Live commits beyond the merge (`fb8b42e`): `6ec9d8e` (rebuild trigger), `89dc01b` + `c1ebf6b` (`vercel.json` fixes — see Step 2 note).
 
@@ -455,7 +455,7 @@ Live commits beyond the merge (`fb8b42e`): `6ec9d8e` (rebuild trigger), `89dc01b
   - **Privacy policy URL** → `https://courtside-links.vercel.app/privacy` (live, serves "CourtSide — Privacy Policy")
   - **Data deletion URL** → `https://courtside-links.vercel.app/delete-account` (live)
 
-- [ ] **Step 5b: Retire `courtside-privacy`** — REMAINING (Vercel dashboard). Now unblocked (Step 5 done). Delete the `courtside-privacy` Vercel project — still exists, still git-connected to the same repo, builds redundantly on every push.
+- [x] **Step 5b: Retire `courtside-privacy`** — Vercel project deleted 2026-09-03. (`courtside-privacy.vercel.app` may still 200 briefly during domain-deletion propagation; Play Console no longer references it.)
 
 - [~] **Step 6: Android App Links verification**
   - [x] Statement-list test — **PASS**. `curl "https://digitalassetlinks.googleapis.com/v1/statements:list?source.web.site=https://courtside-links.vercel.app&relation=delegate_permission/common.handle_all_urls"` returns all **3** fingerprints for `com.navalo.courtside`, no errors.
