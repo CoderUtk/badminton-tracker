@@ -4,7 +4,7 @@
 
 **Goal:** Make the `expo export -p web` build of CourtSide an installable PWA — home-screen install on iOS Safari and Android Chrome, instant/offline-tolerant repeat launches via an app-shell service worker, and a one-time iOS "Add to Home Screen" hint.
 
-**Architecture:** Five independent pieces. Static PWA files (`manifest.webmanifest`, icons, `sw.js`, `_headers`) live under a new repo-root `public/` directory that `expo export -p web` copies verbatim into `dist/`. A new `app/+html.tsx` replaces Expo Router's default HTML shell to inject the manifest link, apple-touch-icon, theme-color/apple meta, and an inline service-worker registration script. The hand-written service worker caches only the app shell (never Supabase). A pure predicate `shouldShowIosInstallHint` drives a dismissible bottom-sheet component mounted in `app/_layout.tsx`. `npm run deploy:web` runs export → stamp a build id into `dist/sw.js` → `wrangler deploy`.
+**Architecture:** Five independent pieces. Static PWA files (`manifest.webmanifest`, icons, `sw.js`, `_headers`) live under a new repo-root `public/` directory that `expo export -p web` copies verbatim into `dist/`. A new `public/index.html` (the SPA template `expo export -p web` uses under `web.output: single`) replaces Expo's default HTML shell to inject the manifest link, apple-touch-icon, theme-color/apple meta, and an inline service-worker registration script. The hand-written service worker caches only the app shell (never Supabase). A pure predicate `shouldShowIosInstallHint` drives a dismissible bottom-sheet component mounted in `app/_layout.tsx`. `npm run deploy:web` runs export → stamp a build id into `dist/sw.js` → `wrangler deploy`.
 
 **Tech Stack:** Expo SDK `^54.0.36`, `expo-router ~6.0.24`, React Native `0.81`, `react-native-web`, Jest (ts-jest, node env), Cloudflare Workers static assets (`wrangler`).
 
@@ -34,7 +34,7 @@
 | `public/icons/icon-maskable-512.png` | new | 1 | maskable icon (safe-zone padded on `#0C0E12`) |
 | `public/icons/apple-touch-icon.png` | new | 1 | 180 iOS home-screen icon (opaque `#0C0E12` bg) |
 | `public/_headers` | new | 1 | Cloudflare cache-control rules |
-| `app/+html.tsx` | new | 2 | web HTML shell: PWA `<head>` tags + SW registration script |
+| `public/index.html` | new | 2 | web HTML shell (SPA `web.output: single` template): PWA `<head>` tags + SW registration script |
 | `public/sw.js` | new | 3 | app-shell service worker |
 | `scripts/stamp-sw.js` | new | 3 | stamp build id into `dist/sw.js`; exports `stampSw(path)` |
 | `package.json` | modified | 3 | `deploy:web` script |
@@ -141,10 +141,10 @@ git commit -m "feat(pwa): web app manifest, icons, and Cloudflare cache headers"
 
 ---
 
-## Task 2: HTML shell — `app/+html.tsx`
+## Task 2: HTML shell — `public/index.html`
 
 **Files:**
-- Create: `app/+html.tsx`
+- Create: `public/index.html`
 
 **Interfaces:**
 - Consumes: `/manifest.webmanifest`, `/icons/apple-touch-icon.png` (Task 1); `/sw.js` (Task 3 — the registration script references it by path; registration failing before Task 3 lands is a caught no-op).
@@ -152,16 +152,21 @@ git commit -m "feat(pwa): web app manifest, icons, and Cloudflare cache headers"
 
 - [ ] **Step 1: Create the shell**
 
-Create `app/+html.tsx`:
+Create `public/index.html`. Because this project uses `web.output: single`,
+`app/+html.tsx` has no effect — `expo export -p web` uses `public/index.html`
+as the SPA template instead (it wins over Expo's built-in template). It is a
+plain HTML file with `%WEB_TITLE%` / `%LANG_ISO_CODE%` placeholders; Expo
+injects the favicon `<link>` and the entry `<script>`. The `<head>` below shows
+the equivalent structure:
 
 ```tsx
 import { ScrollViewStyleReset } from "expo-router/html";
 import type { PropsWithChildren } from "react";
 
 /**
- * Web-only HTML shell. Expo Router renders this in place of its default
- * template for `expo export -p web`. Everything PWA-related that must be in
- * <head> before the JS bundle loads lives here.
+ * Web-only HTML shell. `expo export -p web` (web.output: single) renders
+ * public/index.html in place of its default template. Everything PWA-related
+ * that must be in <head> before the JS bundle loads lives here.
  */
 export default function Root({ children }: PropsWithChildren) {
   return (
@@ -233,17 +238,17 @@ console.log('shell + public copy ok');
 "
 ```
 
-Expected: prints `shell + public copy ok`. (Confirms `+html.tsx` took effect and `expo export` copied `public/`. `dist/sw.js` is intentionally NOT checked here — it arrives in Task 3.)
+Expected: prints `shell + public copy ok`. (Confirms `public/index.html` took effect as the SPA template and `expo export` copied `public/`. `dist/sw.js` is intentionally NOT checked here — it arrives in Task 3.)
 
 - [ ] **Step 4: Confirm the existing test suite is unaffected**
 
 Run: `npm test`
-Expected: PASS, same count as before this task (`+html.tsx` is web-shell only; jest's node env never imports it).
+Expected: PASS, same count as before this task (`public/index.html` is a static web-shell file; jest's node env never imports it).
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add app/+html.tsx
+git add public/index.html
 git commit -m "feat(pwa): web HTML shell with manifest, apple meta, and SW registration"
 ```
 
@@ -722,13 +727,15 @@ Expected: `expo export` succeeds, `stamped dist/sw.js -> <id>` prints, `wrangler
 Against the published origin `<URL>`:
 
 ```bash
+curl -sI <URL>/ | grep -i cache-control                # expect: no-cache (the shell users actually load)
 curl -sI <URL>/sw.js | grep -i cache-control          # expect: no-cache
+curl -sI <URL>/manifest.webmanifest | grep -i content-type  # expect: application/manifest+json
 curl -sI <URL>/_expo/static/js/web/ -o /dev/null       # (informational)
 curl -s <URL>/manifest.webmanifest | node -e "JSON.parse(require('fs').readFileSync(0,'utf8')); console.log('manifest served + valid')"
 curl -s <URL>/sw.js | grep -o 'courtside-shell-[0-9]*' # expect: a stamped name
 ```
 
-If `cache-control` on `/sw.js` is not `no-cache`, Cloudflare Workers static assets is not honouring `public/_headers` — move the rules into `wrangler.jsonc` (`assets` block) per current Wrangler docs and redeploy.
+If `cache-control` on `/` or `/sw.js` is not `no-cache`, Cloudflare Workers static assets is not honouring `public/_headers` — move the rules into `wrangler.jsonc` (`assets` block) per current Wrangler docs and redeploy.
 
 - [ ] **Step 3: Lighthouse PWA audit**
 
@@ -744,7 +751,7 @@ On an iPhone (Safari): visit `<URL>`. Expected: the hint sheet appears at the bo
 
 - [ ] **Step 6: Offline launch**
 
-After installing on either platform: enable airplane mode, launch the installed app. Expected: the app shell loads (guest home renders as far as it can without network — it will not reach Supabase, but there is no browser error page). Re-enable network, pull to refresh / relaunch → normal operation.
+After installing on either platform: visit the deployed app online **twice** (so the active SW has precached the content-hashed entry bundle, not just the shell HTML), then enable airplane mode and relaunch the installed app. Expected: the app shell loads and the JS bundle executes (guest home renders as far as it can without network — it will not reach Supabase, but there is no browser error page and no blank `#0C0E12` screen). Re-enable network, pull to refresh / relaunch → normal operation.
 
 - [ ] **Step 7: Record results**
 
@@ -761,7 +768,7 @@ Write the outcome of Steps 3–6 into the PR description or a short note under `
 | Manifest (`public/manifest.webmanifest`, exact JSON) | 1 Step 1 |
 | Icons — 192 / 512 / maskable-512 / apple-touch-180, `#0C0E12` treatment | 1 Steps 3-4 |
 | `public/_headers` cache rules | 1 Step 5 |
-| `app/+html.tsx` — manifest link, apple-touch-icon, theme-color, apple meta, viewport-fit=cover, body bg `#0C0E12`, inline SW registration | 2 Step 1 |
+| `public/index.html` — manifest link, apple-touch-icon, theme-color, apple meta, viewport-fit=cover, body bg `#0C0E12`, inline SW registration | 2 Step 1 |
 | `public/` copied into `dist/` by `expo export` | 2 Step 3 |
 | Service worker — install precache, activate purge, navigate network-first, asset cache-first, cross-origin skip, `__SW_BUILD__` cache name | 3 Step 5 |
 | `scripts/stamp-sw.js` — `stampSw(path)`, replace / throw / run-as-main | 3 Steps 1-4 |
@@ -769,7 +776,7 @@ Write the outcome of Steps 3–6 into the PR description or a short note under `
 | `shouldShowIosInstallHint(env)` predicate + `IOS_HINT_DISMISSED_KEY` | 4 |
 | `IosInstallHint` component — web/iOS-Safari/not-standalone/not-dismissed gate, localStorage try/catch, bottom sheet with Share glyph + "Got it" | 5 Step 1 |
 | Mount beside `<Toaster />`, no `Platform` branch at mount site | 5 Step 2 |
-| Testing: predicate unit tests, `public/` copy check, stamp-sw tests, `+html` grep, manual Lighthouse/install/offline | 2 Step 3, 3 Steps 1-4, 4 Step 1, 6 |
+| Testing: predicate unit tests, `public/` copy check, stamp-sw tests, shell grep, manual Lighthouse/install/offline | 2 Step 3, 3 Steps 1-4, 4 Step 1, 6 |
 | Rollout | 6 |
 | Non-goals (offline data, custom Android button, push, score-nav bug, orientation check, CI auto-deploy) | not implemented — no task |
 
@@ -785,7 +792,7 @@ No gaps.
 - `shouldShowIosInstallHint` / `IOS_HINT_DISMISSED_KEY` — same names in Tasks 4 and 5.
 - `stampSw` — same name and `(swPath: string) => string` signature in Task 3's interface block, tests, and implementation.
 - Cache name `courtside-shell-<id>` — same string in `public/sw.js`, the `stampSw` test assertion, and Task 3 Step 7's regex.
-- `#0C0E12` — identical in the manifest, `+html.tsx` (`theme-color` + body bg), icon generation, and the `+html` grep check.
+- `#0C0E12` — identical in the manifest, `public/index.html` (`theme-color` + body bg), icon generation, and the shell grep check.
 
 ---
 

@@ -72,7 +72,7 @@ Five independent pieces:
 | Unit | File(s) | Responsibility |
 |---|---|---|
 | **Manifest + icons** | `public/manifest.webmanifest`, `public/icons/*.png` | Static PWA identity. No logic. |
-| **HTML shell injection** | `app/+html.tsx` (new) | Adds `<link rel="manifest">`, `apple-touch-icon`, `theme-color`, `apple-mobile-web-app-*` meta, and the inline service-worker registration script to the Expo Router HTML shell. |
+| **HTML shell injection** | `public/index.html` (new) | Plain HTML template (SPA `web.output: single` override) adding `<link rel="manifest">`, `apple-touch-icon`, `theme-color`, `apple-mobile-web-app-*` meta, and the inline service-worker registration script. |
 | **Service worker** | `public/sw.js` | App-shell cache. On `install`: precache the stable-named shell files. On `fetch`: navigations → network-first with cached `/index.html` fallback; same-origin static assets → cache-first (bundle names are content-hashed = immutable). On `activate`: delete caches whose name ≠ current. |
 | **iOS install hint** | `src/lib/pwa.ts` (predicate), `src/components/IosInstallHint.tsx` (UI), mount in `app/_layout.tsx` | `shouldShowIosInstallHint(env)` is a pure function of `{ua, standalone, dismissed}`. The component renders a dismissible bottom sheet when it returns true; dismissal writes `localStorage`. |
 | **Deploy** | `scripts/stamp-sw.js` (new), `package.json` `deploy:web` script, `public/_headers` | `deploy:web` = `expo export -p web` → stamp a build id into `dist/sw.js` → `wrangler deploy`. `_headers` sets `Cache-Control` per path. |
@@ -121,10 +121,14 @@ Generation (implementation-time, not committed to deps), e.g.:
 and a flatten step for the maskable / apple variants. The plan spells out exact
 commands.
 
-### 2. HTML shell — `app/+html.tsx`
+### 2. HTML shell — `public/index.html`
 
-Expo Router renders this file as the web HTML shell. It replaces the default
-(currently only injects `<link rel="icon">`). Content:
+This project builds with `web.output: single`, so the shell is a plain HTML
+template at `public/index.html` (Expo's SPA template override — `app/+html.tsx`
+only applies to `web.output: static`/`server`). It is not a TSX component: it
+uses `%WEB_TITLE%` / `%LANG_ISO_CODE%` placeholders, and `expo export -p web`
+injects the favicon `<link>` and the entry `<script>`. The `<head>` carries all
+PWA metadata plus the inline service-worker registration. Equivalent content:
 
 ```tsx
 import { ScrollViewStyleReset } from "expo-router/html";
@@ -365,7 +369,7 @@ rules into `wrangler.jsonc` `assets.headers` or a Worker script):
 3. **`stamp-sw.js`** — run it against a fixture containing `__SW_BUILD__`,
    assert the placeholder is gone and replaced with digits; run against a
    fixture without the placeholder, assert it throws.
-4. **`+html.tsx`** — the export's `dist/index.html` contains
+4. **`public/index.html`** — the export's `dist/index.html` contains
    `<link rel="manifest"`, `apple-touch-icon`, `theme-color`, and the
    `navigator.serviceWorker.register` script. Shell grep in the plan.
 5. **Manual (documented in the plan, run by a human):**
@@ -381,7 +385,7 @@ rules into `wrangler.jsonc` `assets.headers` or a Worker script):
 
 ## Rollout
 
-1. Land the code (manifest, icons, `+html.tsx`, SW, hint, deploy script).
+1. Land the code (manifest, icons, `public/index.html`, SW, hint, deploy script).
 2. `npm run deploy:web` — publishes to the `courtside` Workers origin.
 3. Run the manual checklist against that origin.
 4. If a custom domain is wanted, add it in the Cloudflare dashboard and update
@@ -399,7 +403,7 @@ rules into `wrangler.jsonc` `assets.headers` or a Worker script):
 | `public/icons/apple-touch-icon.png` | new | iOS home-screen icon |
 | `public/sw.js` | new | app-shell service worker |
 | `public/_headers` | new | Cloudflare cache-control rules |
-| `app/+html.tsx` | new | web HTML shell with PWA `<head>` + SW registration |
+| `public/index.html` | new | web HTML shell with PWA `<head>` + SW registration |
 | `src/lib/pwa.ts` | new | `shouldShowIosInstallHint` predicate + key constant |
 | `src/components/IosInstallHint.tsx` | new | dismissible iOS install sheet |
 | `app/_layout.tsx` | modified | mount `<IosInstallHint />` |
