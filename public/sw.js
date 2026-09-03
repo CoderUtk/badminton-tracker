@@ -9,10 +9,11 @@
 const BUILD = '__SW_BUILD__';
 const CACHE = 'courtside-shell-' + BUILD;
 
+// Cloudflare serves the document at `/` and 301-redirects `/index.html` → `/`,
+// so `/index.html` is never precached (a redirected response is rejected for
+// navigations). Only branch-owned, guaranteed files go in the atomic set.
 const SHELL = [
   '/',
-  '/index.html',
-  '/favicon.ico',
   '/manifest.webmanifest',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
@@ -21,7 +22,22 @@ const SHELL = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())
+    (async () => {
+      const cache = await caches.open(CACHE);
+      await cache.addAll(SHELL);
+      // /favicon.ico only exists because app.json sets web.favicon — best-effort.
+      await cache.add('/favicon.ico').catch(() => {});
+      // Precache the content-hashed entry bundle so an offline launch right
+      // after a deploy isn't a blank shell. Discover it from the served HTML.
+      try {
+        const html = await (await fetch('/')).text();
+        const m = html.match(/src="(\/_expo\/[^"]+\.js)"/);
+        if (m) await cache.add(m[1]).catch(() => {});
+      } catch (e) {
+        // best-effort — install still succeeds without the bundle precached
+      }
+      await self.skipWaiting();
+    })()
   );
 });
 
@@ -42,7 +58,7 @@ self.addEventListener('fetch', (event) => {
 
   if (req.mode === 'navigate') {
     event.respondWith(
-      fetch(req).catch(() => caches.match('/index.html').then((r) => r || caches.match('/')))
+      fetch(req).catch(() => caches.match('/').then((r) => r || caches.match('/index.html')))
     );
     return;
   }
@@ -53,7 +69,7 @@ self.addEventListener('fetch', (event) => {
       fetch(req).then((res) => {
         if (res.ok && res.type === 'basic') {
           const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(req, copy));
+          caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
         }
         return res;
       })

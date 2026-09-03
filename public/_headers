@@ -2,9 +2,15 @@
   Cache-Control: public, max-age=31536000, immutable
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
-/sw.js
+/icons/*
+  Cache-Control: public, max-age=86400
+/favicon.ico
+  Cache-Control: public, max-age=86400
+/
   Cache-Control: no-cache
 /index.html
+  Cache-Control: no-cache
+/sw.js
   Cache-Control: no-cache
 /manifest.webmanifest
   Cache-Control: no-cache
