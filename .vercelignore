@@ -6,3 +6,5 @@ android
 ios
 graphify-out
 *.log
+.env*
+!.env.example

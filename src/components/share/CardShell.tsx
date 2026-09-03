@@ -24,9 +24,9 @@ export default function CardShell({ children }: { children: React.ReactNode }) {
       {domain && (
         <View style={s.watermark}>
           <View style={s.qrBox}>
-            <QRCode value={`https://${domain}/join`} size={140} color={C.bg} backgroundColor={C.text} />
+            <QRCode value={`https://${domain}`} size={140} color={C.bg} backgroundColor={C.text} />
           </View>
-          <Text style={s.link}>{domain}/join</Text>
+          <Text style={s.link}>{domain}</Text>
           <Text style={s.linkSub}>Scan to join CourtSide</Text>
         </View>
       )}
