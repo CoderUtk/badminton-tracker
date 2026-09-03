@@ -54,7 +54,7 @@ export default function IosInstallHint() {
           </Svg>
           <Text style={s.body}>then “Add to Home Screen”.</Text>
         </View>
-        <Pressable onPress={dismiss} style={s.btn}>
+        <Pressable onPress={dismiss} style={s.btn} accessibilityRole="button">
           <Text style={s.btnText}>Got it</Text>
         </Pressable>
       </View>
@@ -63,7 +63,10 @@ export default function IosInstallHint() {
 }
 
 const s = StyleSheet.create({
-  wrap: { position: "absolute", left: 0, right: 0, bottom: 0, alignItems: "center", padding: 12 },
+  wrap: {
+    position: "absolute", left: 0, right: 0, bottom: 0, alignItems: "center",
+    paddingHorizontal: 12, paddingTop: 12, paddingBottom: 28,
+  },
   sheet: {
     width: "100%", maxWidth: 420, backgroundColor: C.card, borderRadius: 16,
     borderWidth: 1, borderColor: C.line, padding: 16, gap: 10,
