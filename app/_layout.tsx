@@ -25,6 +25,7 @@ import { configureNotificationHandling, syncPushRegistration } from "../src/lib/
 import { notificationRoute } from "../src/lib/notificationRoute";
 import AnimatedSplash from "../src/components/AnimatedSplash";
 import Toaster from "../src/components/Toaster";
+import IosInstallHint from "../src/components/IosInstallHint";
 import ScreenBackground from "../src/components/ScreenBackground";
 import { headerInset } from "../src/lib/headerInset";
 import { consumePendingLink, setPendingLink } from "../src/lib/pendingLink";
@@ -318,6 +319,7 @@ function RootLayout() {
       </Gate>
     </SessionProvider>
     <Toaster />
+    <IosInstallHint />
     </KeyboardProvider>
     </GestureHandlerRootView>
   );
