@@ -3,7 +3,7 @@
     "name": "CourtSide",
     "slug": "badminton-tracker",
     "owner": "coderutk",
-    "version": "1.4.0",
+    "version": "1.4.1",
     "orientation": "portrait",
     "scheme": "badminton",
     "icon": "./assets/icon.png",
