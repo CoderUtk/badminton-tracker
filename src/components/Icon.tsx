@@ -34,7 +34,7 @@ export type IconName =
   | "ellipse" | "trash-outline"
   | "information-circle-outline" | "hand-left-outline" | "lock-closed-outline"
   | "phone-portrait-outline" | "phone-landscape-outline" | "sync-outline"
-  | "checkmark" | "checkmark-circle"
+  | "checkmark" | "checkmark-circle" | "wallet-outline" | "location-outline"
   // MaterialCommunityIcons
   | "badminton" | "trophy" | "trophy-outline"
   | "shuffle-variant" | "account-group" | "account-plus"

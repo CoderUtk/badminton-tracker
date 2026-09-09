@@ -21,6 +21,9 @@ function session(over: Partial<ClubSession> & { id: string }): ClubSession {
     status: "scheduled",
     created_at: NOW,
     created_by: "me",
+    cost_total_cents: 0,
+    shuttles: 0,
+    paid_by: null,
     ...over,
   };
 }

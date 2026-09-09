@@ -25,10 +25,16 @@ export interface ClubSession {
   // cascading), but no one is "the creator" anymore — isCreator checks in
   // Task 2 naturally evaluate false, which is the correct, safe behavior.
   created_by: string | null;
+  /** Total cost of the night in minor units (paise/cents). 0 = not recorded. */
+  cost_total_cents: number;
+  shuttles: number;
+  /** club_player_id of whoever fronted the money, or null. */
+  paid_by: string | null;
 }
 
 export interface Attendance extends ClubPlayer {
   status: AttendanceStatus;
+  settled: boolean;
 }
 
 export async function createSession(input: {
@@ -75,14 +81,14 @@ export async function refreshSessions(): Promise<void> {
 
     const { data: sessions, error: sErr } = await supabase
       .from("sessions")
-      .select("id, club_id, starts_at, ends_at, location, courts, status, created_at, created_by")
+      .select("id, club_id, starts_at, ends_at, location, courts, status, created_at, created_by, cost_total_cents, shuttles, paid_by")
       .in("club_id", clubIds);
     if (sErr) return; // stay on cache
 
     const sessionIds = (sessions ?? []).map((s) => s.id as string);
     const attendance = sessionIds.length > 0
-      ? await supabase.from("attendance").select("session_id, club_player_id, status").in("session_id", sessionIds)
-      : { data: [] as { session_id: string; club_player_id: string; status: string }[], error: null };
+      ? await supabase.from("attendance").select("session_id, club_player_id, status, settled").in("session_id", sessionIds)
+      : { data: [] as { session_id: string; club_player_id: string; status: string; settled: boolean }[], error: null };
     if (attendance.error) return; // stay on cache
 
     await db.withTransactionAsync(async () => {
@@ -94,18 +100,22 @@ export async function refreshSessions(): Promise<void> {
       await insertMany(
         db, "sessions_cache",
         ["id", "club_id", "starts_at", "ends_at", "location", "courts",
-         "status", "created_at", "created_by", "synced"],
+         "status", "created_at", "created_by", "cost_total_cents", "shuttles",
+         "paid_by", "synced"],
         (sessions ?? []).map((s) => [
           s.id as string, s.club_id as string, new Date(s.starts_at as string).getTime(),
           s.ends_at ? new Date(s.ends_at as string).getTime() : null,
           s.location as string | null, s.courts as number, s.status as string,
-          new Date(s.created_at as string).getTime(), s.created_by as string, 1,
+          new Date(s.created_at as string).getTime(), s.created_by as string,
+          (s.cost_total_cents as number) ?? 0, (s.shuttles as number) ?? 0,
+          s.paid_by as string | null, 1,
         ]),
       );
       await insertMany(
-        db, "attendance_cache", ["session_id", "club_player_id", "status", "synced"],
+        db, "attendance_cache", ["session_id", "club_player_id", "status", "settled", "synced"],
         (attendance.data ?? []).map((a) => [
-          a.session_id as string, a.club_player_id as string, a.status as string, 1,
+          a.session_id as string, a.club_player_id as string, a.status as string,
+          a.settled ? 1 : 0, 1,
         ]),
       );
     });
@@ -263,13 +273,16 @@ export async function getClubStats(clubId: string): Promise<SessionStats> {
 export async function listAttendance(sessionId: string, clubId: string): Promise<Attendance[]> {
   const db = await getDb();
   if (!db) return [];
-  return db.getAllAsync<Attendance>(
-    `select p.id, p.club_id, p.profile_id, p.name, coalesce(a.status, 'out') as status
+  const rows = await db.getAllAsync<Omit<Attendance, "settled"> & { settled: number }>(
+    `select p.id, p.club_id, p.profile_id, p.name, coalesce(a.status, 'out') as status,
+            coalesce(a.settled, 0) as settled
      from club_players_cache p
      left join attendance_cache a on a.club_player_id = p.id and a.session_id = ?
      where p.club_id = ? order by p.name`,
     sessionId, clubId
   );
+  // SQLite has no boolean; the column is an integer flag.
+  return rows.map((r) => ({ ...r, settled: !!r.settled }));
 }
 
 /**
@@ -312,6 +325,117 @@ export async function setAttendance(
      values (?, ?, ?, 1)
      on conflict(session_id, club_player_id) do update set status = excluded.status, synced = 1`,
     sessionId, playerId, status
+  );
+}
+
+export interface CostShare {
+  playerId: string;
+  name: string;
+  /** This player's slice of the total, in minor units. */
+  cents: number;
+  /** Settled explicitly, or implicitly because they fronted the money. */
+  settled: boolean;
+  isPayer: boolean;
+}
+
+export interface CostSplit {
+  totalCents: number;
+  shuttles: number;
+  paidBy: string | null;
+  headCount: number;
+  shares: CostShare[];
+  /** Still owed to the payer: unsettled shares, excluding the payer's own. */
+  outstandingCents: number;
+}
+
+/**
+ * Split a session's cost across everyone checked in.
+ *
+ * The remainder is handed out one minor unit at a time to the first players in
+ * a stable id order rather than rounded per head, so the shares always sum to
+ * exactly the total. Rounding each head independently makes 800/3 come to
+ * 801 or 798 and invites "why doesn't this add up".
+ *
+ * The payer is never counted as owing: they already put the whole amount in.
+ * Their share still appears, as their own contribution.
+ *
+ * Pure — no I/O — so the arithmetic is unit-testable on its own.
+ */
+export function splitCost(
+  session: Pick<ClubSession, "cost_total_cents" | "shuttles" | "paid_by">,
+  attendance: Attendance[],
+): CostSplit {
+  const total = Math.max(0, Math.floor(session.cost_total_cents || 0));
+  const paidBy = session.paid_by ?? null;
+  const present = attendance
+    .filter((a) => a.status === "in")
+    .sort((a, b) => a.id.localeCompare(b.id));
+  const n = present.length;
+  if (n === 0 || total === 0) {
+    return {
+      totalCents: total, shuttles: session.shuttles || 0, paidBy,
+      headCount: n, shares: [], outstandingCents: 0,
+    };
+  }
+  const base = Math.floor(total / n);
+  const remainder = total - base * n;
+  let outstanding = 0;
+  const shares = present.map((p, i): CostShare => {
+    const isPayer = !!paidBy && p.id === paidBy;
+    const settled = p.settled || isPayer;
+    const cents = base + (i < remainder ? 1 : 0);
+    if (!settled) outstanding += cents;
+    return { playerId: p.id, name: p.name, cents, settled, isPayer };
+  });
+  return {
+    totalCents: total, shuttles: session.shuttles || 0, paidBy,
+    headCount: n, shares, outstandingCents: outstanding,
+  };
+}
+
+/**
+ * Set what the night cost, how many shuttles it burned, and who fronted it.
+ * RPC-gated to the session creator or a club admin — the table's own UPDATE
+ * policy is admin-only, so a non-admin creator could not do this directly.
+ */
+export async function setSessionCost(
+  sessionId: string,
+  input: { totalCents: number; shuttles: number; paidBy: string | null },
+): Promise<void> {
+  if (!supabase) throw new Error("Sign in to record a session cost");
+  const totalCents = Math.max(0, Math.min(100_000_000, Math.round(input.totalCents)));
+  const shuttles = Math.max(0, Math.min(500, Math.round(input.shuttles)));
+  const { error } = await supabase.rpc("set_session_cost", {
+    p_session_id: sessionId,
+    p_cost_total_cents: totalCents,
+    p_shuttles: shuttles,
+    p_paid_by: input.paidBy,
+  });
+  if (error) throw new Error(error.message);
+  const db = await getDb();
+  await db?.runAsync(
+    "update sessions_cache set cost_total_cents = ?, shuttles = ?, paid_by = ? where id = ?",
+    totalCents, shuttles, input.paidBy, sessionId
+  );
+}
+
+/** Mark one player's share paid up. Same creator-or-admin gate as the cost itself. */
+export async function setAttendanceSettled(
+  sessionId: string,
+  playerId: string,
+  settled: boolean,
+): Promise<void> {
+  if (!supabase) throw new Error("Sign in to settle a share");
+  const { error } = await supabase.rpc("set_attendance_settled", {
+    p_session_id: sessionId,
+    p_club_player_id: playerId,
+    p_settled: settled,
+  });
+  if (error) throw new Error(error.message);
+  const db = await getDb();
+  await db?.runAsync(
+    "update attendance_cache set settled = ? where session_id = ? and club_player_id = ?",
+    settled ? 1 : 0, sessionId, playerId
   );
 }
 

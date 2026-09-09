@@ -66,6 +66,13 @@ const MIGRATIONS = [
   // an applied migration does not re-run it, so existing installs would never
   // get the column.
   `alter table club_players_cache add column avatar_url text;`,
+  // Session cost split (0045_session_cost.sql). Mirrors the server columns so
+  // the split renders from cache offline; `settled` is an integer flag because
+  // SQLite has no boolean.
+  `alter table sessions_cache add column cost_total_cents integer not null default 0;
+   alter table sessions_cache add column shuttles integer not null default 0;
+   alter table sessions_cache add column paid_by text;
+   alter table attendance_cache add column settled integer not null default 0;`,
 ];
 
 let dbPromise: Promise<SQLiteDatabase> | null = null;

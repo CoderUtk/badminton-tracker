@@ -33,6 +33,9 @@ function session(
     status,
     created_at: 0,
     created_by: null,
+    cost_total_cents: 0,
+    shuttles: 0,
+    paid_by: null,
     ...overrides,
   };
 }

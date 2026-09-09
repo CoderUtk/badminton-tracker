@@ -14,6 +14,8 @@ import Icon from "../../../src/components/Icon";
 import Chip from "../../../src/components/Chip";
 import Sheet from "../../../src/components/Sheet";
 import SegmentedControl from "../../../src/components/SegmentedControl";
+import SessionCost from "../../../src/components/SessionCost";
+import SessionLocation from "../../../src/components/SessionLocation";
 import SessionResultCard from "../../../src/components/share/SessionResultCard";
 import { captureAndShare } from "../../../src/lib/share/captureAndShare";
 import { avatarMap, preloadAvatars } from "../../../src/lib/share/avatars";
@@ -163,6 +165,9 @@ export default function SessionDetail() {
 
   if (!session) return <View style={s.center}><Text style={s.muted}>Session not found.</Text></View>;
   const isCreator = !!authSession && authSession.user.id === session.created_by;
+  // Mirrors can_manage_session_cost() in 0045 — the server is the real gate,
+  // this only decides whether to render controls that would be rejected.
+  const canManageCost = isCreator || clubRole === "owner" || clubRole === "admin";
   const done = session.status === "done";
   const showAttendance = tab === "attendance" && !done;
 
@@ -182,7 +187,7 @@ export default function SessionDetail() {
               </Pressable>
             )}
             <Text style={s.eyebrow}>{session.status.toUpperCase()} · {session.courts} {session.courts === 1 ? "COURT" : "COURTS"}</Text>
-            <Text style={[s.title, isCreator && s.titleWithBtn]}>{session.location || "Badminton session"}</Text>
+            <SessionLocation location={session.location} style={[s.title, isCreator && s.titleWithBtn]} />
             <Text style={s.date}>{new Date(session.starts_at).toLocaleString([], { weekday: "long", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</Text>
             {!done && (
               <View style={s.actions}>
@@ -197,6 +202,8 @@ export default function SessionDetail() {
               </View>
             )}
           </View>
+
+          <SessionCost session={session} attendance={attendance} canManage={canManageCost} onChanged={reload} />
 
           {done && stats && (
             <View style={s.summary}>
