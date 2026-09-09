@@ -58,7 +58,7 @@ Provide a public URL to `docs/PRIVACY.md`. Options once the repo is on GitHub:
 
 ## Store listing essentials
 
-- **App name:** CourtSide
+- **App name:** CourtSide: Badminton Scorer
 - **Short description (≤80 chars):**
   `Live badminton scoring, club sessions, and player stats — works offline.`
 - **Full description (draft):**
