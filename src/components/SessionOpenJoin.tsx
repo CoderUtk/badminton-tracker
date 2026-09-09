@@ -8,6 +8,7 @@ import Stepper from "./Stepper";
 import { buildSessionJoinPath } from "../lib/joinLink";
 import { shareJoinLink } from "../lib/shareJoin";
 import { setSessionOpenJoin } from "../repos/openSessionRepo";
+import { openJoinArgs } from "../session/openJoin";
 import { type ClubSession } from "../repos/sessionRepo";
 import { toast } from "../lib/toast";
 import { C, F, MIN_TOUCH, radius, space } from "../theme";
@@ -19,9 +20,10 @@ import { C, F, MIN_TOUCH, radius, space } from "../theme";
  *
  * set_session_open_join(p_session_id, p_open, p_max_players) writes both
  * columns unconditionally, so a null p_max_players CLEARS an existing cap.
- * Every call below carries session.max_players through instead of relying on
- * null-by-omission — most importantly on close, where dropping the cap would
- * silently wipe the organiser's setting until they set it again.
+ * Both calls below go through openJoinArgs (src/session/openJoin.ts), which
+ * carries session.max_players through instead of relying on null-by-omission
+ * — most importantly on close, where dropping the cap would silently wipe
+ * the organiser's setting until they set it again. See tests/openJoinArgs.test.ts.
  */
 export default function SessionOpenJoin({
   session, canManage, onChanged,
@@ -44,8 +46,7 @@ export default function SessionOpenJoin({
   const toggleOpen = async () => {
     setToggling(true);
     try {
-      // Always carry the existing cap through — see the file header comment.
-      await setSessionOpenJoin(session.id, { open: !session.open_join, maxPlayers: session.max_players });
+      await setSessionOpenJoin(session.id, openJoinArgs(session, { open: !session.open_join }));
       await onChanged();
     } catch (e) {
       toast((e as Error).message || "Could not update the join link", "error");
@@ -63,7 +64,7 @@ export default function SessionOpenJoin({
   const saveCap = async () => {
     setSaving(true);
     try {
-      await setSessionOpenJoin(session.id, { open: true, maxPlayers: noLimit ? null : capValue });
+      await setSessionOpenJoin(session.id, openJoinArgs(session, { open: true, maxPlayers: noLimit ? null : capValue }));
       setEditing(false);
       await onChanged();
     } catch (e) {
