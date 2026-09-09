@@ -170,9 +170,21 @@ end $$;
 -- a link — so there has to be a way out.
 create or replace function public.leave_open_session(p_session_id uuid)
 returns void language plpgsql security definer set search_path = public as $$
-declare v_player uuid;
+declare
+  v_player uuid;
+  v_status text;
 begin
   if auth.uid() is null then raise exception 'Sign in to leave this session'; end if;
+
+  -- Same gate as join_open_session. Without it, a joiner can flip themselves
+  -- to 'out' after the session is done and the organiser has entered the
+  -- cost (0045_session_cost.sql) — that shrinks the 'in'-count divisor and
+  -- silently raises everyone else's share.
+  select status into v_status from sessions where id = p_session_id;
+  if v_status is null or v_status not in ('scheduled', 'live') then
+    raise exception 'This session has already finished';
+  end if;
+
   select p.id into v_player
     from club_players p
     join sessions s on s.id = p_session_id and s.club_id = p.club_id

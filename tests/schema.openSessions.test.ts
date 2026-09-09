@@ -33,13 +33,21 @@ test("every new function is security definer with a pinned search_path", () => {
   }
 });
 
-test("execute is revoked from anon and granted only to authenticated", () => {
-  for (const fn of [
-    "session_open_preview", "join_open_session",
-    "leave_open_session", "set_session_open_join", "can_manage_session",
-  ]) {
-    expect(sql).toMatch(new RegExp(`revoke all on function public\\.${fn}[^;]*from public, anon`));
-    expect(sql).toMatch(new RegExp(`grant execute on function public\\.${fn}[^;]*to authenticated`));
+test("execute is revoked from anon and granted only to authenticated, per exact signature", () => {
+  // Matched on the exact signature (name + arg list), not a bare name prefix:
+  // "can_manage_session" alone would also match "can_manage_session_cost(uuid)"
+  // lines, so deleting the can_manage_session(uuid) grant/revoke pair would go
+  // unnoticed by a looser match.
+  const signatures = [
+    "session_open_preview(uuid)",
+    "join_open_session(uuid)",
+    "leave_open_session(uuid)",
+    "set_session_open_join(uuid, boolean, int)",
+    "can_manage_session(uuid)",
+  ];
+  for (const sig of signatures) {
+    expect(sql).toContain(`revoke all on function public.${sig} from public, anon;`);
+    expect(sql).toContain(`grant execute on function public.${sig} to authenticated;`);
   }
 });
 
@@ -57,6 +65,14 @@ test("the preview discloses no player names", () => {
   expect(fn).not.toMatch(/array_agg/);
 });
 
+test("session_open_preview is gated on open_join — a closed session returns no rows", () => {
+  const fn = sql.slice(
+    sql.indexOf("function public.session_open_preview"),
+    sql.indexOf("function public.join_open_session"),
+  );
+  expect(fn).toMatch(/where\s+s\.id\s*=\s*p_session_id\s+and\s+s\.open_join/);
+});
+
 test("keeps can_manage_session_cost resolvable for 0045's RPCs", () => {
   expect(sql).toMatch(/create or replace function public\.can_manage_session_cost/);
 });
@@ -64,6 +80,33 @@ test("keeps can_manage_session_cost resolvable for 0045's RPCs", () => {
 test("join_open_session tolerates a concurrent first-ever join instead of raising unique_violation", () => {
   const fn = sql.slice(sql.indexOf("function public.join_open_session"));
   expect(fn).toMatch(/on conflict \(club_id, profile_id\) do nothing/);
+});
+
+test("join_open_session rejects a session that is not scheduled or live", () => {
+  const fn = sql.slice(
+    sql.indexOf("function public.join_open_session"),
+    sql.indexOf("function public.leave_open_session"),
+  );
+  expect(fn).toMatch(/v_status not in \('scheduled', 'live'\)/);
+});
+
+test("join_open_session and leave_open_session both reject an unauthenticated caller", () => {
+  const joinFn = sql.slice(
+    sql.indexOf("function public.join_open_session"),
+    sql.indexOf("function public.leave_open_session"),
+  );
+  const leaveFn = sql.slice(sql.indexOf("function public.leave_open_session"));
+  expect(joinFn).toMatch(/if auth\.uid\(\) is null then raise exception/);
+  expect(leaveFn).toMatch(/if auth\.uid\(\) is null then raise exception/);
+});
+
+test("leave_open_session rejects a session that is not scheduled or live", () => {
+  // Mirrors join_open_session's status gate (see FIX 1): without this, a
+  // joiner can set themselves 'out' after the session is done and the
+  // organiser has entered the cost, shrinking the divisor 0045 uses to split
+  // it and silently raising everyone else's share.
+  const fn = sql.slice(sql.indexOf("function public.leave_open_session"));
+  expect(fn).toMatch(/v_status is null or v_status not in \('scheduled', 'live'\)/);
 });
 
 test("leave_open_session raises when the caller was never in the session", () => {
