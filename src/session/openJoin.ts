@@ -18,7 +18,7 @@ export interface SessionOpenPreview {
   alreadyIn: boolean;
 }
 
-export type JoinBlockReason = "closed" | "finished" | "full" | "already-in";
+export type JoinBlockReason = "finished" | "full" | "already-in";
 
 export type JoinEligibility =
   | { ok: true }
