@@ -4,7 +4,7 @@ jest.mock("../src/db/db", () => ({ getDb: async () => null }));
 
 import {
   getSessionOpenPreview, joinOpenSession, leaveOpenSession, setSessionOpenJoin,
-} from "../src/repos/sessionRepo";
+} from "../src/repos/openSessionRepo";
 
 beforeEach(() => rpc.mockReset());
 
