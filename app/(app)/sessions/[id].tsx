@@ -14,7 +14,7 @@ import Icon from "../../../src/components/Icon";
 import Chip from "../../../src/components/Chip";
 import Sheet from "../../../src/components/Sheet";
 import SegmentedControl from "../../../src/components/SegmentedControl";
-import SessionCost from "../../../src/components/SessionCost";
+import SessionAdmin from "../../../src/components/SessionAdmin";
 import SessionLocation from "../../../src/components/SessionLocation";
 import SessionResultCard from "../../../src/components/share/SessionResultCard";
 import { captureAndShare } from "../../../src/lib/share/captureAndShare";
@@ -167,7 +167,8 @@ export default function SessionDetail() {
   const isCreator = !!authSession && authSession.user.id === session.created_by;
   // Mirrors can_manage_session_cost() in 0045 — the server is the real gate,
   // this only decides whether to render controls that would be rejected.
-  const canManageCost = isCreator || clubRole === "owner" || clubRole === "admin";
+  // Gates both the cost editor and the open-join controls below.
+  const canManage = isCreator || clubRole === "owner" || clubRole === "admin";
   const done = session.status === "done";
   const showAttendance = tab === "attendance" && !done;
 
@@ -203,7 +204,7 @@ export default function SessionDetail() {
             )}
           </View>
 
-          <SessionCost session={session} attendance={attendance} canManage={canManageCost} onChanged={reload} />
+          <SessionAdmin session={session} attendance={attendance} canManage={canManage} onChanged={reload} />
 
           {done && stats && (
             <View style={s.summary}>
