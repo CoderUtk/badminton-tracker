@@ -60,3 +60,13 @@ test("the preview discloses no player names", () => {
 test("keeps can_manage_session_cost resolvable for 0045's RPCs", () => {
   expect(sql).toMatch(/create or replace function public\.can_manage_session_cost/);
 });
+
+test("join_open_session tolerates a concurrent first-ever join instead of raising unique_violation", () => {
+  const fn = sql.slice(sql.indexOf("function public.join_open_session"));
+  expect(fn).toMatch(/on conflict \(club_id, profile_id\) do nothing/);
+});
+
+test("leave_open_session raises when the caller was never in the session", () => {
+  const fn = sql.slice(sql.indexOf("function public.leave_open_session"));
+  expect(fn).toMatch(/if not found then/);
+});

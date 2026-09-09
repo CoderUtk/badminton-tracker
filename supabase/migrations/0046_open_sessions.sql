@@ -133,7 +133,15 @@ begin
       from profiles where id = auth.uid();
     insert into club_players (club_id, profile_id, name)
       values (v_club, auth.uid(), coalesce(v_name, 'Player'))
+      on conflict (club_id, profile_id) do nothing
       returning id into v_player;
+    -- A concurrent first-ever join for this same player won the insert.
+    -- ON CONFLICT DO NOTHING returns no row, so adopt the row they created
+    -- rather than failing — either way the player ends up with exactly one.
+    if v_player is null then
+      select id into v_player from club_players
+       where club_id = v_club and profile_id = auth.uid() limit 1;
+    end if;
   end if;
 
   if exists (select 1 from attendance
@@ -173,6 +181,9 @@ begin
   if v_player is null then raise exception 'You are not in this session'; end if;
   update attendance set status = 'out'
    where session_id = p_session_id and club_player_id = v_player;
+  if not found then
+    raise exception 'You are not in this session';
+  end if;
 end $$;
 
 revoke all on function public.can_manage_session(uuid) from public, anon;
