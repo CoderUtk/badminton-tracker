@@ -36,6 +36,8 @@ function session(
     cost_total_cents: 0,
     shuttles: 0,
     paid_by: null,
+    open_join: false,
+    max_players: null,
     ...overrides,
   };
 }

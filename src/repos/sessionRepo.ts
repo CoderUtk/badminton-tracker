@@ -2,6 +2,7 @@ import { getDb } from "../db/db";
 import { insertMany } from "../db/batch";
 import { supabase } from "../lib/supabase";
 import { isStaleLive } from "../session/autoFinish";
+import { type SessionOpenPreview } from "../session/openJoin";
 import { listRealClubs, type ClubPlayer } from "./clubRepo";
 import {
   endLiveMatchesForSession, listMatchesForClub, listMatchesForSession,
@@ -30,6 +31,10 @@ export interface ClubSession {
   shuttles: number;
   /** club_player_id of whoever fronted the money, or null. */
   paid_by: string | null;
+  /** Anyone with the link may claim a slot. */
+  open_join: boolean;
+  /** Cap on checked-in players, or null for unlimited. */
+  max_players: number | null;
 }
 
 export interface Attendance extends ClubPlayer {
@@ -81,7 +86,7 @@ export async function refreshSessions(): Promise<void> {
 
     const { data: sessions, error: sErr } = await supabase
       .from("sessions")
-      .select("id, club_id, starts_at, ends_at, location, courts, status, created_at, created_by, cost_total_cents, shuttles, paid_by")
+      .select("id, club_id, starts_at, ends_at, location, courts, status, created_at, created_by, cost_total_cents, shuttles, paid_by, open_join, max_players")
       .in("club_id", clubIds);
     if (sErr) return; // stay on cache
 
@@ -101,14 +106,16 @@ export async function refreshSessions(): Promise<void> {
         db, "sessions_cache",
         ["id", "club_id", "starts_at", "ends_at", "location", "courts",
          "status", "created_at", "created_by", "cost_total_cents", "shuttles",
-         "paid_by", "synced"],
+         "paid_by", "open_join", "max_players", "synced"],
         (sessions ?? []).map((s) => [
           s.id as string, s.club_id as string, new Date(s.starts_at as string).getTime(),
           s.ends_at ? new Date(s.ends_at as string).getTime() : null,
           s.location as string | null, s.courts as number, s.status as string,
           new Date(s.created_at as string).getTime(), s.created_by as string,
           (s.cost_total_cents as number) ?? 0, (s.shuttles as number) ?? 0,
-          s.paid_by as string | null, 1,
+          s.paid_by as string | null,
+          (s.open_join as boolean) ? 1 : 0,
+          (s.max_players as number | null) ?? null, 1,
         ]),
       );
       await insertMany(
@@ -134,6 +141,17 @@ export async function refreshSessions(): Promise<void> {
  * could fire N match replays and N Supabase RPCs before returning — on Home's
  * critical path (app/(app)/index.tsx).
  */
+/**
+ * Cache row to domain object. Two conversions live here so the two read paths
+ * cannot disagree: SQLite's integer flag becomes a real boolean, and a session
+ * left live past the auto-finish window is *reported* as done without
+ * persisting that (see sweepStaleLiveSessions for the persisting counterpart).
+ */
+function hydrate(row: ClubSession & { open_join: number | boolean }, now: number): ClubSession {
+  const session = { ...row, open_join: !!row.open_join };
+  return isStaleLive(session, now) ? { ...session, status: "done" as const } : session;
+}
+
 export async function listSessions(clubId?: string): Promise<ClubSession[]> {
   const db = await getDb();
   if (!db) return [];
@@ -143,14 +161,13 @@ export async function listSessions(clubId?: string): Promise<ClubSession[]> {
       )
     : await db.getAllAsync<ClubSession>("select * from sessions_cache order by starts_at desc");
   const now = Date.now();
-  return rows.map((row) => (isStaleLive(row, now) ? { ...row, status: "done" as const } : row));
+  return rows.map((row) => hydrate(row as never, now));
 }
 
 export async function getSession(id: string): Promise<ClubSession | null> {
   const db = await getDb();
   const row = (await db?.getFirstAsync<ClubSession>("select * from sessions_cache where id = ?", id)) ?? null;
-  if (row && isStaleLive(row, Date.now())) return { ...row, status: "done" };
-  return row;
+  return row ? hydrate(row as never, Date.now()) : null;
 }
 
 /**
@@ -456,4 +473,65 @@ export async function getSessionLocations(sessionIds: string[]): Promise<Map<str
     if (r.location && r.location.trim()) map.set(r.id, r.location);
   }
   return map;
+}
+
+/**
+ * What a link holder sees before joining. Null when the session is closed or
+ * gone — the RPC cannot tell those apart on purpose, so neither can we.
+ */
+export async function getSessionOpenPreview(sessionId: string): Promise<SessionOpenPreview | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase.rpc("session_open_preview", { p_session_id: sessionId });
+  if (error) throw new Error(error.message);
+  const row = (data as {
+    session_id: string; club_name: string; location: string | null;
+    starts_at: string; status: SessionStatus; checked_in: number;
+    max_players: number | null; already_in: boolean;
+  }[] | null)?.[0];
+  if (!row) return null;
+  return {
+    sessionId: row.session_id,
+    clubName: row.club_name,
+    location: row.location,
+    startsAt: Date.parse(row.starts_at),
+    status: row.status,
+    checkedIn: row.checked_in ?? 0,
+    maxPlayers: row.max_players,
+    alreadyIn: !!row.already_in,
+  };
+}
+
+/** Claim a slot. Idempotent — rejoining returns the same club_player_id. */
+export async function joinOpenSession(sessionId: string): Promise<string> {
+  if (!supabase) throw new Error("Sign in to join this session");
+  const { data, error } = await supabase.rpc("join_open_session", { p_session_id: sessionId });
+  if (error) throw new Error(error.message);
+  return data as string;
+}
+
+/** Give the slot back, so the cost split stops counting them. */
+export async function leaveOpenSession(sessionId: string): Promise<void> {
+  if (!supabase) throw new Error("Sign in to leave this session");
+  const { error } = await supabase.rpc("leave_open_session", { p_session_id: sessionId });
+  if (error) throw new Error(error.message);
+}
+
+/** Organiser-only: open or close the link and set the cap. */
+export async function setSessionOpenJoin(
+  sessionId: string,
+  input: { open: boolean; maxPlayers: number | null },
+): Promise<void> {
+  if (!supabase) throw new Error("Sign in to change this session");
+  const maxPlayers = input.maxPlayers === null
+    ? null
+    : Math.max(1, Math.min(100, Math.round(input.maxPlayers)));
+  const { error } = await supabase.rpc("set_session_open_join", {
+    p_session_id: sessionId, p_open: input.open, p_max_players: maxPlayers,
+  });
+  if (error) throw new Error(error.message);
+  const db = await getDb();
+  await db?.runAsync(
+    "update sessions_cache set open_join = ?, max_players = ? where id = ?",
+    input.open ? 1 : 0, maxPlayers, sessionId
+  );
 }

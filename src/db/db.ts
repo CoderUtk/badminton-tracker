@@ -73,6 +73,10 @@ const MIGRATIONS = [
    alter table sessions_cache add column shuttles integer not null default 0;
    alter table sessions_cache add column paid_by text;
    alter table attendance_cache add column settled integer not null default 0;`,
+  // Open sessions (0046_open_sessions.sql). SQLite has no boolean, so
+  // open_join is an integer flag, mapped back in sessionRepo's hydrate().
+  `alter table sessions_cache add column open_join integer not null default 0;
+   alter table sessions_cache add column max_players integer;`,
 ];
 
 let dbPromise: Promise<SQLiteDatabase> | null = null;
