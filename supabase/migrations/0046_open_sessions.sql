@@ -91,7 +91,8 @@ returns table (
     )
   from sessions s
   join clubs c on c.id = s.club_id
-  where s.id = p_session_id and s.open_join;
+  where s.id = p_session_id and s.open_join
+    and coalesce((auth.jwt()->>'is_anonymous')::boolean, false) = false;
 $$;
 
 -- Claim a slot. Returns the caller's club_player_id.
@@ -107,6 +108,13 @@ declare
   v_name  text;
 begin
   if auth.uid() is null then raise exception 'Sign in to join this session'; end if;
+  -- Matches the convention in 0018_anon_rls_restrictions.sql: a zero-friction
+  -- anon session must not be able to mint itself a club_players roster row and
+  -- an attendance slot, which 0045's cost split would then divide real players'
+  -- cost across.
+  if coalesce((auth.jwt()->>'is_anonymous')::boolean, false) then
+    raise exception 'Sign in with a real account to join this session';
+  end if;
 
   -- FOR UPDATE is load-bearing, not defensive. It serialises concurrent joiners
   -- on the session row so the capacity count below cannot be read stale — two
@@ -175,6 +183,10 @@ declare
   v_status text;
 begin
   if auth.uid() is null then raise exception 'Sign in to leave this session'; end if;
+  -- Same convention as join_open_session / 0018_anon_rls_restrictions.sql.
+  if coalesce((auth.jwt()->>'is_anonymous')::boolean, false) then
+    raise exception 'Sign in with a real account to leave this session';
+  end if;
 
   -- Same gate as join_open_session. Without it, a joiner can flip themselves
   -- to 'out' after the session is done and the organiser has entered the

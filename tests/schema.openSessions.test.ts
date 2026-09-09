@@ -113,3 +113,32 @@ test("leave_open_session raises when the caller was never in the session", () =>
   const fn = sql.slice(sql.indexOf("function public.leave_open_session"));
   expect(fn).toMatch(/if not found then/);
 });
+
+test("join_open_session and leave_open_session both reject an anonymous (guest) caller", () => {
+  // On this codebase `authenticated` includes anonymous/guest sessions (see
+  // 0018_anon_rls_restrictions.sql's header), so the `to authenticated` grant
+  // on these functions is not enough by itself — a freely-mintable guest
+  // session could otherwise call signInAnonymously() and then join_open_session
+  // directly, consuming a real capacity slot and diluting 0045's cost split.
+  const joinFn = sql.slice(
+    sql.indexOf("function public.join_open_session"),
+    sql.indexOf("function public.leave_open_session"),
+  );
+  const leaveFn = sql.slice(sql.indexOf("function public.leave_open_session"));
+  const guard = /coalesce\(\(auth\.jwt\(\)->>'is_anonymous'\)::boolean, false\)/;
+  expect(joinFn).toMatch(guard);
+  expect(leaveFn).toMatch(guard);
+});
+
+test("session_open_preview excludes an anonymous (guest) caller from its WHERE clause", () => {
+  // Same guest-role concern as join/leave_open_session, but this is a `language
+  // sql` function with no room to raise — an anonymous caller must get zero
+  // rows back, exactly like a closed/revoked link, rather than a preview.
+  const fn = sql.slice(
+    sql.indexOf("function public.session_open_preview"),
+    sql.indexOf("function public.join_open_session"),
+  );
+  expect(fn).toMatch(
+    /where\s+s\.id\s*=\s*p_session_id\s+and\s+s\.open_join[\s\S]*?coalesce\(\(auth\.jwt\(\)->>'is_anonymous'\)::boolean, false\) = false/,
+  );
+});
