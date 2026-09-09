@@ -3,7 +3,7 @@ import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { listSessions, refreshSessions, type ClubSession } from "../../../src/repos/sessionRepo";
 import Icon from "../../../src/components/Icon";
-import { C } from "../../../src/theme";
+import { C, F } from "../../../src/theme";
 import { useHasRealClubs } from "../../../src/hooks/useHasRealClubs";
 import { syncSessionReminders } from "../../../src/lib/reminders";
 
@@ -66,9 +66,16 @@ export default function Sessions() {
             <Pressable style={[s.card, { borderLeftColor: color, borderLeftWidth: 4 }]} onPress={() => router.push(`/(app)/sessions/${item.id}`)}>
               <View style={s.dateBlock}>
                 <Text style={s.date}>{dateLabel(item.starts_at)}</Text>
-                <View style={[s.statusPill, { backgroundColor: color + "22" }]}>
-                  <View style={[s.statusDot, { backgroundColor: color }]} />
-                  <Text style={[s.status, { color }]}>{item.status.toUpperCase()}</Text>
+                <View style={s.badges}>
+                  {item.open_join && (
+                    <Text style={s.openMarker} accessibilityLabel="Open to anyone with the link">
+                      OPEN
+                    </Text>
+                  )}
+                  <View style={[s.statusPill, { backgroundColor: color + "22" }]}>
+                    <View style={[s.statusDot, { backgroundColor: color }]} />
+                    <Text style={[s.status, { color }]}>{item.status.toUpperCase()}</Text>
+                  </View>
                 </View>
               </View>
               <Text style={s.location}>{item.location || "Badminton session"}</Text>
@@ -113,6 +120,8 @@ const s = StyleSheet.create({
   card: { backgroundColor: C.card, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: C.line, gap: 4 },
   dateBlock: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   date: { color: C.text2, fontSize: 13, fontWeight: "700" },
+  badges: { flexDirection: "row", alignItems: "center", gap: 6 },
+  openMarker: { color: C.accent, fontFamily: F.semibold, fontSize: 11, letterSpacing: 0.7 },
   statusPill: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
   statusDot: { width: 7, height: 7, borderRadius: 4 },
   status: { fontSize: 11, fontWeight: "900", letterSpacing: 0.7 },
