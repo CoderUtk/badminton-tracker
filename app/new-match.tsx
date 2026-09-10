@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Platform, Pressable, ScrollView, StyleSheet, Text, View,
+  Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
 } from "react-native";
 import Animated, { useAnimatedStyle, useDerivedValue, useSharedValue } from "react-native-reanimated";
 import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
@@ -8,7 +8,9 @@ import { keyboardShift } from "../src/lib/keyboardShift";
 import { useScreenInsets } from "../src/hooks/useScreenInsets";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { defaultConfig, GAME_FORMATS, MatchConfig, replay } from "../src/engine";
-import { createMatch } from "../src/repos/matchRepo";
+import { createMatch, logMatch } from "../src/repos/matchRepo";
+import { parseGames } from "../src/lib/scoreEntry";
+import SegmentedControl from "../src/components/SegmentedControl";
 import { Club, listRealClubs, listPlayers, addGuestPlayer, ClubPlayer } from "../src/repos/clubRepo";
 import Icon from "../src/components/Icon";
 import Court, { type CourtEdit } from "../src/components/Court";
@@ -30,6 +32,10 @@ const sameZone = (a: ZoneKey | null, b: ZoneKey) => !!a && a.team === b.team && 
 const DOUBLES_LABELS = ["Player 1", "Player 2", "Player 3", "Player 4"];
 const SINGLES_LABELS = ["Player A", "Player B"];
 
+/** "Score live" runs the rally scorer; "Log result" just files the final games. */
+type Mode = "live" | "log";
+const MAX_LOGGED_GAMES = 5;
+
 export default function NewMatch() {
   const router = useRouter();
   const { session } = useSession();
@@ -49,6 +55,8 @@ export default function NewMatch() {
   const [firstServerIdx, setFirstServerIdx] = useState(0); // index into the active names array
   const [editing, setEditing] = useState<ZoneKey | null>(null);
   const [pulse, setPulse] = useState<{ zone: ZoneKey; key: number } | null>(null);
+  const [mode, setMode] = useState<Mode>("live");
+  const [gameRows, setGameRows] = useState<{ A: string; B: string }[]>([{ A: "", B: "" }]);
   const [starting, setStarting] = useState(false);
   const [adding, setAdding] = useState(false);
   const [lineupRestored, setLineupRestored] = useState(false);
@@ -84,6 +92,7 @@ export default function NewMatch() {
       setTouchedSingles([false, false]);
       setPoints(init.points);
       setBestOf(init.bestOf);
+      setMode(init.mode ?? "live");
       // Names and format are restored, the club deliberately is not: a quick
       // match defaults to Personal, and only an explicit deep-link param
       // preselects a club. Otherwise one club choice would silently stick to
@@ -137,7 +146,7 @@ export default function NewMatch() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clubId]);
 
-  const buildConfig = (): MatchConfig => {
+  const buildConfig = (bestOfOverride?: 1 | 3 | 5): MatchConfig => {
     const n = names.map((x, i) => x.trim() || labels[i]);
     const teams = doubles
       ? { A: [{ id: "a0", name: n[0] }, { id: "a1", name: n[1] }], B: [{ id: "b0", name: n[2] }, { id: "b1", name: n[3] }] }
@@ -150,7 +159,7 @@ export default function NewMatch() {
       pointsToWin: points,
       cap: GAME_FORMATS[points].maxScore, // 11->15, 15->20, 21->30
       intervalAt: points === 21 ? 11 : 0,
-      bestOf,
+      bestOf: bestOfOverride ?? bestOf,
       firstServer: { team: serverTeam, playerIndex: serverPlayer },
     });
   };
@@ -369,13 +378,40 @@ export default function NewMatch() {
     setEditing(null);
   };
 
+  // Parsed once: it is both the save payload and the "can save" test.
+  const loggedGames = useMemo(() => parseGames(gameRows), [gameRows]);
+
+  const setGameScore = (index: number, team: "A" | "B", text: string) =>
+    setGameRows((prev) => prev.map((g, i) => (i === index ? { ...g, [team]: text } : g)));
+
+  const leave = () => (router.canGoBack() ? router.back() : router.replace("/(app)/matches"));
+
+  const saveResult = async () => {
+    if (!loggedGames) return;
+    setStarting(true);
+    try {
+      // The stored format follows what was actually played, so a logged
+      // one-game result isn't recorded as an abandoned best-of-three.
+      const config = buildConfig(loggedGames.length <= 1 ? 1 : loggedGames.length <= 3 ? 3 : 5);
+      const side = (t: "A" | "B") => config.teams[t].map((p) => ({ club_player_id: null, name: p.name }));
+      const id = await logMatch(config, side("A"), side("B"), clubId, params.sessionId ?? null, loggedGames);
+      await saveLastLineup({ doubles, namesDoubles, namesSingles, points, bestOf, clubId, mode });
+      if (isGuest && Platform.OS !== "web") await recordGuestMatch(id);
+      toast("Result saved", "success");
+      leave();
+    } catch (e) {
+      toast((e as Error).message || "Could not save the result", "error");
+      setStarting(false);
+    }
+  };
+
   const start = async () => {
     setStarting(true);
     try {
       const config = buildConfig();
       const side = (t: "A" | "B") => config.teams[t].map((p) => ({ club_player_id: null, name: p.name }));
       const id = await createMatch(config, side("A"), side("B"), clubId, params.sessionId ?? null);
-      await saveLastLineup({ doubles, namesDoubles, namesSingles, points, bestOf, clubId });
+      await saveLastLineup({ doubles, namesDoubles, namesSingles, points, bestOf, clubId, mode });
       // Web guest history reads straight from guest_matches (RLS-scoped); the
       // localStorage id list is native-only.
       if (isGuest && Platform.OS !== "web") await recordGuestMatch(id);
@@ -437,6 +473,64 @@ export default function NewMatch() {
         style={s.belowCourt}
         onLayout={(e) => { belowContent.value = e.nativeEvent.layout.height; }}
       >
+        <SegmentedControl
+          options={[
+            { label: "Score live", value: "live" as Mode },
+            { label: "Log result", value: "log" as Mode },
+          ]}
+          value={mode}
+          onChange={setMode}
+          role="radio"
+        />
+
+        {mode === "log" ? (
+          <>
+            {gameRows.map((g, i) => (
+              <View key={i} style={s.gameRow}>
+                <Text style={s.gameLabel}>Game {i + 1}</Text>
+                <TextInput
+                  style={s.gameInput}
+                  value={g.A}
+                  onChangeText={(t) => setGameScore(i, "A", t)}
+                  keyboardType="number-pad"
+                  maxLength={2}
+                  placeholder="0"
+                  placeholderTextColor={C.text2}
+                  accessibilityLabel={`Game ${i + 1}, team A score`}
+                />
+                <Text style={s.gameDash}>–</Text>
+                <TextInput
+                  style={s.gameInput}
+                  value={g.B}
+                  onChangeText={(t) => setGameScore(i, "B", t)}
+                  keyboardType="number-pad"
+                  maxLength={2}
+                  placeholder="0"
+                  placeholderTextColor={C.text2}
+                  accessibilityLabel={`Game ${i + 1}, team B score`}
+                />
+                {gameRows.length > 1 && (
+                  <Pressable
+                    hitSlop={8}
+                    accessibilityLabel={`Remove game ${i + 1}`}
+                    onPress={() => setGameRows((prev) => prev.filter((_, idx) => idx !== i))}
+                  >
+                    <Icon name="trash-outline" color={C.text2} size={17} />
+                  </Pressable>
+                )}
+              </View>
+            ))}
+            {gameRows.length < MAX_LOGGED_GAMES && (
+              <Pressable
+                style={s.addGame}
+                onPress={() => setGameRows((prev) => [...prev, { A: "", B: "" }])}
+              >
+                <Icon name="add" color={C.text2} size={16} />
+                <Text style={s.hint}>Add a game</Text>
+              </Pressable>
+            )}
+          </>
+        ) : (
         <View style={s.formatRow}>
         <View style={s.formatGroup}>
           <Text style={s.caption}>Points</Text>
@@ -459,14 +553,28 @@ export default function NewMatch() {
           </View>
         </View>
         </View>
+        )}
 
         <Text style={s.hint} numberOfLines={1}>
-          First to {Math.floor(bestOf / 2) + 1} {bestOf === 1 ? "game" : "games"} · best of {bestOf}
+          {mode === "log"
+            ? "Enter the final score of each game played."
+            : `First to ${Math.floor(bestOf / 2) + 1} ${bestOf === 1 ? "game" : "games"} · best of ${bestOf}`}
         </Text>
 
-        <BusyButton busy={starting} disabled={!filled} style={[s.cta, !filled && { opacity: 0.5 }]} onPress={start}>
-          <Text style={s.ctaText}>Start scoring</Text>
-        </BusyButton>
+        {mode === "log" ? (
+          <BusyButton
+            busy={starting}
+            disabled={!filled || !loggedGames}
+            style={[s.cta, (!filled || !loggedGames) && { opacity: 0.5 }]}
+            onPress={saveResult}
+          >
+            <Text style={s.ctaText}>Save result</Text>
+          </BusyButton>
+        ) : (
+          <BusyButton busy={starting} disabled={!filled} style={[s.cta, !filled && { opacity: 0.5 }]} onPress={start}>
+            <Text style={s.ctaText}>Start scoring</Text>
+          </BusyButton>
+        )}
       </View>
     </Animated.View>
   );
@@ -488,6 +596,15 @@ const s = StyleSheet.create({
   segTextOn: { color: C.text },
   courtWrap: { flex: 1, minHeight: 200 },
   formatRow: { flexDirection: "row", gap: 12 },
+  gameRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  gameLabel: { color: C.text2, fontSize: 13, fontWeight: "700", width: 62 },
+  gameInput: {
+    flex: 1, minHeight: 48, borderRadius: 12, backgroundColor: C.card,
+    borderWidth: 1, borderColor: C.line, textAlign: "center",
+    color: C.text, fontSize: 20, fontWeight: "800",
+  },
+  gameDash: { color: C.text2, fontSize: 18, fontWeight: "700" },
+  addGame: { flexDirection: "row", alignItems: "center", gap: 6, minHeight: 40, paddingLeft: 2 },
   formatGroup: { flex: 1, gap: 2 },
   caption: { color: C.text2, fontSize: 12, fontWeight: "700" },
   pickRow: {

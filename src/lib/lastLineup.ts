@@ -17,6 +17,13 @@ export type LastLineup = {
   points: 11 | 15 | 21;
   bestOf: 1 | 3 | 5;
   clubId: string | null;
+  /**
+   * How the last match was entered: scored rally by rally, or filed as a
+   * finished result. A host who logs results does it for every game of the
+   * night, so the screen reopens the way they left it. Optional: lineups
+   * stored before this existed still load, and read as "live".
+   */
+  mode?: "live" | "log";
 };
 
 export const EMPTY_LINEUP: LastLineup = {
@@ -26,6 +33,7 @@ export const EMPTY_LINEUP: LastLineup = {
   points: 21,
   bestOf: 3,
   clubId: null,
+  mode: "live",
 };
 
 // expo-secure-store has no native module on web, and the web build runs every
@@ -56,7 +64,8 @@ function isLineup(x: unknown): x is LastLineup {
     l.namesSingles.every((n) => typeof n === "string") &&
     [11, 15, 21].includes(l.points) &&
     [1, 3, 5].includes(l.bestOf) &&
-    (l.clubId === null || typeof l.clubId === "string")
+    (l.clubId === null || typeof l.clubId === "string") &&
+    (l.mode === undefined || l.mode === "live" || l.mode === "log")
   );
 }
 
@@ -121,5 +130,6 @@ export function resolveInitialLineup(
     points: base.points,
     bestOf: base.bestOf,
     clubId: isGuest ? null : params.clubId ?? base.clubId,
+    mode: base.mode,
   };
 }

@@ -98,3 +98,21 @@ test("points and games come from the persisted lineup when params are present", 
   expect(out.points).toBe(15);
   expect(out.bestOf).toBe(1);
 });
+
+test("remembers the entry mode, so a host logging results keeps logging them", async () => {
+  await saveLastLineup(lineup({ mode: "log" }));
+  expect((await loadLastLineup())?.mode).toBe("log");
+  expect(resolveInitialLineup({}, lineup({ mode: "log" }), false).mode).toBe("log");
+});
+
+test("a lineup stored before the mode existed still reads, defaulting to live", async () => {
+  const { mode, ...v1 } = lineup();
+  store.set("last_lineup_v1", JSON.stringify(v1));
+  expect(await loadLastLineup()).toEqual(v1);
+  expect(resolveInitialLineup({}, await loadLastLineup(), false).mode ?? "live").toBe("live");
+});
+
+test("a stored mode that isn't a known value reads as null", async () => {
+  store.set("last_lineup_v1", JSON.stringify({ ...lineup(), mode: "sideways" }));
+  expect(await loadLastLineup()).toBeNull();
+});
