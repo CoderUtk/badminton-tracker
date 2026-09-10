@@ -4,6 +4,7 @@ import { captureError } from "../lib/observability";
 import { toast } from "../lib/toast";
 import type { MatchConfig, MatchEvent, MatchState, TeamId } from "../engine";
 import { replay } from "../engine";
+import { winnerFromGames, type GameScore } from "../lib/scoreEntry";
 
 export type { MatchRecord, SidePlayer } from "./matchRecord";
 import type { MatchRecord, SidePlayer } from "./matchRecord";
@@ -42,6 +43,28 @@ export async function createMatch(
     side_b: sideB,
     created_by: data.user.id,
   });
+  if (error) throw new Error(error.message);
+  return id;
+}
+
+/**
+ * Web twin of matchRepo's logMatch(): a match played but never scored here.
+ * Insert-then-complete rather than one insert, so the row is created by the
+ * same createMatch() the live path uses and only the finished fields differ.
+ */
+export async function logMatch(
+  config: MatchConfig,
+  sideA: SidePlayer[],
+  sideB: SidePlayer[],
+  clubId: string | null,
+  sessionId: string | null,
+  games: GameScore[],
+): Promise<string> {
+  const id = await createMatch(config, sideA, sideB, clubId, sessionId);
+  const { error } = await supabase!
+    .from("guest_matches")
+    .update({ status: "completed", winner: winnerFromGames(games), score_summary: { games } })
+    .eq("id", id);
   if (error) throw new Error(error.message);
   return id;
 }

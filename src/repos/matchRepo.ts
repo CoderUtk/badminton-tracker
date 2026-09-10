@@ -2,6 +2,7 @@ import * as Crypto from "expo-crypto";
 import { getDb } from "../db/db";
 import type { MatchConfig, MatchEvent, MatchState, TeamId } from "../engine";
 import { replay } from "../engine";
+import { winnerFromGames, type GameScore } from "../lib/scoreEntry";
 
 export type { MatchRecord, SidePlayer } from "./matchRecord";
 import type { MatchRecord, SidePlayer } from "./matchRecord";
@@ -23,6 +24,41 @@ export async function createMatch(
   );
   // A session with a match in progress is itself in progress: promote it out of
   // the "scheduled" state so its status reflects the live play.
+  if (sessionId) {
+    await db?.runAsync(
+      "update sessions_cache set status = 'live', synced = 0 where id = ? and status = 'scheduled'",
+      sessionId
+    );
+  }
+  return id;
+}
+
+/**
+ * Record a match that was played but never scored in the app — the host types
+ * the final games and we store the finished row directly. No events are
+ * written, so replayMatch() returns null for it; every consumer that matters
+ * (leaderboards, session stats, analytics) reads status/winner/score_summary,
+ * which are exactly what a live match writes when it finishes.
+ */
+export async function logMatch(
+  config: MatchConfig,
+  sideA: SidePlayer[],
+  sideB: SidePlayer[],
+  clubId: string | null,
+  sessionId: string | null,
+  games: GameScore[]
+): Promise<string> {
+  const id = Crypto.randomUUID();
+  const db = await getDb();
+  await db?.runAsync(
+    `insert into matches (id, club_id, session_id, config, side_a, side_b, status, winner, score_summary, created_at)
+     values (?, ?, ?, ?, ?, ?, 'completed', ?, ?, ?)`,
+    id, clubId, sessionId, JSON.stringify(config),
+    JSON.stringify(sideA), JSON.stringify(sideB),
+    winnerFromGames(games), JSON.stringify({ games }), Date.now()
+  );
+  // Same promotion createMatch() does: a session someone is logging results
+  // into is under way, whatever its stored status says.
   if (sessionId) {
     await db?.runAsync(
       "update sessions_cache set status = 'live', synced = 0 where id = ? and status = 'scheduled'",

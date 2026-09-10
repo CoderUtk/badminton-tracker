@@ -64,7 +64,9 @@ export default function SessionDetail() {
         const st = await replayMatch(m.id);
         return st ? { ...m, live: st.score } : m;
       })));
-      setStats(next.status === "done" ? await getSessionStats(next.id) : null);
+      // Computed for a live session too: the standings are the point of
+      // logging results as you go, not a report you only see tomorrow.
+      setStats(await getSessionStats(next.id));
       if (next.status === "done") {
         setTab("games");
         setAvatarUrls(avatarMap(await listMyClubPlayers()));
@@ -206,11 +208,11 @@ export default function SessionDetail() {
 
           <SessionAdmin session={session} attendance={attendance} canManage={canManage} onChanged={reload} />
 
-          {done && stats && (
+          {stats && (done || stats.matchCount > 0) && (
             <View style={s.summary}>
               <View style={s.summaryTitleRow}>
                 <Icon name="trophy" color={C.red} size={20} />
-                <Text style={s.summaryTitle}>Session summary</Text>
+                <Text style={s.summaryTitle}>{done ? "Session summary" : "Standings"}</Text>
               </View>
               <View style={s.statRow}>
                 <View style={s.statBox}><Text style={s.statNum}>{stats.matchCount}</Text><Text style={s.statLbl}>matches</Text></View>
@@ -229,10 +231,12 @@ export default function SessionDetail() {
                   ))}
                 </View>
               )}
-              <Pressable style={s.shareBtn} onPress={() => void shareSummary()}>
-                <Icon name="trophy-outline" color={C.text} size={17} />
-                <Text style={s.shareText}>Share to story</Text>
-              </Pressable>
+              {done && (
+                <Pressable style={s.shareBtn} onPress={() => void shareSummary()}>
+                  <Icon name="trophy-outline" color={C.text} size={17} />
+                  <Text style={s.shareText}>Share to story</Text>
+                </Pressable>
+              )}
             </View>
           )}
           {done && stats && (
