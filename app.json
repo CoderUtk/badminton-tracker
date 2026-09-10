@@ -23,7 +23,7 @@
     "android": {
       "package": "com.navalo.courtside",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 21,
+      "versionCode": 22,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundImage": "./assets/adaptive-background.png",
