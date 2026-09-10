@@ -110,3 +110,9 @@ ui_changes.txt
 .worktrees/
 .vercel
 .env*
+
+# Playwright MCP scratch output
+.playwright-mcp/
+
+# Supabase CLI local branch state
+supabase/.branches/
