@@ -1,5 +1,6 @@
 import React from "react";
 import { Pressable, View } from "react-native";
+import { router } from "expo-router";
 import { LogoMark } from "./Logo";
 import Icon from "./Icon";
 import { C } from "../theme";
@@ -9,6 +10,11 @@ import { C } from "../theme";
  * Shows the native back chevron (when `canGoBack` is true) followed by the
  * LogoMark — so the logo always appears on the left without sacrificing back
  * navigation affordance.
+ *
+ * `onPress` defaults to `router.back()`: @react-navigation/native-stack's
+ * `headerLeft` callback only ever supplies `{tintColor, canGoBack, label,
+ * href}` (no `onPress`), unlike the older JS-stack header API this component
+ * was written against, so a caller normally doesn't pass one.
  *
  * Usage:
  *   screenOptions={{ headerLeft: (props) => <HeaderLogoLeft {...props} /> }}
@@ -26,7 +32,7 @@ export default function HeaderLogoLeft({
     <View style={{ flexDirection: "row", alignItems: "center", paddingLeft: 4 }}>
       {canGoBack && (
         <Pressable
-          onPress={onPress}
+          onPress={onPress ?? (() => router.back())}
           hitSlop={8}
           style={{ padding: 6, marginRight: 2 }}
           accessibilityLabel="Go back"

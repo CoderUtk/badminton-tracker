@@ -72,7 +72,7 @@ export default function ClubDetail() {
       <Stack.Screen
         options={{
           headerLeft: isOwner
-            ? (props) => <HeaderLogoLeft {...props} canGoBack onPress={() => router.back()} />
+            ? (props) => <HeaderLogoLeft {...props} canGoBack />
             : () => (
                 <Pressable
                   onPress={() => router.back()}
