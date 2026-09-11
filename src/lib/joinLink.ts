@@ -94,6 +94,19 @@ export function parseJoinTarget(
   return null;
 }
 
+/**
+ * Android `intent://` URL that launches CourtSide directly for the given
+ * https join link, falling back to `href` itself if the app is not
+ * installed. Unlike the `autoVerify` App Link, this does not depend on
+ * Digital Asset Link verification — it targets the package explicitly, so it
+ * still works when a link is opened inside another app's in-app browser
+ * (e.g. WhatsApp), which normally bypasses App Link resolution entirely.
+ */
+export function androidIntentUrl(href: string): string {
+  const withoutScheme = href.replace(/^https?:\/\//, "");
+  return `intent://${withoutScheme}#Intent;scheme=https;package=com.navalo.courtside;S.browser_fallback_url=${encodeURIComponent(href)};end`;
+}
+
 /** In-app route for a parsed join target — the single place that maps a role to its route suffix. */
 export function joinRouteFor(target: { kind: "club" | "tournament" | "session"; id: string; role: JoinRole }): string {
   const suffix = target.role === "scorer" ? "/scorer" : target.role === "spectator" ? "/spectator" : "";

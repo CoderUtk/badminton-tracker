@@ -6,6 +6,7 @@ import type { BracketMatch, Entrant } from "../../../../src/tournament/types";
 import BracketView, { type BracketLiveScore } from "../../../../src/components/BracketView";
 import { toast } from "../../../../src/lib/toast";
 import Logo from "../../../../src/components/Logo";
+import OpenInAppBanner from "../../../../src/components/OpenInAppBanner";
 import PressableScale from "../../../../src/components/PressableScale";
 import Icon from "../../../../src/components/Icon";
 import { C, F } from "../../../../src/theme";
@@ -93,6 +94,7 @@ export default function JoinTournamentSpectator() {
               : <Icon name="sync-outline" color={C.text2} size={16} />}
           </PressableScale>
         </View>
+        <OpenInAppBanner />
       </View>
       {bracket.length === 0 ? (
         <Text style={s.sub}>This tournament hasn't started yet.</Text>

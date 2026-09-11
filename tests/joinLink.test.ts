@@ -1,4 +1,11 @@
-import { buildClubJoinPath, buildSessionJoinPath, buildTournamentScorerJoinPath, buildTournamentSpectatorJoinPath, joinRouteFor, parseJoinTarget } from "../src/lib/joinLink";
+import { androidIntentUrl, buildClubJoinPath, buildSessionJoinPath, buildTournamentScorerJoinPath, buildTournamentSpectatorJoinPath, joinRouteFor, parseJoinTarget } from "../src/lib/joinLink";
+
+test("builds an Android intent URL targeting the package, with the https link as fallback", () => {
+  const href = "https://courtside-links.vercel.app/join/session/s-1";
+  expect(androidIntentUrl(href)).toBe(
+    "intent://courtside-links.vercel.app/join/session/s-1#Intent;scheme=https;package=com.navalo.courtside;S.browser_fallback_url=https%3A%2F%2Fcourtside-links.vercel.app%2Fjoin%2Fsession%2Fs-1;end",
+  );
+});
 
 test("builds a club join path without a scheme", () => {
   expect(buildClubJoinPath("abc-123")).toBe("join/club/abc-123");

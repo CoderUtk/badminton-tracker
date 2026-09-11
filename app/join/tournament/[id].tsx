@@ -7,6 +7,7 @@ import { drawSizeFor } from "../../../src/tournament/draw";
 import { toast } from "../../../src/lib/toast";
 import FormScreen from "../../../src/components/FormScreen";
 import Logo from "../../../src/components/Logo";
+import OpenInAppBanner from "../../../src/components/OpenInAppBanner";
 import PressableScale from "../../../src/components/PressableScale";
 import { useScreenInsets } from "../../../src/hooks/useScreenInsets";
 import { C, F, GRAD, glow } from "../../../src/theme";
@@ -74,6 +75,7 @@ export default function JoinTournament({ role = "player" }: { role?: "player" | 
             ? `${tournament.entrantCount} / ${tournament.maxEntrants} entrants`
             : `${tournament.entrantCount} entrants → ${drawSizeFor(tournament.entrantCount)} draw`}
         </Text>
+        <OpenInAppBanner />
       </View>
 
       <View style={s.card}>

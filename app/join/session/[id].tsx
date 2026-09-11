@@ -10,6 +10,7 @@ import { toast } from "../../../src/lib/toast";
 import FormScreen from "../../../src/components/FormScreen";
 import Icon from "../../../src/components/Icon";
 import Logo from "../../../src/components/Logo";
+import OpenInAppBanner from "../../../src/components/OpenInAppBanner";
 import PressableScale from "../../../src/components/PressableScale";
 import { C, F, GRAD, glow } from "../../../src/theme";
 
@@ -87,6 +88,7 @@ export default function JoinSession() {
         <Text style={s.title}>{joined ? "You're in" : preview.clubName}</Text>
         <Text style={s.sub}>{preview.location || "Badminton session"}</Text>
         <Text style={s.sub}>{when}</Text>
+        <OpenInAppBanner />
       </View>
 
       <View style={s.card}>
