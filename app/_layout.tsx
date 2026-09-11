@@ -14,6 +14,7 @@ import {
   ChakraPetch_600SemiBold, ChakraPetch_700Bold,
 } from "@expo-google-fonts/chakra-petch";
 import { KeyboardProvider } from "react-native-keyboard-controller";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SessionProvider, useSession } from "../src/stores/session";
 import { supabase } from "../src/lib/supabase";
 import { getMyProfile, subscribeProfile } from "../src/repos/profileRepo";
@@ -253,6 +254,11 @@ function RootLayout() {
     if (fontsLoaded) void SplashScreen.hideAsync();
   }, [fontsLoaded]);
 
+  // ExpoRoot wraps the whole app in a SafeAreaProvider above this component,
+  // so the real inset is available here despite this being above the
+  // navigator (audit: android new-match overlap).
+  const insets = useSafeAreaInsets();
+
   if (!fontsLoaded) return null;
   const tree = (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -296,21 +302,22 @@ function RootLayout() {
           />
           {/* The only two headered screens in this stack, so the inset lives
               here rather than in screenOptions. headerInset's "modal" mode
-              takes no safe-area value — a sheet is already inset from the top
-              of the display — which is why this file needs no insets hook
-              above the navigator, where no SafeAreaProvider exists yet. */}
+              only drops the safe-area value on iOS, where a sheet is already
+              inset from the top of the display — Android's modal is a
+              full-screen transition and needs the real inset like a pushed
+              screen does. */}
           <Stack.Screen
             name="new-match"
             options={{
               title: "New match", presentation: "modal",
-              contentStyle: { backgroundColor: "transparent", paddingTop: headerInset(0, "modal") },
+              contentStyle: { backgroundColor: "transparent", paddingTop: headerInset(insets.top, "modal") },
             }}
           />
           <Stack.Screen
             name="new-session"
             options={{
               title: "Plan session", presentation: "modal",
-              contentStyle: { backgroundColor: "transparent", paddingTop: headerInset(0, "modal") },
+              contentStyle: { backgroundColor: "transparent", paddingTop: headerInset(insets.top, "modal") },
             }}
           />
         </Stack>

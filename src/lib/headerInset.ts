@@ -35,8 +35,12 @@ export function headerInset(
   safeAreaTop: number,
   presentation: "card" | "modal" = "card",
 ): number {
-  // A modal sheet is inset from the top of the display, so the status bar is
-  // not underneath its header and must not be added twice.
-  if (presentation === "modal") return MODAL_BAR;
-  return safeAreaTop + BAR;
+  // An iOS sheet is inset from the top of the display, so the status bar is
+  // not underneath its header and must not be added twice. Android's "modal"
+  // presentation is a full-screen transition, not an inset sheet — its header
+  // sits flush under the status bar exactly like a pushed screen's, so it
+  // needs the same safe-area addition or content lands a status-bar-height
+  // too high, under the header.
+  if (presentation === "modal" && Platform.OS === "ios") return MODAL_BAR;
+  return safeAreaTop + (presentation === "modal" ? MODAL_BAR : BAR);
 }
