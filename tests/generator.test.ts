@@ -85,4 +85,9 @@ describe("generateMatchups", () => {
     const result = generateMatchups(players.slice(0, 6), 2);
     expect(result.waiting.map((player) => player.id)).toEqual(["E", "F"]);
   });
+
+  test("does not crash when the prior round contains singles matches", () => {
+    const singlesRound = generateMatchups(players.slice(0, 2), 1, [], 0, "singles").matches;
+    expect(() => generateMatchups(players.slice(0, 4), 1, singlesRound, 1, "doubles")).not.toThrow();
+  });
 });

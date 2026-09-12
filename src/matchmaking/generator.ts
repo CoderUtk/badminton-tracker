@@ -69,6 +69,7 @@ function rotate<T>(items: T[], offset: number): T[] {
 function buildPairCounts(matches: GeneratedMatch[]): Map<string, number> {
   const counts = new Map<string, number>();
   for (const match of matches) {
+    if (match.mode !== "doubles") continue;
     for (const team of [match.teamA, match.teamB]) {
       const key = pairKey(team[0], team[1]);
       counts.set(key, (counts.get(key) ?? 0) + 1);
