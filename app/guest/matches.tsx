@@ -75,7 +75,7 @@ export default function GuestMatches() {
         <Icon name="badminton" color={C.text2} size={48} />
         <Text style={s.emptyTitle}>No matches yet</Text>
         <Text style={s.emptyText}>Quick matches you score this session show up here.</Text>
-        <PressableScale style={s.emptyCta} onPress={() => router.push("/new-match")}>
+        <PressableScale accessibilityRole="button" style={s.emptyCta} onPress={() => router.push("/new-match")}>
           <Icon name="play" color={C.text} size={18} />
           <Text style={s.emptyCtaText}>Start a match</Text>
         </PressableScale>
@@ -92,7 +92,7 @@ export default function GuestMatches() {
         data={matches}
         keyExtractor={(m) => m.id}
         renderItem={({ item }) => (
-          <PressableScale
+          <PressableScale accessibilityRole="button"
             style={[s.card, item.status === "live" && s.cardLive]}
             onPress={() => router.push(`/score/${item.id}`)}
           >

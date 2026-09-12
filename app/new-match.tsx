@@ -337,7 +337,7 @@ export default function NewMatch() {
   const panelNode = (
     <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
       {picker.canAdd && (
-        <Pressable
+        <Pressable accessibilityRole="button"
           style={[s.pickRow, adding && { opacity: 0.5 }]}
           onPress={addTypedToClub}
           disabled={adding}
@@ -347,7 +347,7 @@ export default function NewMatch() {
         </Pressable>
       )}
       {picker.players.map((p) => (
-        <Pressable key={p.id} style={s.pickRow} onPress={() => applySuggestion(p.name)}>
+        <Pressable accessibilityRole="button" key={p.id} style={s.pickRow} onPress={() => applySuggestion(p.name)}>
           <Icon name="person-outline" color={C.text2} size={16} />
           <Text style={s.pickText} numberOfLines={1}>{p.name}</Text>
         </Pressable>
@@ -506,7 +506,7 @@ export default function NewMatch() {
                   accessibilityLabel={`Game ${i + 1}, team B score`}
                 />
                 {gameRows.length > 1 && (
-                  <Pressable
+                  <Pressable accessibilityRole="button"
                     hitSlop={8}
                     accessibilityLabel={`Remove game ${i + 1}`}
                     onPress={() => setGameRows((prev) => prev.filter((_, idx) => idx !== i))}
@@ -517,7 +517,7 @@ export default function NewMatch() {
               </View>
             ))}
             {gameRows.length < MAX_LOGGED_GAMES && (
-              <Pressable
+              <Pressable accessibilityRole="button"
                 style={s.addGame}
                 onPress={() => setGameRows((prev) => [...prev, { A: "", B: "" }])}
               >

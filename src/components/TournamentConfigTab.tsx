@@ -65,7 +65,7 @@ export default function TournamentConfigTab({
   // Values above MAX_COURTS are refused, not clamped silently.
   const Stepper = ({ value, onChange }: { value: number; onChange: (v: number) => void }) => (
     <View style={s.stepRow}>
-      <Pressable
+      <Pressable accessibilityRole="button"
         onPress={() => onChange(Math.max(MIN_COURTS, value - 1))}
         disabled={value <= MIN_COURTS}
         style={({ pressed }) => [s.stepBtn, pressed && press, value <= MIN_COURTS && s.off]}
@@ -73,7 +73,7 @@ export default function TournamentConfigTab({
         <Text style={s.stepBtnText}>−</Text>
       </Pressable>
       <Text style={s.stepValue}>{value}</Text>
-      <Pressable
+      <Pressable accessibilityRole="button"
         onPress={() => onChange(Math.min(MAX_COURTS, value + 1))}
         disabled={value >= MAX_COURTS}
         style={({ pressed }) => [s.stepBtn, pressed && press, value >= MAX_COURTS && s.off]}
@@ -86,7 +86,7 @@ export default function TournamentConfigTab({
   const Segmented = ({ value, options, onPick }: { value: number; options: readonly number[]; onPick: (v: number) => void }) => (
     <View style={s.segRow}>
       {options.map((o) => (
-        <Pressable key={o} onPress={() => onPick(o)} style={({ pressed }) => [s.segBtn, pressed && press, value === o && s.segOn]}>
+        <Pressable accessibilityRole="button" key={o} onPress={() => onPick(o)} style={({ pressed }) => [s.segBtn, pressed && press, value === o && s.segOn]}>
           <Text style={[s.segText, value === o && s.segTextOn]}>{o}</Text>
         </Pressable>
       ))}
@@ -105,11 +105,11 @@ export default function TournamentConfigTab({
         <Text style={s.summary}>
           {tournament.courts} courts · best of {tournament.bestOf} ({tournament.finalsBestOf} semis onward)
         </Text>
-        <Pressable style={s.share} onPress={onSharePlayer}>
+        <Pressable accessibilityRole="button" style={s.share} onPress={onSharePlayer}>
           <Icon name="share-social-outline" color={C.text} size={18} />
           <Text style={s.shareText}>Share join link</Text>
         </Pressable>
-        <Pressable style={s.share} onPress={onShareSpectator}>
+        <Pressable accessibilityRole="button" style={s.share} onPress={onShareSpectator}>
           <Icon name="share-social-outline" color={C.text} size={18} />
           <Text style={s.shareText}>Share spectator link</Text>
         </Pressable>
@@ -141,15 +141,15 @@ export default function TournamentConfigTab({
         </BusyButton>
       ) : null}
 
-      <Pressable style={s.share} onPress={onSharePlayer}>
+      <Pressable accessibilityRole="button" style={s.share} onPress={onSharePlayer}>
         <Icon name="share-social-outline" color={C.text} size={18} />
         <Text style={s.shareText}>Share join link</Text>
       </Pressable>
-      <Pressable style={s.share} onPress={onShareScorer}>
+      <Pressable accessibilityRole="button" style={s.share} onPress={onShareScorer}>
         <Icon name="share-social-outline" color={C.text} size={18} />
         <Text style={s.shareText}>Share scorer link</Text>
       </Pressable>
-      <Pressable style={s.share} onPress={onShareSpectator}>
+      <Pressable accessibilityRole="button" style={s.share} onPress={onShareSpectator}>
         <Icon name="share-social-outline" color={C.text} size={18} />
         <Text style={s.shareText}>Share spectator link</Text>
       </Pressable>

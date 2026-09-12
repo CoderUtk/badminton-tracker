@@ -339,7 +339,7 @@ export default function TournamentBracket() {
             <Icon name="trophy" color={C.accent} size={16} />
             <Text style={{ color: C.accent, fontFamily: F.semibold }}>Champion: {champName}</Text>
           </View>
-          <PressableScale
+          <PressableScale accessibilityRole="button"
             style={s.shareButton}
             onPress={() => void (async () => {
               // Must complete before captureRef fires, or the offscreen
@@ -405,7 +405,7 @@ export default function TournamentBracket() {
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
           <View style={s.tabRow}>
             {(["config", "players", "scorers"] as Tab[]).map((t) => (
-              <Pressable key={t} onPress={() => setTab(t)} style={({ pressed }) => [s.tabBtn, pressed && press, tab === t && s.tabOn]}>
+              <Pressable accessibilityRole="button" key={t} onPress={() => setTab(t)} style={({ pressed }) => [s.tabBtn, pressed && press, tab === t && s.tabOn]}>
                 <Text style={[s.tabText, tab === t && s.tabTextOn]}>{t[0].toUpperCase() + t.slice(1)}</Text>
               </Pressable>
             ))}

@@ -185,7 +185,7 @@ export default function SessionDetail() {
         <>
           <View style={s.hero}>
             {isCreator && (
-              <Pressable style={s.deleteIconBtn} accessibilityLabel="Delete session" hitSlop={10} onPress={() => setConfirmingDelete(true)}>
+              <Pressable accessibilityRole="button" style={s.deleteIconBtn} accessibilityLabel="Delete session" hitSlop={10} onPress={() => setConfirmingDelete(true)}>
                 <Icon name="trash-outline" color={C.red} size={17} />
               </Pressable>
             )}
@@ -195,11 +195,11 @@ export default function SessionDetail() {
             {!done && (
               <View style={s.actions}>
                 {session.status === "scheduled" && (
-                  <Pressable style={[s.action, s.actionPrimary]} onPress={() => updateSessionStatus(session.id, "live").then(reload)}>
+                  <Pressable accessibilityRole="button" style={[s.action, s.actionPrimary]} onPress={() => updateSessionStatus(session.id, "live").then(reload)}>
                     <Icon name="play" color={C.text} size={17} /><Text style={s.actionText}>Start</Text>
                   </Pressable>
                 )}
-                <Pressable style={[s.action, s.actionFinish]} onPress={finishSession}>
+                <Pressable accessibilityRole="button" style={[s.action, s.actionFinish]} onPress={finishSession}>
                   <Icon name="flag" color={C.red} size={17} /><Text style={[s.actionText, { color: C.red }]}>Finish</Text>
                 </Pressable>
               </View>
@@ -232,7 +232,7 @@ export default function SessionDetail() {
                 </View>
               )}
               {done && (
-                <Pressable style={s.shareBtn} onPress={() => void shareSummary()}>
+                <Pressable accessibilityRole="button" style={s.shareBtn} onPress={() => void shareSummary()}>
                   <Icon name="trophy-outline" color={C.text} size={17} />
                   <Text style={s.shareText}>Share to story</Text>
                 </Pressable>
@@ -294,7 +294,7 @@ export default function SessionDetail() {
                       </View>
                     ))}
                   </View>
-                  <Pressable
+                  <Pressable accessibilityRole="button"
                     style={[s.addCourtBtn, manualPicks.length !== 4 && s.modeDisabled]}
                     disabled={manualPicks.length !== 4}
                     onPress={addManualCourt}
@@ -304,7 +304,7 @@ export default function SessionDetail() {
                   {manualCourts.length > 0 && (
                     <View style={{ gap: 6 }}>
                       {manualCourts.map((c, i) => (
-                        <Pressable key={i} style={s.manualCourtRow} onPress={() => removeManualCourt(i)}>
+                        <Pressable accessibilityRole="button" key={i} style={s.manualCourtRow} onPress={() => removeManualCourt(i)}>
                           <Text style={s.manualCourtText} numberOfLines={1}>
                             Court {i + 1}: {c.teamA.map((p) => p.name).join(" & ")} vs {c.teamB.map((p) => p.name).join(" & ")}
                           </Text>
@@ -319,7 +319,7 @@ export default function SessionDetail() {
                       const used = manualUsedIds.has(p.id);
                       const picked = manualPicks.some((x) => x.id === p.id);
                       return (
-                        <Pressable
+                        <Pressable accessibilityRole="button"
                           key={p.id}
                           disabled={used}
                           style={[s.playerChip, picked && s.playerChipOn, used && s.modeDisabled]}
@@ -344,7 +344,7 @@ export default function SessionDetail() {
                       onChange={setGenMode}
                     />
                   </View>
-                  <Pressable style={s.genBtn} onPress={buildRound}>
+                  <Pressable accessibilityRole="button" style={s.genBtn} onPress={buildRound}>
                     <Icon name="shuffle-variant" color={C.text} size={16} />
                     <Text style={s.genText}>{manualCourts.length > 0 ? "Generate rest" : "Generate"}</Text>
                   </Pressable>
@@ -359,7 +359,7 @@ export default function SessionDetail() {
                       <Text style={s.teams}>{match.teamA.map((p) => p.name).join(" & ")}</Text>
                       <Text style={s.vs}>vs</Text>
                       <Text style={s.teams}>{match.teamB.map((p) => p.name).join(" & ")}</Text>
-                      <Pressable style={s.scoreButton} onPress={() => launch(match)}>
+                      <Pressable accessibilityRole="button" style={s.scoreButton} onPress={() => launch(match)}>
                         <Icon name="play" color={C.text} size={15} />
                         <Text style={s.scoreText}>Score this game</Text>
                       </Pressable>
@@ -371,7 +371,7 @@ export default function SessionDetail() {
                 <Text style={s.muted}>No games yet. Check players in, then tap Generate.</Text>
               )}
               {matches.map((m) => (
-                <Pressable key={m.id} style={s.matchRow} onPress={() => openMatch(m)}>
+                <Pressable accessibilityRole="button" key={m.id} style={s.matchRow} onPress={() => openMatch(m)}>
                   <View style={{ flex: 1 }}>
                     <Text style={s.matchTeams} numberOfLines={1}>
                       {m.side_a.map((p) => p.name).join(" / ")} vs {m.side_b.map((p) => p.name).join(" / ")}

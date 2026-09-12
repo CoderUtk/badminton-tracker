@@ -98,7 +98,7 @@ function Half({
       )}
 
       {edit?.showTeamSwap && (
-        <Pressable
+        <Pressable accessibilityRole="button"
           style={s.teamSwap}
           onPress={() => edit.onSwapTeam(team)}
           hitSlop={8}
@@ -127,7 +127,7 @@ export default function Court({ state, edit }: { state: MatchState; edit?: Court
           widening the net column instead would push the halves apart so the
           serve highlight no longer reaches the net. */}
       {edit && (
-        <Pressable
+        <Pressable accessibilityRole="button"
           style={s.sideSwap}
           onPress={edit.onSwapSides}
           accessibilityLabel="Swap sides"

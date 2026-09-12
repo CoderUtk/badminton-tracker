@@ -79,7 +79,7 @@ export default function BadgeSharePopup({
       {containerSize && (
         <View style={s.center} pointerEvents="box-none">
           <View style={s.panel}>
-            <Pressable style={s.closeBtn} onPress={onClose} accessibilityLabel="Close" hitSlop={8}>
+            <Pressable accessibilityRole="button" style={s.closeBtn} onPress={onClose} accessibilityLabel="Close" hitSlop={8}>
               <Icon name="close" color={C.text2} size={18} />
             </Pressable>
             <Text style={s.title} numberOfLines={1}>{badge.title}</Text>
@@ -88,7 +88,7 @@ export default function BadgeSharePopup({
                 <BadgeResultCard badge={badge} playerName={playerName} avatarUrl={avatarUrl} />
               </View>
             </View>
-            <Pressable style={s.shareBtn} onPress={() => void onShare()}>
+            <Pressable accessibilityRole="button" style={s.shareBtn} onPress={() => void onShare()}>
               <Icon name="share-social-outline" color={C.text} size={18} />
               <Text style={s.shareText}>Share to story</Text>
             </Pressable>

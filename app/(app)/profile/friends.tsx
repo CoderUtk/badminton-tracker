@@ -145,7 +145,7 @@ export default function Friends() {
                 onChangeText={setUsername}
                 onSubmitEditing={onAdd}
               />
-              <PressableScale style={[s.addBtn, sending && s.off]} disabled={sending} onPress={onAdd}>
+              <PressableScale accessibilityRole="button" style={[s.addBtn, sending && s.off]} disabled={sending} onPress={onAdd}>
                 <Icon name="person-add" color={C.text} size={16} />
                 <Text style={s.addBtnText}>Add</Text>
               </PressableScale>
@@ -154,7 +154,7 @@ export default function Friends() {
             {!searching && results.length > 0 && (
               <View style={s.resultsBox}>
                 {results.map((r) => (
-                  <Pressable
+                  <Pressable accessibilityRole="button"
                     key={r.id}
                     style={s.resultRow}
                     onPress={() => { pickedUsername.current = r.username; setUsername(r.username); setResults([]); }}
@@ -172,14 +172,14 @@ export default function Friends() {
                 {incoming.map((r) => (
                   <View key={r.profileId} style={s.row}>
                     <Text style={s.name} numberOfLines={1}>{r.displayName}</Text>
-                    <PressableScale
+                    <PressableScale accessibilityRole="button"
                       style={[s.chip, busyId === r.profileId && s.off]}
                       disabled={busyId === r.profileId}
                       onPress={() => onAccept(r.profileId)}
                     >
                       <Text style={s.chipText}>Accept</Text>
                     </PressableScale>
-                    <PressableScale
+                    <PressableScale accessibilityRole="button"
                       style={[s.chip, s.chipMuted, busyId === r.profileId && s.off]}
                       disabled={busyId === r.profileId}
                       onPress={() => onDecline(r.profileId)}
@@ -197,7 +197,7 @@ export default function Friends() {
                 {outgoing.map((r) => (
                   <View key={r.profileId} style={s.row}>
                     <Text style={s.name} numberOfLines={1}>{r.displayName}</Text>
-                    <PressableScale
+                    <PressableScale accessibilityRole="button"
                       style={[s.chip, s.chipMuted, busyId === r.profileId && s.off]}
                       disabled={busyId === r.profileId}
                       onPress={() => onCancel(r.profileId)}
@@ -216,7 +216,7 @@ export default function Friends() {
         renderItem={({ item }) => (
           <View style={s.row}>
             <Text style={s.name} numberOfLines={1}>{item.displayName}</Text>
-            <PressableScale
+            <PressableScale accessibilityRole="button"
               style={[s.remove, busyId === item.id && s.off]}
               disabled={busyId === item.id}
               onPress={() => setPendingRemove(item)}

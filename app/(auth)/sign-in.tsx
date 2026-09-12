@@ -15,6 +15,9 @@ import { C, F, GRAD, glow } from "../../src/theme";
 
 WebBrowser.maybeCompleteAuthSession();
 
+/** Served from public/privacy.html by the same Vercel deployment as the PWA. */
+const PRIVACY_URL = "https://courtside-links.vercel.app/privacy";
+
 export default function SignIn() {
   const { completingAuth, handleAuthCallback, beginAuthAttempt, cancelAuthAttempt } = useSession();
   const [email, setEmail] = useState("");
@@ -129,7 +132,9 @@ export default function SignIn() {
   }
 
   const emailValid = /\S+@\S+\.\S+/.test(email.trim());
-  const canSubmit = emailValid && password.length > 0 && !busy;
+  // Sign-up promised "At least 6 characters" in the placeholder but accepted
+  // one, so the rule was only enforced by a server round trip and a toast.
+  const canSubmit = emailValid && password.length >= (isSignUp ? 6 : 1) && !busy;
 
   // Replaces the idle form for the gap between the OAuth browser closing and
   // Gate navigating home — that gap is a real network round trip, and an
@@ -216,17 +221,32 @@ export default function SignIn() {
             <View style={s.rule} />
           </View>
 
-          <PressableScale style={s.google} onPress={googleSignIn}>
+          <PressableScale accessibilityRole="button" style={s.google} onPress={googleSignIn}>
             <GoogleMark size={18} />
             <Text style={s.googleText}>Continue with Google</Text>
           </PressableScale>
 
-          <Pressable onPress={continueAsGuest} disabled={busy} hitSlop={8} style={{ marginTop: 4 }}>
+          <Pressable accessibilityRole="button" onPress={continueAsGuest} disabled={busy} hitSlop={8} style={{ marginTop: 4 }}>
             <Text style={s.link}>Continue as guest</Text>
           </Pressable>
         </View>
 
-        <Text style={s.legal}>By continuing you agree to keep it friendly on court.</Text>
+        {/* Was a placeholder joke sitting exactly where the policy link belongs.
+            Play and the PWA both require a reachable privacy policy at the point
+            of account creation, and public/privacy.html was already deployed and
+            simply unlinked from the app. No terms page exists yet, so this
+            promises only what there is. */}
+        <Text style={s.legal}>
+          By continuing you agree to our{" "}
+          <Text
+            style={s.legalLink}
+            accessibilityRole="link"
+            onPress={() => void WebBrowser.openBrowserAsync(PRIVACY_URL)}
+          >
+            Privacy Policy
+          </Text>
+          .
+        </Text>
     </FormScreen>
   );
 }
@@ -276,4 +296,5 @@ const s = StyleSheet.create({
   errTitle: { color: C.red, fontFamily: F.display, fontSize: 20, marginTop: 4 },
   sub: { color: C.text2, fontFamily: F.body, fontSize: 15, textAlign: "center", lineHeight: 22 },
   legal: { color: C.text3, fontFamily: F.body, fontSize: 12, textAlign: "center" },
+  legalLink: { color: C.accent, textDecorationLine: "underline" },
 });

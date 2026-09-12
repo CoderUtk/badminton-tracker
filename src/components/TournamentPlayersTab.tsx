@@ -119,7 +119,7 @@ export default function TournamentPlayersTab({
             {isAdmin && isDraft && matchType === "doubles" ? (
               <View style={s.partnerRow}>
                 {options.filter((p) => p.id !== e.clubPlayerId).map((p) => (
-                  <Pressable
+                  <Pressable accessibilityRole="button"
                     key={p.id}
                     disabled={busy}
                     onPress={() => onPickPartner(e.id, p.id === e.partnerClubPlayerId ? null : p.id)}
@@ -133,7 +133,7 @@ export default function TournamentPlayersTab({
               <Text style={s.partner}>{partnerName}</Text>
             ) : null}
             {isAdmin && isDraft ? (
-              <PressableScale disabled={busy} onPress={() => onRemove(e.id)} style={s.remove}>
+              <PressableScale accessibilityRole="button" disabled={busy} onPress={() => onRemove(e.id)} style={s.remove}>
                 <Icon name="trash-outline" color={C.text2} size={16} />
               </PressableScale>
             ) : null}
@@ -152,7 +152,7 @@ export default function TournamentPlayersTab({
             onSubmitEditing={() => { if (!guestError && !busy) void onAddGuest(); }}
             returnKeyType="done"
           />
-          <Pressable style={({ pressed }) => [s.addBtn, pressed && press, (!!guestError || busy) && s.off]} disabled={!!guestError || busy} onPress={onAddGuest}>
+          <Pressable accessibilityRole="button" style={({ pressed }) => [s.addBtn, pressed && press, (!!guestError || busy) && s.off]} disabled={!!guestError || busy} onPress={onAddGuest}>
             <Icon name="add" color={C.text} size={20} />
           </Pressable>
         </View>
@@ -164,10 +164,10 @@ export default function TournamentPlayersTab({
           {playerRequests.map((r) => (
             <View key={r.id} style={s.row}>
               <Text style={s.name} numberOfLines={1}>{r.displayName}</Text>
-              <PressableScale disabled={busy} onPress={() => decide(r, false)} style={[s.reqBtn, s.deny]}>
+              <PressableScale accessibilityRole="button" disabled={busy} onPress={() => decide(r, false)} style={[s.reqBtn, s.deny]}>
                 <Icon name="close" color={C.text2} size={16} />
               </PressableScale>
-              <PressableScale disabled={busy} onPress={() => decide(r, true)} style={[s.reqBtn, s.approve]}>
+              <PressableScale accessibilityRole="button" disabled={busy} onPress={() => decide(r, true)} style={[s.reqBtn, s.approve]}>
                 <Icon name="account-plus" color={C.text} size={16} />
               </PressableScale>
             </View>

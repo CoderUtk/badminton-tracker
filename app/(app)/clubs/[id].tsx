@@ -98,7 +98,7 @@ export default function ClubDetail() {
         <>
           <View style={s.hero}>
             {isOwner ? (
-              <Pressable
+              <Pressable accessibilityRole="button"
                 style={s.shareBtn}
                 accessibilityLabel="Share join link"
                 hitSlop={10}
@@ -107,7 +107,7 @@ export default function ClubDetail() {
                 <ShareIcon size={16} color={C.text} />
               </Pressable>
             ) : (
-              <Pressable
+              <Pressable accessibilityRole="button"
                 style={[s.shareBtn, s.leaveBtn]}
                 accessibilityLabel="Leave club"
                 hitSlop={10}
@@ -128,14 +128,14 @@ export default function ClubDetail() {
                   against a real roster (audit H5). */}
               <View style={s.statBox}><Text style={s.statNum}>{roster.length}</Text><Text style={s.statLbl}>players</Text></View>
             </View>
-            <Pressable style={s.cta} onPress={() => router.push({ pathname: "/new-match", params: { clubId: club.id } })}>
+            <Pressable accessibilityRole="button" style={s.cta} onPress={() => router.push({ pathname: "/new-match", params: { clubId: club.id } })}>
               <Text style={s.ctaText}>▶  Start a match</Text>
             </Pressable>
-            <Pressable style={s.secondary} onPress={() => router.push(`/(app)/clubs/${club.id}/live`)}>
+            <Pressable accessibilityRole="button" style={s.secondary} onPress={() => router.push(`/(app)/clubs/${club.id}/live`)}>
               <Text style={s.secondaryText}>Live now</Text>
             </Pressable>
             {isAdmin ? (
-              <Pressable
+              <Pressable accessibilityRole="button"
                 style={s.secondary}
                 onPress={() => router.push(`/(app)/clubs/requests/${club.id}`)}
               >
@@ -146,7 +146,7 @@ export default function ClubDetail() {
                 screen anywhere that lists who else is in the club, because the
                 board below is built from local match history they don't have.
                 The roster screen keeps add/remove admin-only on its own. */}
-            <Pressable
+            <Pressable accessibilityRole="button"
               style={s.secondary}
               onPress={() => router.push(`/(app)/clubs/players/${club.id}`)}
             >

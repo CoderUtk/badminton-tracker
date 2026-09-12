@@ -84,7 +84,7 @@ export default function SessionOpenJoin({
           <Icon name={session.open_join ? "share-social-outline" : "lock-closed-outline"} color={C.accent} size={18} />
           <Text style={s.headText}>LINK</Text>
           {canManage && session.open_join && (
-            <Pressable
+            <Pressable accessibilityRole="button"
               style={s.edit}
               hitSlop={10}
               onPress={openEditor}
@@ -99,7 +99,7 @@ export default function SessionOpenJoin({
           <>
             <Text style={s.state}>OPEN</Text>
             <Text style={s.meta}>{session.max_players ? `Limit ${session.max_players}` : "No limit"}</Text>
-            <Pressable
+            <Pressable accessibilityRole="button"
               style={s.shareBtn}
               onPress={onShare}
               accessibilityLabel={`Share the join link for ${venueLabel}`}
@@ -136,7 +136,7 @@ export default function SessionOpenJoin({
               <Chip label="No limit" isSelected={noLimit} onPress={() => setNoLimit(!noLimit)} />
             </View>
 
-            <Pressable
+            <Pressable accessibilityRole="button"
               style={[s.save, saving && s.saveOff]}
               disabled={saving}
               onPress={() => void saveCap()}

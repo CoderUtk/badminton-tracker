@@ -38,7 +38,7 @@ export default function AppDialog({
           when `visible` flips false, so an `exiting` animation has no window
           left to run in — it would read as intent without doing anything. */}
       <Animated.View entering={FadeIn.duration(180)} style={s.backdrop}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onCancel} accessibilityLabel="Dismiss" />
+        <Pressable accessibilityRole="button" style={StyleSheet.absoluteFill} onPress={onCancel} accessibilityLabel="Dismiss" />
         <Animated.View
           entering={ZoomIn.springify().damping(18).mass(0.7)}
           style={s.card}

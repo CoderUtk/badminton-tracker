@@ -55,7 +55,7 @@ export default function JoinTournament({ role = "player" }: { role?: "player" | 
         <Logo size={44} />
         <Text style={s.title}>Tournament not found</Text>
         <Text style={s.sub}>This link may be out of date. Ask for a fresh one.</Text>
-        <PressableScale style={s.ghost} onPress={() => router.replace("/")}>
+        <PressableScale accessibilityRole="button" style={s.ghost} onPress={() => router.replace("/")}>
           <Text style={s.ghostText}>Back to CourtSide</Text>
         </PressableScale>
       </View>
@@ -96,7 +96,7 @@ export default function JoinTournament({ role = "player" }: { role?: "player" | 
                 ? "Ask a tournament admin to let you score matches. They approve every request."
                 : "Ask a tournament admin to let you in. They approve every request."}
             </Text>
-            <PressableScale style={[s.ctaWrap, busy && s.off]} disabled={busy} onPress={onRequest}>
+            <PressableScale accessibilityRole="button" style={[s.ctaWrap, busy && s.off]} disabled={busy} onPress={onRequest}>
               <LinearGradient colors={GRAD.redCTA} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.cta}>
                 <Text style={s.ctaText}>{busy ? "SENDING…" : role === "scorer" ? "REQUEST TO SCORE" : "REQUEST TO JOIN"}</Text>
               </LinearGradient>
@@ -104,7 +104,7 @@ export default function JoinTournament({ role = "player" }: { role?: "player" | 
           </>
         )}
         {decided ? (
-          <PressableScale style={s.ghost} onPress={() => router.replace("/")}>
+          <PressableScale accessibilityRole="button" style={s.ghost} onPress={() => router.replace("/")}>
             <Text style={s.ghostText}>Back to CourtSide</Text>
           </PressableScale>
         ) : null}

@@ -72,7 +72,7 @@ function CrashFallback({ resetError }: { resetError: () => void }) {
       <Text style={{ color: C.text2, fontFamily: F.body, fontSize: 14, textAlign: "center" }}>
         The app hit an unexpected error. Tap below to try again.
       </Text>
-      <Pressable
+      <Pressable accessibilityRole="button"
         onPress={resetError}
         style={{ backgroundColor: C.red, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 14 }}
       >

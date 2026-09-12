@@ -91,7 +91,7 @@ export default function MatchDetail() {
       )}
 
       {canShare && (
-        <PressableScale style={s.shareBtn} onPress={onShare}>
+        <PressableScale accessibilityRole="button" style={s.shareBtn} onPress={onShare}>
           <Icon name="trophy" color={C.text} size={18} />
           <Text style={s.shareText}>Share to story</Text>
         </PressableScale>

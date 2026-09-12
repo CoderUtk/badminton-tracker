@@ -71,14 +71,14 @@ export default function ClubRequests() {
         <View style={s.row}>
           <View style={s.avatar}><Text style={s.avatarText}>{item.displayName.slice(0, 1).toUpperCase()}</Text></View>
           <Text style={s.name} numberOfLines={1}>{item.displayName}</Text>
-          <PressableScale
+          <PressableScale accessibilityRole="button"
             style={[s.btn, s.deny, confirmingId === item.id && s.denyConfirm, busyId === item.id && s.off]}
             disabled={busyId === item.id}
             onPress={() => onDenyTap(item)}
           >
             <Icon name="close" color={confirmingId === item.id ? C.text : C.text2} size={18} />
           </PressableScale>
-          <PressableScale
+          <PressableScale accessibilityRole="button"
             style={[s.btn, s.approve, busyId === item.id && s.off]}
             disabled={busyId === item.id}
             onPress={() => onApprove(item)}

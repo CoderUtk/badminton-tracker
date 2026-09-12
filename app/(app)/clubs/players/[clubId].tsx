@@ -89,7 +89,7 @@ export default function ClubPlayers() {
         keyExtractor={(p) => p.id}
         ListHeaderComponent={
           isAdmin ? (
-            <PressableScale style={s.addFriendBtn} onPress={openPicker}>
+            <PressableScale accessibilityRole="button" style={s.addFriendBtn} onPress={openPicker}>
               <Icon name="person-add" color={C.text} size={18} />
               <Text style={s.addFriendText}>Add friend</Text>
             </PressableScale>
@@ -113,7 +113,7 @@ export default function ClubPlayers() {
                 {meta?.role ? <Text style={s.roleBadge}>{meta.role}</Text> : null}
               </View>
               {isAdmin && !isRowOwner ? (
-                <PressableScale
+                <PressableScale accessibilityRole="button"
                   style={[s.remove, busyId === item.id && s.off]}
                   disabled={busyId === item.id}
                   onPress={() => setPending(item)}

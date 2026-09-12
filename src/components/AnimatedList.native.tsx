@@ -67,7 +67,7 @@ const AnimatedItem = ({
         },
       ]}
     >
-      <Pressable
+      <Pressable accessibilityRole="button"
         onPress={onPress}
         style={({ pressed }) => [styles.pressable, pressed && styles.pressed]}
       >

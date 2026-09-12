@@ -22,7 +22,7 @@ import { getSetting, setSetting, REMINDERS_KEY } from "../../../src/repos/settin
 import { scheduleInactivityReminder, syncSessionReminders, cancelReminders } from "../../../src/lib/reminders";
 import { registerPushToken, unregisterPushToken } from "../../../src/lib/push";
 import { notificationsBlocked } from "../../../src/lib/notificationPermission";
-import { C, F, glow } from "../../../src/theme";
+import { C, F, glow, screenMax } from "../../../src/theme";
 import { useScreenInsets } from "../../../src/hooks/useScreenInsets";
 
 export default function Profile() {
@@ -284,7 +284,7 @@ export default function Profile() {
       {/* Tap the name to edit it. The name is set once at signup and rarely
           changes, so a standing text field here just pushed the stats down. */}
       <View style={s.hero}>
-        <Pressable
+        <Pressable accessibilityRole="button"
           style={s.avatar}
           disabled={avatarBusy}
           onPress={() => setAvatarSheetOpen(true)}
@@ -296,7 +296,7 @@ export default function Profile() {
             <Text style={s.avatarText}>{initial}</Text>
           )}
         </Pressable>
-        <Pressable
+        <Pressable accessibilityRole="button"
           onPress={() => { setDisplayName(savedName); setEditingName(true); }}
           style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8 }}
           accessibilityLabel="Edit display name"
@@ -327,10 +327,10 @@ export default function Profile() {
             />
             {nameError ? <Text style={s.err}>{nameError}</Text> : null}
             <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
-              <Pressable style={[s.modalBtn, s.modalCancel]} onPress={cancelNameEdit}>
+              <Pressable accessibilityRole="button" style={[s.modalBtn, s.modalCancel]} onPress={cancelNameEdit}>
                 <Text style={s.modalCancelText}>Cancel</Text>
               </Pressable>
-              <Pressable style={[s.modalBtn, s.modalSave, !!nameError && { opacity: 0.5 }]} disabled={!!nameError} onPress={saveDisplayName}>
+              <Pressable accessibilityRole="button" style={[s.modalBtn, s.modalSave, !!nameError && { opacity: 0.5 }]} disabled={!!nameError} onPress={saveDisplayName}>
                 <Text style={s.modalSaveText}>Save</Text>
               </Pressable>
             </View>
@@ -341,7 +341,7 @@ export default function Profile() {
       {/* Username: the account's global handle. Public by design — the helper
           text in the editor is the whole expectation-setting mechanism, since
           nothing can search for it yet. */}
-      <Pressable style={s.detailsCard} onPress={openUsernameEdit} accessibilityLabel="Edit username">
+      <Pressable accessibilityRole="button" style={s.detailsCard} onPress={openUsernameEdit} accessibilityLabel="Edit username">
         <Icon name="person-outline" color={C.text2} size={16} />
         <Text style={s.detailsText}>{username ? `@${username}` : "Username unavailable — check your connection"}</Text>
         <Icon name="create-outline" color={C.text2} size={15} />
@@ -367,10 +367,10 @@ export default function Profile() {
             <Text style={s.usernameHint}>Your username is public. Other players can find you by it.</Text>
             {usernameError ? <Text style={s.err}>{usernameError}</Text> : null}
             <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
-              <Pressable style={[s.modalBtn, s.modalCancel]} onPress={cancelUsernameEdit}>
+              <Pressable accessibilityRole="button" style={[s.modalBtn, s.modalCancel]} onPress={cancelUsernameEdit}>
                 <Text style={s.modalCancelText}>Cancel</Text>
               </Pressable>
-              <Pressable
+              <Pressable accessibilityRole="button"
                 style={[s.modalBtn, s.modalSave, (!!usernameError || usernameBusy) && { opacity: 0.5 }]}
                 disabled={!!usernameError || usernameBusy}
                 onPress={saveUsername}
@@ -383,7 +383,7 @@ export default function Profile() {
       </Modal>
 
       {/* Player details: age and playing hand, editable after onboarding */}
-      <Pressable style={s.detailsCard} onPress={openDetailsEdit} accessibilityLabel="Edit player details">
+      <Pressable accessibilityRole="button" style={s.detailsCard} onPress={openDetailsEdit} accessibilityLabel="Edit player details">
         <Icon name="hand-left-outline" color={C.text2} size={16} />
         <Text style={s.detailsText}>
           {savedAge != null ? `${savedAge} yrs` : "Age not set"} · {savedHand === "left" ? "Left-handed" : "Right-handed"}
@@ -416,10 +416,10 @@ export default function Profile() {
               role="radio"
             />
             <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
-              <Pressable style={[s.modalBtn, s.modalCancel]} onPress={cancelDetailsEdit}>
+              <Pressable accessibilityRole="button" style={[s.modalBtn, s.modalCancel]} onPress={cancelDetailsEdit}>
                 <Text style={s.modalCancelText}>Cancel</Text>
               </Pressable>
-              <Pressable style={[s.modalBtn, s.modalSave]} onPress={saveDetails}>
+              <Pressable accessibilityRole="button" style={[s.modalBtn, s.modalSave]} onPress={saveDetails}>
                 <Text style={s.modalSaveText}>Save</Text>
               </Pressable>
             </View>
@@ -427,7 +427,7 @@ export default function Profile() {
         </Pressable>
       </Modal>
 
-      <Pressable style={s.card} onPress={() => router.push("/profile/friends")}>
+      <Pressable accessibilityRole="button" style={s.card} onPress={() => router.push("/profile/friends")}>
         <View style={s.reminderRow}>
           <Icon name="people-outline" color={C.red} size={22} />
           <View style={{ flex: 1 }}>
@@ -438,7 +438,7 @@ export default function Profile() {
         </View>
       </Pressable>
 
-      <Pressable style={s.card} onPress={() => router.push("/tour")}>
+      <Pressable accessibilityRole="button" style={s.card} onPress={() => router.push("/tour")}>
         <View style={s.reminderRow}>
           <Icon name="information-circle-outline" color={C.red} size={22} />
           <View style={{ flex: 1 }}>
@@ -472,7 +472,7 @@ export default function Profile() {
         <View style={s.emptyCard}>
           <Icon name="scoreboard-outline" color={C.text2} size={30} />
           <Text style={s.emptyText}>No completed matches for {me} yet.</Text>
-          <Pressable style={s.startBtn} onPress={() => router.push("/new-match")}>
+          <Pressable accessibilityRole="button" style={s.startBtn} onPress={() => router.push("/new-match")}>
             <Icon name="play" color={C.text} size={16} />
             <Text style={s.startText}>Start a match</Text>
           </Pressable>
@@ -511,7 +511,7 @@ export default function Profile() {
               <View style={s.card}>
                 <Text style={s.cardTitle}>Recent matches</Text>
                 {a.recent.map((m) => (
-                  <Pressable key={m.id} style={s.matchRow} onPress={() => router.push(`/matches/${m.id}`)}>
+                  <Pressable accessibilityRole="button" key={m.id} style={s.matchRow} onPress={() => router.push(`/matches/${m.id}`)}>
                     <View style={[s.resultBadge, m.result === "W" ? s.pillW : m.result === "L" ? s.pillL : s.pillN]}>
                       <Text style={[s.resultText, m.result === "—" && { color: C.text2 }]}>{m.result}</Text>
                     </View>
@@ -600,7 +600,7 @@ export default function Profile() {
       </Modal>
 
       {session && (
-        <Pressable
+        <Pressable accessibilityRole="button"
           style={s.signOut}
           onPress={() => {
             // Local reminders are cancelled too: their identifiers are
@@ -620,7 +620,7 @@ export default function Profile() {
       {/* Play policy requires an in-app path to delete the account and its
           data. Kept plain and last so it can't be mistaken for sign out. */}
       {session && (
-        <Pressable
+        <Pressable accessibilityRole="button"
           style={[s.deleteAccount, deleteBusy && s.off]}
           disabled={deleteBusy}
           onPress={() => setConfirmingDelete(true)}
@@ -693,7 +693,7 @@ function Row({ icon, label, value, last }: { icon: React.ComponentProps<typeof I
 
 const s = StyleSheet.create({
   root: { flex: 1 },
-  content: { padding: 16, gap: 12 },
+  content: { padding: 16, gap: 12, ...screenMax },
   hero: { flexDirection: "row", alignItems: "center", gap: 14, backgroundColor: C.card, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: C.line },
   avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: C.red, alignItems: "center", justifyContent: "center", ...glow(C.red, 12, 0.4) },
   avatarText: { color: C.text, fontSize: 24, fontFamily: F.display },

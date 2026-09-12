@@ -199,7 +199,7 @@ export default function MatchScreen({
         </View>
       )}
       {banner ? (
-        <Pressable
+        <Pressable accessibilityRole="button"
           style={s.banner}
           disabled={paused}
           onPress={() => {
@@ -245,7 +245,7 @@ export default function MatchScreen({
   );
 
   const railA = (
-    <PressableScale
+    <PressableScale accessibilityRole="button"
       style={[portrait ? s.railWide : s.rail, { borderColor: C.red }, playing && glow(C.red, 16, 0.4), !playing && s.railDisabled]}
       disabled={!playing}
       scaleTo={0.97}
@@ -257,7 +257,7 @@ export default function MatchScreen({
     </PressableScale>
   );
   const railB = (
-    <PressableScale
+    <PressableScale accessibilityRole="button"
       style={[portrait ? s.railWide : s.rail, { borderColor: C.blue }, playing && glow(C.blue, 16, 0.4), !playing && s.railDisabled]}
       disabled={!playing}
       scaleTo={0.97}
@@ -271,14 +271,14 @@ export default function MatchScreen({
 
   const leftGroup = (
     <View style={s.group}>
-      <PressableScale style={[s.iconBtn, (paused || events.length < 2) && s.iconDisabled]} disabled={paused || events.length < 2} onPress={undo} accessibilityLabel="Undo last rally">
+      <PressableScale accessibilityRole="button" style={[s.iconBtn, (paused || events.length < 2) && s.iconDisabled]} disabled={paused || events.length < 2} onPress={undo} accessibilityLabel="Undo last rally">
         <Icon name="arrow-undo" color={C.text} size={18} />
       </PressableScale>
-      <PressableScale style={[s.iconBtn, (paused || redoStack.length === 0) && s.iconDisabled]} disabled={paused || redoStack.length === 0} onPress={redo} accessibilityLabel="Redo rally">
+      <PressableScale accessibilityRole="button" style={[s.iconBtn, (paused || redoStack.length === 0) && s.iconDisabled]} disabled={paused || redoStack.length === 0} onPress={redo} accessibilityLabel="Redo rally">
         <Icon name="arrow-redo" color={C.text} size={18} />
       </PressableScale>
       <View>
-        <PressableScale
+        <PressableScale accessibilityRole="button"
           style={[s.iconBtn, paused && s.iconDisabled]}
           disabled={paused}
           onPress={() => setOrientationSheetOpen((v) => !v)}
@@ -289,7 +289,7 @@ export default function MatchScreen({
         {orientationSheetOpen && (
           <View style={s.orientDropdown}>
             {ORIENTATION_OPTIONS.map((opt) => (
-              <Pressable
+              <Pressable accessibilityRole="button"
                 key={opt.mode}
                 style={[s.orientOption, orientationMode === opt.mode && s.orientOptionOn]}
                 onPress={() => setOrientation(opt.mode)}
@@ -325,7 +325,7 @@ export default function MatchScreen({
       >
         <Icon name="chevron-back" color={C.text} size={20} />
       </PressableScale>
-      <PressableScale
+      <PressableScale accessibilityRole="button"
         style={[s.endBtn, paused && s.iconDisabled]}
         disabled={paused}
         onPress={confirmEnd}

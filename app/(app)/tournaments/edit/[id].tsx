@@ -67,7 +67,7 @@ export default function EditTournament() {
   const Segmented = ({ value, options, onPick }: { value: number; options: readonly number[]; onPick: (v: number) => void }) => (
     <View style={s.segRow}>
       {options.map((o) => (
-        <Pressable key={o} onPress={() => onPick(o)} style={({ pressed }) => [s.segBtn, pressed && press, value === o && s.segOn]}>
+        <Pressable accessibilityRole="button" key={o} onPress={() => onPick(o)} style={({ pressed }) => [s.segBtn, pressed && press, value === o && s.segOn]}>
           <Text style={[s.segText, value === o && s.segTextOn]}>{o}</Text>
         </Pressable>
       ))}
@@ -99,7 +99,7 @@ export default function EditTournament() {
         match applies to matches started from now on.
       </Text>
 
-      <Pressable
+      <Pressable accessibilityRole="button"
         style={({ pressed }) => [s.save, pressed && press, (!!nameError || busy) && s.off]}
         disabled={!!nameError || busy}
         onPress={onSave}

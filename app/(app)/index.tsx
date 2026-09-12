@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import {
@@ -20,7 +20,7 @@ import NextSessionCard from "../../src/components/NextSessionCard";
 import ClubSheet from "../../src/components/ClubSheet";
 import FirstRunPanel from "../../src/components/FirstRunPanel";
 import { useSession } from "../../src/stores/session";
-import { C, F, GRAD, glow, press } from "../../src/theme";
+import { C, F, GRAD, glow, press, screenMax } from "../../src/theme";
 
 export default function Home() {
   const router = useRouter();
@@ -115,6 +115,24 @@ export default function Home() {
     }, [reload])
   );
 
+  // reload() is fire-and-forget by design, so the spinner cannot simply await
+  // it. Pull the network refresh directly and let reload() repaint from the
+  // cache it just filled.
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refreshClubs();
+      await refreshSessions();
+    } catch {
+      // Same posture as reload(): a failed refresh leaves the cached screen
+      // alone rather than blanking it.
+    } finally {
+      setRefreshing(false);
+      reload();
+    }
+  }, [reload]);
+
   const next = useMemo(() => pickNextSession(sessions, now), [sessions, now]);
   const live = useMemo(() => liveClubIds(sessions), [sessions]);
   const nextSessionTitle = resolveNextSessionTitle(clubs, next);
@@ -124,7 +142,13 @@ export default function Home() {
 
   return (
     <View style={s.root}>
-      <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={s.content}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={C.text2} colors={[C.red]} />
+        }
+      >
         <View style={s.greetRow}>
           <View style={{ flex: 1 }}>
             <Text style={s.greetEyebrow}>{firstRun ? "WELCOME" : "WELCOME BACK"}</Text>
@@ -147,7 +171,19 @@ export default function Home() {
           </LinearGradient>
         </Pressable>
 
-        {status === "pending" ? null : firstRun ? (
+        {/* Was `null`: on a cold start Home showed the CTA floating over empty
+            space with no indication anything was coming. Skeletons in the shape
+            of what loads keep the layout from jumping when it arrives. */}
+        {status === "pending" ? (
+          <View style={s.skeletonWrap} accessibilityLabel="Loading your clubs and sessions">
+            <View style={[s.skeleton, { height: 92 }]} />
+            <View style={s.skeletonRow}>
+              <View style={[s.skeleton, s.skeletonTile]} />
+              <View style={[s.skeleton, s.skeletonTile]} />
+              <View style={[s.skeleton, s.skeletonTile]} />
+            </View>
+          </View>
+        ) : firstRun ? (
           <FirstRunPanel onCreateClub={() => setSheetOpen(true)} />
         ) : (
           <>
@@ -243,7 +279,13 @@ export default function Home() {
 const s = StyleSheet.create({
   // No backgroundColor: the app-wide ground in app/_layout.tsx shows through.
   root: { flex: 1 },
-  content: { padding: 16, gap: 12, paddingBottom: 32 },
+  content: { padding: 16, gap: 12, paddingBottom: 32, ...screenMax },
+  // Loading placeholders. Static rather than shimmering: a pulse here would be
+  // one more unguarded animation, and the shape alone does the job.
+  skeletonWrap: { gap: 12 },
+  skeleton: { backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.line },
+  skeletonRow: { flexDirection: "row", gap: 12 },
+  skeletonTile: { flex: 1, height: 72 },
   greetRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 2 },
   greetEyebrow: { color: C.text3, fontSize: 11, fontFamily: F.medium, letterSpacing: 1.5 },
   greetName: { color: C.text, fontSize: 24, fontFamily: F.display, letterSpacing: 0.5 },

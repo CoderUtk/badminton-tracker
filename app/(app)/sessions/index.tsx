@@ -1,9 +1,9 @@
 import React, { useCallback, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { listSessions, refreshSessions, type ClubSession } from "../../../src/repos/sessionRepo";
 import Icon from "../../../src/components/Icon";
-import { C, F } from "../../../src/theme";
+import { C, F, screenMax } from "../../../src/theme";
 import { useHasRealClubs } from "../../../src/hooks/useHasRealClubs";
 import { syncSessionReminders } from "../../../src/lib/reminders";
 
@@ -26,13 +26,19 @@ function dateLabel(timestamp: number) {
 export default function Sessions() {
   const router = useRouter();
   const [sessions, setSessions] = useState<ClubSession[]>([]);
-  const reload = useCallback(() => {
-    void refreshSessions().then(() => listSessions().then((list) => {
-      setSessions(list);
-      void syncSessionReminders();
-    }));
+  const [refreshing, setRefreshing] = useState(false);
+  const reload = useCallback(async () => {
+    await refreshSessions();
+    const list = await listSessions();
+    setSessions(list);
+    void syncSessionReminders();
   }, []);
-  useFocusEffect(reload);
+  useFocusEffect(useCallback(() => { void reload(); }, [reload]));
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try { await reload(); } finally { setRefreshing(false); }
+  }, [reload]);
   const hasRealClubs = useHasRealClubs();
 
   return (
@@ -40,7 +46,7 @@ export default function Sessions() {
       {/* null while the first check is in flight — render neither branch
           rather than flashing "join a club" at someone who has one. */}
       {hasRealClubs === null ? null : hasRealClubs ? (
-        <Pressable style={s.cta} onPress={() => router.push("/new-session")}>
+        <Pressable accessibilityRole="button" style={s.cta} onPress={() => router.push("/new-session")}>
           <Icon name="add" color={C.text} size={20} />
           <Text style={s.ctaText}>Plan a session</Text>
         </Pressable>
@@ -58,12 +64,15 @@ export default function Sessions() {
       <FlatList
         data={sessions}
         keyExtractor={(item) => item.id}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={C.text2} colors={[C.red]} />
+        }
         contentContainerStyle={sessions.length ? s.list : s.emptyWrap}
         ListEmptyComponent={<Text style={s.empty}>No sessions yet. Plan your next club night.</Text>}
         renderItem={({ item }) => {
           const color = STATUS_COLOR[item.status];
           return (
-            <Pressable style={[s.card, { borderLeftColor: color, borderLeftWidth: 4 }]} onPress={() => router.push(`/(app)/sessions/${item.id}`)}>
+            <Pressable accessibilityRole="button" style={[s.card, { borderLeftColor: color, borderLeftWidth: 4 }]} onPress={() => router.push(`/(app)/sessions/${item.id}`)}>
               <View style={s.dateBlock}>
                 <Text style={s.date}>{dateLabel(item.starts_at)}</Text>
                 <View style={s.badges}>
@@ -89,7 +98,7 @@ export default function Sessions() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, padding: 16, gap: 14 },
+  root: { flex: 1, padding: 16, gap: 14, ...screenMax },
   cta: { flexDirection: "row", gap: 8, minHeight: 56, alignItems: "center", justifyContent: "center", backgroundColor: C.red, borderRadius: 14 },
   ctaText: { color: C.text, fontSize: 18, fontFamily: F.bold },
   explanatory: {

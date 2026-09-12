@@ -43,7 +43,7 @@ export default function GuestSpectate() {
         returnKeyType="go"
       />
 
-      <PressableScale style={[s.cta, !input.trim() && s.off]} disabled={!input.trim()} onPress={go}>
+      <PressableScale accessibilityRole="button" style={[s.cta, !input.trim() && s.off]} disabled={!input.trim()} onPress={go}>
         <Text style={s.ctaText}>Watch</Text>
       </PressableScale>
     </FormScreen>

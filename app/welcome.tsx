@@ -115,7 +115,7 @@ export default function Welcome() {
         <Text style={[s.label, { marginTop: 4 }]}>Playing hand</Text>
         <View style={s.handRow}>
           {(["left", "right"] as Hand[]).map((h) => (
-            <PressableScale 
+            <PressableScale accessibilityRole="button" 
               key={h} 
               style={[s.handChip, hand === h && s.handChipOn]} 
               onPress={() => setHand(h)}
@@ -126,7 +126,7 @@ export default function Welcome() {
           ))}
         </View>
 
-        <PressableScale
+        <PressableScale accessibilityRole="button"
           style={[s.ctaWrap, (!!error || !hand || busy) && s.off]}
           disabled={!!error || !hand || busy}
           onPress={onContinue}

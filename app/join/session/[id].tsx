@@ -59,7 +59,7 @@ export default function JoinSession() {
         <Logo size={44} />
         <Text style={s.title}>This link is no longer active</Text>
         <Text style={s.sub}>Ask the organiser for a fresh one.</Text>
-        <PressableScale
+        <PressableScale accessibilityRole="button"
           style={s.ghost}
           accessibilityLabel="Back to CourtSide"
           onPress={() => router.replace("/")}
@@ -95,7 +95,7 @@ export default function JoinSession() {
         <Text style={s.heads}>{heads}</Text>
 
         {joined ? (
-          <PressableScale
+          <PressableScale accessibilityRole="button"
             style={s.ghost}
             disabled={busy}
             accessibilityLabel="Leave this session"
@@ -105,7 +105,7 @@ export default function JoinSession() {
           </PressableScale>
         ) : (
           <>
-            <PressableScale
+            <PressableScale accessibilityRole="button"
               style={[s.ctaWrap, (!eligibility.ok || busy) && s.off]}
               disabled={!eligibility.ok || busy}
               accessibilityLabel="Join this session"
@@ -120,7 +120,7 @@ export default function JoinSession() {
             {!eligibility.ok && <Text style={s.blocked}>{eligibility.message}</Text>}
           </>
         )}
-        <PressableScale style={s.ghost} accessibilityLabel="Back to CourtSide" onPress={() => router.replace("/")}>
+        <PressableScale accessibilityRole="button" style={s.ghost} accessibilityLabel="Back to CourtSide" onPress={() => router.replace("/")}>
           <Text style={s.ghostText}>Back to CourtSide</Text>
         </PressableScale>
       </View>

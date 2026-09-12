@@ -16,7 +16,7 @@ export default function OpenInAppBanner() {
     return null;
   }
   return (
-    <PressableScale
+    <PressableScale accessibilityRole="button"
       style={s.wrap}
       accessibilityLabel="Open in the CourtSide app"
       onPress={() => { window.location.href = androidIntentUrl(window.location.href); }}

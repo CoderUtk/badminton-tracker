@@ -26,7 +26,7 @@ export default function BusyButton({
   children: React.ReactNode;
 }) {
   return (
-    <PressableScale style={style} disabled={busy || disabled} onPress={onPress}>
+    <PressableScale accessibilityRole="button" style={style} disabled={busy || disabled} onPress={onPress}>
       {busy ? <ActivityIndicator color={indicatorColor} /> : children}
     </PressableScale>
   );

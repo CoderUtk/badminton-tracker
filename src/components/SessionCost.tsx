@@ -88,7 +88,7 @@ export default function SessionCost({
           <Icon name="wallet-outline" color={C.accent} size={18} />
           <Text style={s.headText}>Cost</Text>
           {canManage && (
-            <Pressable
+            <Pressable accessibilityRole="button"
               style={s.edit}
               hitSlop={10}
               onPress={openEditor}
@@ -186,7 +186,7 @@ export default function SessionCost({
               </View>
             )}
 
-            <Pressable
+            <Pressable accessibilityRole="button"
               style={[s.save, saving && s.saveOff]}
               disabled={saving}
               onPress={() => void save()}

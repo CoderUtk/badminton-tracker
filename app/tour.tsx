@@ -77,7 +77,7 @@ export default function Tour() {
   return (
     <View style={s.root}>
       {!isLast && (
-        <Pressable style={[s.skip, { top: top + space.md }]} onPress={() => void finish()} hitSlop={12}>
+        <Pressable accessibilityRole="button" style={[s.skip, { top: top + space.md }]} onPress={() => void finish()} hitSlop={12}>
           <Text style={s.skipText}>Skip</Text>
         </Pressable>
       )}
@@ -103,7 +103,7 @@ export default function Tour() {
       </View>
 
       <View style={{ paddingBottom: ctaPadding, paddingHorizontal: space.lg }}>
-        <PressableScale style={[s.ctaWrap]} onPress={goNext}>
+        <PressableScale accessibilityRole="button" style={[s.ctaWrap]} onPress={goNext}>
           <LinearGradient colors={GRAD.redCTA} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.cta}>
             <Text style={s.ctaText}>{isLast ? "GET STARTED" : "NEXT"}</Text>
           </LinearGradient>

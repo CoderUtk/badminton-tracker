@@ -46,10 +46,10 @@ export default function ClubPicker({
         onRequestClose={() => setOpen(false)}
       >
         <Pressable style={s.backdrop} onPress={() => setOpen(false)}>
-          <Pressable style={[s.sheet, { paddingBottom: 16 + insets.bottom }]} onPress={() => {}}>
+          <Pressable accessibilityRole="button" style={[s.sheet, { paddingBottom: 16 + insets.bottom }]} onPress={() => {}}>
             <Text style={s.title}>Save this match to</Text>
 
-            <Pressable style={[s.row, clubId === null && s.rowOn]} onPress={() => pick(null)}>
+            <Pressable accessibilityRole="button" style={[s.row, clubId === null && s.rowOn]} onPress={() => pick(null)}>
               <Icon name="person-outline" color={C.text} size={18} />
               <View style={s.rowText}>
                 <Text style={s.rowTitle}>Personal</Text>
@@ -59,7 +59,7 @@ export default function ClubPicker({
             </Pressable>
 
             {clubs.map((c) => (
-              <Pressable
+              <Pressable accessibilityRole="button"
                 key={c.id}
                 style={[s.row, clubId === c.id && s.rowOn]}
                 onPress={() => pick(c.id)}

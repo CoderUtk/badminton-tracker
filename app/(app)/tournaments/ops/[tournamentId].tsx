@@ -92,7 +92,7 @@ export default function TournamentOps() {
                   clears it — assignBracketMatchCourt takes null for that. */}
               <View style={s.courts}>
                 {Array.from({ length: courts }, (_, i) => String(i + 1)).map((c) => (
-                  <PressableScale
+                  <PressableScale accessibilityRole="button"
                     key={c}
                     style={[s.courtBtn, item.court === c && s.courtActive]}
                     onPress={() => onAssignCourt(item, item.court === c ? null : c)}
@@ -107,7 +107,7 @@ export default function TournamentOps() {
                   Scorer: {item.scoredBy === session?.user?.id ? "You" : item.scoredBy ? "Claimed" : "Unclaimed"}
                 </Text>
                 {!item.scoredBy && (
-                  <PressableScale style={s.claimBtn} onPress={() => onClaim(item)}>
+                  <PressableScale accessibilityRole="button" style={s.claimBtn} onPress={() => onClaim(item)}>
                     <Text style={s.claimBtnText}>Claim</Text>
                   </PressableScale>
                 )}

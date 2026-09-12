@@ -17,7 +17,7 @@ export default function Stepper({
   const atMax = value >= max;
   return (
     <View style={s.row}>
-      <Pressable
+      <Pressable accessibilityRole="button"
         style={[s.btn, atMin && s.btnDisabled]}
         disabled={atMin}
         onPress={() => onChange(value - 1)}
@@ -25,7 +25,7 @@ export default function Stepper({
         <Text style={s.btnText}>−</Text>
       </Pressable>
       <Text style={s.value}>{value}</Text>
-      <Pressable
+      <Pressable accessibilityRole="button"
         style={[s.btn, atMax && s.btnDisabled]}
         disabled={atMax}
         onPress={() => onChange(value + 1)}

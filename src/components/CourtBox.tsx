@@ -66,7 +66,7 @@ export default function CourtBox({
   const hasNamePressable = !edit?.editing && zone.playerIdx !== null && label !== null;
 
   return (
-    <Pressable
+    <Pressable accessibilityRole="button"
       style={[
         s.box,
         showDivider && s.boxDivider,

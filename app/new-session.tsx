@@ -76,14 +76,14 @@ export default function NewSession() {
       ) : (
         <>
           <Text style={s.label}>Club</Text>
-          <Pressable style={s.dropdown} onPress={() => togglePanel("club")}>
+          <Pressable accessibilityRole="button" style={s.dropdown} onPress={() => togglePanel("club")}>
             <Text style={s.dropdownText}>{clubs.find((c) => c.id === clubId)?.name ?? "Select a club"}</Text>
             <Text style={[s.dropdownChevron, openPanel === "club" && s.dropdownChevronOpen]}>⌄</Text>
           </Pressable>
           {openPanel === "club" && (
             <View style={s.dropdownList}>
               {clubs.map((club) => (
-                <Pressable
+                <Pressable accessibilityRole="button"
                   key={club.id}
                   style={[s.dropdownItem, club.id === clubId && s.dropdownItemOn]}
                   onPress={() => { setClubId(club.id); setOpenPanel(null); }}
@@ -105,26 +105,26 @@ export default function NewSession() {
           </View>
           <Text style={s.label}>When</Text>
           <View style={s.chips}>
-            <Pressable
+            <Pressable accessibilityRole="button"
               style={[s.chip, sameDay(day, today) && openPanel !== "calendar" && s.chipOn]}
               onPress={() => { setDay(today); setOpenPanel(null); }}
             >
               <Text style={s.chipText}>Today</Text>
             </Pressable>
-            <Pressable
+            <Pressable accessibilityRole="button"
               style={[s.chip, sameDay(day, tomorrow) && openPanel !== "calendar" && s.chipOn]}
               onPress={() => { setDay(tomorrow); setOpenPanel(null); }}
             >
               <Text style={s.chipText}>Tomorrow</Text>
             </Pressable>
-            <Pressable
+            <Pressable accessibilityRole="button"
               style={[s.chip, s.iconChip, (openPanel === "calendar" || (!sameDay(day, today) && !sameDay(day, tomorrow))) && s.chipOn]}
               onPress={() => togglePanel("calendar")}
               accessibilityLabel="Pick a date"
             >
               <CalendarIcon size={16} color={C.text} />
             </Pressable>
-            <Pressable style={[s.chip, openPanel === "time" && s.chipOn]} onPress={() => togglePanel("time")}>
+            <Pressable accessibilityRole="button" style={[s.chip, openPanel === "time" && s.chipOn]} onPress={() => togglePanel("time")}>
               <Text style={s.chipText}>{formatTime(timeMinutes)}</Text>
             </Pressable>
           </View>

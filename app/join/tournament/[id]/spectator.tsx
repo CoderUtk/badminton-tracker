@@ -51,7 +51,7 @@ export default function JoinTournamentSpectator() {
         <Logo size={44} />
         <Text style={s.title}>Tournament not found</Text>
         <Text style={s.sub}>This link may be out of date. Ask for a fresh one.</Text>
-        <PressableScale style={s.ghost} onPress={() => router.replace("/")}>
+        <PressableScale accessibilityRole="button" style={s.ghost} onPress={() => router.replace("/")}>
           <Text style={s.ghostText}>Back to CourtSide</Text>
         </PressableScale>
       </View>
@@ -88,7 +88,7 @@ export default function JoinTournamentSpectator() {
         <Text style={s.eyebrow}>SPECTATING</Text>
         <View style={s.titleRow}>
           <Text style={s.title}>{view.name}</Text>
-          <PressableScale style={s.refreshBtn} onPress={onRefresh} disabled={refreshing}>
+          <PressableScale accessibilityRole="button" style={s.refreshBtn} onPress={onRefresh} disabled={refreshing}>
             {refreshing
               ? <ActivityIndicator size="small" color={C.text2} />
               : <Icon name="sync-outline" color={C.text2} size={16} />}

@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
-import { Pressable, ScrollView, SectionList, StyleSheet, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, SectionList, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { deleteMatch, endMatchEarly, listMatches, MatchRecord, replayMatch } from "../../../src/repos/matchRepo";
 import type { TeamId } from "../../../src/engine";
@@ -7,7 +7,7 @@ import { syncNow } from "../../../src/sync/runner";
 import AppDialog from "../../../src/components/AppDialog";
 import Icon from "../../../src/components/Icon";
 import Chip from "../../../src/components/Chip";
-import { C, F, glow, textGlow } from "../../../src/theme";
+import { C, F, glow, textGlow, screenMax } from "../../../src/theme";
 
 /** A completed match's per-game scores, or a live snapshot from replaying its log. */
 type Row = MatchRecord & {
@@ -42,6 +42,7 @@ export default function Matches() {
   const [live, setLive] = useState<Row[]>([]);
   const [done, setDone] = useState<Row[]>([]);
   const [filter, setFilter] = useState<StatusFilter | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [confirmingEndId, setConfirmingEndId] = useState<string | null>(null);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
 
@@ -58,6 +59,13 @@ export default function Matches() {
     setDone(rows.filter((m) => m.status !== "live"));
   }, []);
   useFocusEffect(useCallback(() => { void reload(); }, [reload]));
+
+  // syncNow first: a pull here is usually someone waiting on a match another
+  // member is scoring, so pushing the local log before re-reading is the point.
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try { await syncNow(); await reload(); } finally { setRefreshing(false); }
+  }, [reload]);
 
   const endLive = (m: Row) => setConfirmingEndId(m.id);
   const onConfirmEndLive = useCallback(async () => {
@@ -139,6 +147,9 @@ export default function Matches() {
       <SectionList
         sections={sections}
         keyExtractor={(m) => m.id}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={C.text2} colors={[C.red]} />
+        }
         contentContainerStyle={sections.length ? s.list : s.emptyWrap}
         stickySectionHeadersEnabled={false}
         ListEmptyComponent={
@@ -146,7 +157,7 @@ export default function Matches() {
             <View style={s.emptyBox}>
               <Icon name="badminton" color={C.text2} size={40} />
               <Text style={s.emptyTitle}>No {FILTERS.find((f) => f.key === filter)?.label.toLowerCase()} matches</Text>
-              <Pressable style={s.emptyCta} onPress={() => setFilter(null)}>
+              <Pressable accessibilityRole="button" style={s.emptyCta} onPress={() => setFilter(null)}>
                 <Text style={s.emptyCtaText}>Show all</Text>
               </Pressable>
             </View>
@@ -155,7 +166,7 @@ export default function Matches() {
               <Icon name="badminton" color={C.text2} size={48} />
               <Text style={s.emptyTitle}>No matches yet</Text>
               <Text style={s.emptyText}>Start one from the Home tab and it’ll show up here.</Text>
-              <Pressable style={s.emptyCta} onPress={() => router.push("/new-match")}>
+              <Pressable accessibilityRole="button" style={s.emptyCta} onPress={() => router.push("/new-match")}>
                 <Icon name="play" color={C.text} size={18} />
                 <Text style={s.emptyCtaText}>Start a match</Text>
               </Pressable>
@@ -175,7 +186,7 @@ export default function Matches() {
           // match already has an End action; deleting mid-play isn't offered.
           const canDelete = !isLive && item.club_id === null;
           return (
-            <Pressable
+            <Pressable accessibilityRole="button"
               style={[s.card, isLive && s.cardLive]}
               onPress={() => (isLive ? router.push(`/score/${item.id}`) : router.push(`/matches/${item.id}`))}
             >
@@ -186,7 +197,7 @@ export default function Matches() {
                     ? <View style={s.liveBadge}><Text style={s.liveBadgeText}>● LIVE · Game {item.live?.game ?? 1}</Text></View>
                     : <Text style={s.date}>{relDate(item.created_at)}</Text>}
                   {canDelete && (
-                    <Pressable
+                    <Pressable accessibilityRole="button"
                       hitSlop={8}
                       accessibilityLabel="Delete match"
                       onPress={() => setConfirmingDeleteId(item.id)}
@@ -203,11 +214,11 @@ export default function Matches() {
 
               {isLive && (
                 <View style={s.actions}>
-                  <Pressable style={s.resume} onPress={() => router.push(`/score/${item.id}`)}>
+                  <Pressable accessibilityRole="button" style={s.resume} onPress={() => router.push(`/score/${item.id}`)}>
                     <Icon name="play" color={C.bg} size={16} />
                     <Text style={s.resumeText}>Resume</Text>
                   </Pressable>
-                  <Pressable style={s.stop} onPress={() => endLive(item)}>
+                  <Pressable accessibilityRole="button" style={s.stop} onPress={() => endLive(item)}>
                     <Icon name="stop" color={C.red} size={16} />
                     <Text style={s.stopText}>End</Text>
                   </Pressable>
@@ -245,7 +256,7 @@ const s = StyleSheet.create({
   root: { flex: 1 },
   filterBar: { paddingTop: 12, paddingBottom: 4 },
   filterRow: { paddingHorizontal: 16, gap: 8 },
-  list: { padding: 16, paddingBottom: 32 },
+  list: { padding: 16, paddingBottom: 32, ...screenMax },
   emptyWrap: { flexGrow: 1, justifyContent: "center", padding: 24 },
 
   sectionHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 8, marginBottom: 8 },

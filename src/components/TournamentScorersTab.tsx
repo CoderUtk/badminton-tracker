@@ -63,7 +63,7 @@ export default function TournamentScorersTab({
   return (
     <View style={s.root}>
       {isAdmin ? (
-        <Pressable style={s.share} onPress={onShareScorer}>
+        <Pressable accessibilityRole="button" style={s.share} onPress={onShareScorer}>
           <Icon name="share-social-outline" color={C.text} size={18} />
           <Text style={s.shareText}>Share scorer link</Text>
         </Pressable>
@@ -74,7 +74,7 @@ export default function TournamentScorersTab({
           <Text style={s.name} numberOfLines={1}>{m.displayName}</Text>
           <Text style={s.role}>{m.role === "admin" ? "Admin" : "Scorer"}</Text>
           {isAdmin && m.role === "scorer" ? (
-            <PressableScale disabled={busy} onPress={() => setPending(m)} style={s.remove}>
+            <PressableScale accessibilityRole="button" disabled={busy} onPress={() => setPending(m)} style={s.remove}>
               <Icon name="trash-outline" color={C.text2} size={16} />
             </PressableScale>
           ) : null}
@@ -91,10 +91,10 @@ export default function TournamentScorersTab({
           {scorerRequests.map((r) => (
             <View key={r.id} style={s.row}>
               <Text style={s.name} numberOfLines={1}>{r.displayName}</Text>
-              <PressableScale disabled={busy} onPress={() => decide(r, false)} style={[s.reqBtn, s.deny]}>
+              <PressableScale accessibilityRole="button" disabled={busy} onPress={() => decide(r, false)} style={[s.reqBtn, s.deny]}>
                 <Icon name="close" color={C.text2} size={16} />
               </PressableScale>
-              <PressableScale disabled={busy} onPress={() => decide(r, true)} style={[s.reqBtn, s.approve]}>
+              <PressableScale accessibilityRole="button" disabled={busy} onPress={() => decide(r, true)} style={[s.reqBtn, s.approve]}>
                 <Icon name="account-plus" color={C.text} size={16} />
               </PressableScale>
             </View>

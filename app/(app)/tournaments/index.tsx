@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { listAllTournaments, type TournamentListRow } from "../../../src/repos/tournamentRepo";
 import { toast } from "../../../src/lib/toast";
@@ -19,22 +19,27 @@ export default function TournamentsList() {
   const router = useRouter();
   const [rows, setRows] = useState<TournamentListRow[]>([]);
 
-  const reload = useCallback(() => {
-    (async () => {
-      try {
-        setRows(await listAllTournaments());
-      } catch (e) {
-        // Leave the previously loaded rows on screen. Blanking the list on a
-        // read failure is what made a failed query look like deleted data.
-        toast((e as Error).message || "Could not load tournaments", "error");
-      }
-    })();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const reload = useCallback(async () => {
+    try {
+      setRows(await listAllTournaments());
+    } catch (e) {
+      // Leave the previously loaded rows on screen. Blanking the list on a
+      // read failure is what made a failed query look like deleted data.
+      toast((e as Error).message || "Could not load tournaments", "error");
+    }
   }, []);
-  useFocusEffect(reload);
+  useFocusEffect(useCallback(() => { void reload(); }, [reload]));
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try { await reload(); } finally { setRefreshing(false); }
+  }, [reload]);
 
   return (
     <View style={s.root}>
-      <Pressable
+      <Pressable accessibilityRole="button"
         style={({ pressed }) => [s.newBtn, pressed && press]}
         onPress={() => router.push("/tournaments/new")}
       >
@@ -44,11 +49,14 @@ export default function TournamentsList() {
       <FlatList
         data={rows}
         keyExtractor={(t) => t.id}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={C.text2} colors={[C.red]} />
+        }
         ListEmptyComponent={<Text style={s.empty}>No tournaments yet.</Text>}
         renderItem={({ item }) => {
           const color = STATUS_COLOR[item.status] ?? C.accent;
           return (
-            <Pressable
+            <Pressable accessibilityRole="button"
               style={({ pressed }) => [
                 s.card,
                 { borderLeftColor: color, borderLeftWidth: 4 },

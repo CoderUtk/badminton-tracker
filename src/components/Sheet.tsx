@@ -69,7 +69,7 @@ export default function Sheet({
           (audit M10). */}
       <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
         <Animated.View style={[StyleSheet.absoluteFill, s.backdrop, backStyle]}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Dismiss" />
+          <Pressable accessibilityRole="button" style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Dismiss" />
         </Animated.View>
         <GestureDetector gesture={pan}>
           <Animated.View style={[s.panel, { paddingBottom: insets.bottom + 16 }, panelStyle]}>
@@ -87,7 +87,7 @@ export default function Sheet({
             {message ? <Text style={s.msg}>{message}</Text> : null}
             <ScrollView style={{ maxHeight: height * 0.5 }} contentContainerStyle={s.actions} showsVerticalScrollIndicator={false}>
               {actions.map((a, i) => (
-                <PressableScale key={i} onPress={a.onPress} style={[s.btn, a.destructive ? s.btnDestructive : a.primary ? s.btnPrimary : s.btnSecondary]}>
+                <PressableScale accessibilityRole="button" key={i} onPress={a.onPress} style={[s.btn, a.destructive ? s.btnDestructive : a.primary ? s.btnPrimary : s.btnSecondary]}>
                   <Text style={[s.btnText, !a.destructive && !a.primary && s.btnTextSecondary]}>{a.label}</Text>
                 </PressableScale>
               ))}

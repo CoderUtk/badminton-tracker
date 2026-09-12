@@ -72,7 +72,7 @@ export default function BottomPanel({
           (audit M10). */}
       <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
         <Animated.View style={[StyleSheet.absoluteFill, s.backdrop, backStyle]}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Dismiss" />
+          <Pressable accessibilityRole="button" style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Dismiss" />
         </Animated.View>
         <GestureDetector gesture={pan}>
           <Animated.View style={[s.panel, { maxHeight: height * 0.82, paddingBottom: insets.bottom + 16 }, panelStyle]}>

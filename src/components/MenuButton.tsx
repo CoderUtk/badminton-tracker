@@ -12,7 +12,7 @@ import { C, F } from "../theme";
  */
 export default function MenuButton({ onPress }: { onPress: () => void }) {
   return (
-    <Pressable
+    <Pressable accessibilityRole="button"
       onPress={onPress}
       accessibilityLabel="More actions"
       hitSlop={12}

@@ -119,6 +119,15 @@ export const focusRing =
     ? ({ outlineWidth: 2, outlineStyle: "solid", outlineColor: C.accent, outlineOffset: 2 } as const)
     : ({} as const);
 
+/**
+ * Readable content width. Every list screen was padding:16 against 100% width,
+ * so on the desktop PWA a match card stretched to the full window with a name
+ * at either end, and app.json declares supportsTablet with no size-class
+ * branching. 640 keeps line lengths readable and is wider than any phone, so
+ * it costs the phone layout nothing.
+ */
+export const screenMax = { width: "100%", maxWidth: 640, alignSelf: "center" } as const;
+
 /** 8pt spatial grid. Every margin, padding and gap comes from here. */
 export const space = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 } as const;
 

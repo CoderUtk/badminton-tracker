@@ -47,7 +47,7 @@ function Column<T extends number | string>({
   return (
     <ScrollView ref={scrollRef} style={s.column} nestedScrollEnabled showsVerticalScrollIndicator={false}>
       {items.map((item) => (
-        <Pressable
+        <Pressable accessibilityRole="button"
           key={String(item)}
           style={[s.item, item === selected && s.itemOn]}
           onPress={() => onSelect(item)}

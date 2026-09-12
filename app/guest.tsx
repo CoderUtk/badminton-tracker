@@ -37,7 +37,7 @@ export default function GuestHome() {
         <Text style={s.headline}>Play now,{"\n"}no account needed</Text>
       </View>
 
-      <PressableScale style={s.card} onPress={() => router.push("/new-match")}>
+      <PressableScale accessibilityRole="button" style={s.card} onPress={() => router.push("/new-match")}>
         <Icon name="play" color={C.red} size={28} />
         <View style={s.cardText}>
           <Text style={s.cardTitle}>Quick match</Text>
@@ -46,7 +46,7 @@ export default function GuestHome() {
         <Icon name="chevron-forward" color={C.text2} size={20} />
       </PressableScale>
 
-      <PressableScale style={s.card} onPress={() => router.push("/guest/spectate")}>
+      <PressableScale accessibilityRole="button" style={s.card} onPress={() => router.push("/guest/spectate")}>
         <Icon name="trophy-outline" color={C.accent} size={28} />
         <View style={s.cardText}>
           <Text style={s.cardTitle}>Spectate a tournament</Text>
@@ -55,7 +55,7 @@ export default function GuestHome() {
         <Icon name="chevron-forward" color={C.text2} size={20} />
       </PressableScale>
 
-      <PressableScale style={s.card} onPress={() => router.push("/guest/matches")}>
+      <PressableScale accessibilityRole="button" style={s.card} onPress={() => router.push("/guest/matches")}>
         <Icon name="time-outline" color={C.text2} size={28} />
         <View style={s.cardText}>
           <Text style={s.cardTitle}>My matches</Text>
@@ -64,7 +64,7 @@ export default function GuestHome() {
         <Icon name="chevron-forward" color={C.text2} size={20} />
       </PressableScale>
 
-      <PressableScale style={s.signIn} onPress={signIn}>
+      <PressableScale accessibilityRole="button" style={s.signIn} onPress={signIn}>
         <Text style={s.signInText}>
           {Platform.OS === "web"
             ? "Get the app for clubs, tournaments, and more"

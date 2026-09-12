@@ -42,9 +42,9 @@ export default function DatePicker({
   return (
     <View style={s.wrap}>
       <View style={s.head}>
-        <Pressable style={s.nav} onPress={() => shift(-1)} hitSlop={8}><Text style={s.navText}>‹</Text></Pressable>
+        <Pressable accessibilityRole="button" style={s.nav} onPress={() => shift(-1)} hitSlop={8}><Text style={s.navText}>‹</Text></Pressable>
         <Text style={s.month}>{MONTHS[month]} {year}</Text>
-        <Pressable style={s.nav} onPress={() => shift(1)} hitSlop={8}><Text style={s.navText}>›</Text></Pressable>
+        <Pressable accessibilityRole="button" style={s.nav} onPress={() => shift(1)} hitSlop={8}><Text style={s.navText}>›</Text></Pressable>
       </View>
       <View style={s.grid}>
         {WEEKDAYS.map((d, i) => (
@@ -56,7 +56,7 @@ export default function DatePicker({
           const disabled = t < minTime;
           const selected = t === selTime;
           return (
-            <Pressable
+            <Pressable accessibilityRole="button"
               key={`d${i}`}
               style={s.cell}
               disabled={disabled}

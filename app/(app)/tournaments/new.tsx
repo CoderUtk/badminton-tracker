@@ -104,7 +104,7 @@ export default function NewTournament() {
   // Values above MAX_COURTS are refused, not clamped silently.
   const CourtsStepper = () => (
     <View style={s.stepRow}>
-      <Pressable
+      <Pressable accessibilityRole="button"
         onPress={() => setCourts((c) => Math.max(MIN_COURTS, c - 1))}
         disabled={courts <= MIN_COURTS}
         style={({ pressed }) => [s.stepBtn, pressed && press, courts <= MIN_COURTS && s.off]}
@@ -112,7 +112,7 @@ export default function NewTournament() {
         <Text style={s.stepBtnText}>−</Text>
       </Pressable>
       <Text style={s.stepValue}>{courts}</Text>
-      <Pressable
+      <Pressable accessibilityRole="button"
         onPress={() => setCourts((c) => Math.min(MAX_COURTS, c + 1))}
         disabled={courts >= MAX_COURTS}
         style={({ pressed }) => [s.stepBtn, pressed && press, courts >= MAX_COURTS && s.off]}
@@ -125,7 +125,7 @@ export default function NewTournament() {
   const Segmented = ({ value, options, onPick }: { value: number | string; options: readonly (number | string)[]; onPick: (v: never) => void }) => (
     <View style={s.segRow}>
       {options.map((o) => (
-        <Pressable key={String(o)} onPress={() => onPick(o as never)} style={({ pressed }) => [s.segBtn, pressed && press, value === o && s.segOn]}>
+        <Pressable accessibilityRole="button" key={String(o)} onPress={() => onPick(o as never)} style={({ pressed }) => [s.segBtn, pressed && press, value === o && s.segOn]}>
           <Text style={[s.segText, value === o && s.segTextOn]}>{o}</Text>
         </Pressable>
       ))}
@@ -137,10 +137,10 @@ export default function NewTournament() {
     // View root and only lifts it above the keyboard.
     <KeyboardAvoidingView style={s.root} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <View style={s.tabRow}>
-        <Pressable onPress={() => setTab("config")} style={({ pressed }) => [s.tabBtn, pressed && press, tab === "config" && s.tabOn]}>
+        <Pressable accessibilityRole="button" onPress={() => setTab("config")} style={({ pressed }) => [s.tabBtn, pressed && press, tab === "config" && s.tabOn]}>
           <Text style={[s.tabText, tab === "config" && s.tabTextOn]}>Config</Text>
         </Pressable>
-        <Pressable onPress={() => setTab("entrants")} style={({ pressed }) => [s.tabBtn, pressed && press, tab === "entrants" && s.tabOn]}>
+        <Pressable accessibilityRole="button" onPress={() => setTab("entrants")} style={({ pressed }) => [s.tabBtn, pressed && press, tab === "entrants" && s.tabOn]}>
           <Text style={[s.tabText, tab === "entrants" && s.tabTextOn]}>Entrants ({entrantCount})</Text>
         </Pressable>
       </View>
@@ -176,13 +176,13 @@ export default function NewTournament() {
           <Text style={s.h}>{entrantCount} → {drawSizeFor(entrantCount)} draw</Text>
 
           <View style={s.segRow}>
-            <Pressable
+            <Pressable accessibilityRole="button"
               onPress={() => setEntrantMode("registered")}
               style={({ pressed }) => [s.segBtn, pressed && press, entrantMode === "registered" && s.segOn]}
             >
               <Text style={[s.segText, entrantMode === "registered" && s.segTextOn]}>Registered</Text>
             </Pressable>
-            <Pressable
+            <Pressable accessibilityRole="button"
               onPress={() => setEntrantMode("guest")}
               style={({ pressed }) => [s.segBtn, pressed && press, entrantMode === "guest" && s.segOn]}
             >
@@ -203,7 +203,7 @@ export default function NewTournament() {
                   returnKeyType="done"
                   autoFocus
                 />
-                <Pressable
+                <Pressable accessibilityRole="button"
                   style={({ pressed }) => [s.guestBtn, pressed && press, (!!guestError || addingGuest) && s.off]}
                   disabled={!!guestError || addingGuest}
                   onPress={onAddGuest}
@@ -224,7 +224,7 @@ export default function NewTournament() {
                 const on = idx >= 0;
                 const badge = matchType === "doubles" ? `P${Math.floor(idx / 2) + 1}` : `#${idx + 1}`;
                 return (
-                  <Pressable style={({ pressed }) => [s.player, pressed && press, on && s.playerOn]} onPress={() => toggle(item.id)}>
+                  <Pressable accessibilityRole="button" style={({ pressed }) => [s.player, pressed && press, on && s.playerOn]} onPress={() => toggle(item.id)}>
                     <View style={[s.checkbox, on && s.checkboxOn]}>
                       {on && <Icon name="checkmark" color={C.text} size={14} />}
                     </View>
@@ -239,7 +239,7 @@ export default function NewTournament() {
       )}
 
       {entrantsBlocker ? <Text style={s.err}>{entrantsBlocker}</Text> : null}
-      <Pressable style={({ pressed }) => [s.create, pressed && press, !canCreate && s.createOff]} disabled={!canCreate} onPress={onCreate}>
+      <Pressable accessibilityRole="button" style={({ pressed }) => [s.create, pressed && press, !canCreate && s.createOff]} disabled={!canCreate} onPress={onCreate}>
         <Text style={[s.createText, !canCreate && s.createTextOff]}>Create bracket</Text>
       </Pressable>
     </KeyboardAvoidingView>
