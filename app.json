@@ -30,7 +30,7 @@
         "foregroundImage": "./assets/adaptive-foreground.png",
         "backgroundColor": "#0C0E12"
       },
-      "predictiveBackGestureEnabled": false,
+      "predictiveBackGestureEnabled": true,
       "intentFilters": [
         {
           "action": "VIEW",
