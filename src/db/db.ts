@@ -77,6 +77,9 @@ const MIGRATIONS = [
   // open_join is an integer flag, mapped back in sessionRepo's hydrate().
   `alter table sessions_cache add column open_join integer not null default 0;
    alter table sessions_cache add column max_players integer;`,
+  // Player skill rating, mirroring club_players.rating so matchmaking can
+  // balance courts offline. Default matches the server column's default.
+  `alter table club_players_cache add column rating integer not null default 1500;`,
 ];
 
 let dbPromise: Promise<SQLiteDatabase> | null = null;

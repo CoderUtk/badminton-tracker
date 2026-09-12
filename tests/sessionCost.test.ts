@@ -2,7 +2,7 @@ import { splitCost, type Attendance } from "../src/repos/sessionRepo";
 import { formatMoney, parseMoney } from "../src/lib/money";
 
 const player = (id: string, name: string, status: Attendance["status"], settled = false): Attendance => ({
-  id, name, status, settled, club_id: "c1", profile_id: null, avatar_url: null,
+  id, name, status, settled, club_id: "c1", profile_id: null, avatar_url: null, rating: 1500,
 });
 
 const session = (cost: number, paidBy: string | null = null, shuttles = 0) => ({

@@ -46,4 +46,43 @@ describe("generateMatchups", () => {
   test("auto-selects doubles with four or more players", () => {
     expect(generateMatchups(players, 1).matches[0].mode).toBe("doubles");
   });
+
+  test("groups similar-rated players onto the same court", () => {
+    const rated: MatchPlayer[] = [
+      { id: "A", name: "A", rating: 1000 },
+      { id: "B", name: "B", rating: 1100 },
+      { id: "C", name: "C", rating: 1200 },
+      { id: "D", name: "D", rating: 1300 },
+      { id: "E", name: "E", rating: 1900 },
+      { id: "F", name: "F", rating: 2000 },
+      { id: "G", name: "G", rating: 2100 },
+      { id: "H", name: "H", rating: 2200 },
+    ];
+    const result = generateMatchups(rated, 2);
+    for (const match of result.matches) {
+      const ids = new Set([...match.teamA, ...match.teamB].map((p) => p.id));
+      const allLow = ["A", "B", "C", "D"].every((id) => ids.has(id));
+      const allHigh = ["E", "F", "G", "H"].every((id) => ids.has(id));
+      expect(allLow || allHigh).toBe(true);
+    }
+  });
+
+  test("splits a court's teams to minimise the rating gap", () => {
+    const rated: MatchPlayer[] = [
+      { id: "A", name: "A", rating: 1000 },
+      { id: "B", name: "B", rating: 1000 },
+      { id: "C", name: "C", rating: 2000 },
+      { id: "D", name: "D", rating: 2000 },
+    ];
+    const result = generateMatchups(rated, 1);
+    const teamAIds = result.matches[0].teamA.map((p) => p.id).sort();
+    // Balanced splits are A+C vs B+D or A+D vs B+C (3000 vs 3000); the
+    // unbalanced A+B vs C+D (2000 vs 4000) must not be chosen.
+    expect(["A,C", "A,D"]).toContain(teamAIds.join(","));
+  });
+
+  test("missing ratings default to 1500 and leave rotation order unchanged", () => {
+    const result = generateMatchups(players.slice(0, 6), 2);
+    expect(result.waiting.map((player) => player.id)).toEqual(["E", "F"]);
+  });
 });

@@ -1,7 +1,13 @@
 export interface MatchPlayer {
   id: string;
   name: string;
+  /** Club ELO rating. Missing/undefined is treated as the server default
+   *  (1500) so matchmaking is a no-op until ratings actually diverge. */
+  rating?: number;
 }
+
+const DEFAULT_RATING = 1500;
+const ratingOf = (p: MatchPlayer): number => p.rating ?? DEFAULT_RATING;
 
 export type MatchMode = "singles" | "doubles";
 
@@ -37,14 +43,18 @@ export function generateMatchups(
   const usable = Math.max(0, Math.min(Math.floor(courts), Math.floor(players.length / per)) * per);
   const rotated = rotate(players, players.length ? (round * 2) % players.length : 0);
   const active = rotated.slice(0, usable);
+  // Sit-out fairness comes from `rotate` above; within this round's active
+  // pool, group similar-rated players onto the same court (stable sort, so
+  // equal/default ratings leave rotation order untouched).
+  const grouped = [...active].sort((a, b) => ratingOf(a) - ratingOf(b));
   const pairCounts = buildPairCounts(previous);
   const matches: GeneratedMatch[] = [];
 
-  for (let i = 0; i < active.length; i += per) {
+  for (let i = 0; i < grouped.length; i += per) {
     if (resolved === "singles") {
-      matches.push({ court: matches.length + 1, mode: resolved, teamA: [active[i]], teamB: [active[i + 1]] });
+      matches.push({ court: matches.length + 1, mode: resolved, teamA: [grouped[i]], teamB: [grouped[i + 1]] });
     } else {
-      const group = active.slice(i, i + 4) as [MatchPlayer, MatchPlayer, MatchPlayer, MatchPlayer];
+      const group = grouped.slice(i, i + 4) as [MatchPlayer, MatchPlayer, MatchPlayer, MatchPlayer];
       const pairing = bestPairing(group, pairCounts, round);
       matches.push({ court: matches.length + 1, mode: resolved, teamA: pairing[0], teamB: pairing[1] });
     }
@@ -77,11 +87,17 @@ function bestPairing(
     [[a, c], [b, d]],
     [[a, d], [b, c]],
   ];
-  const score = (candidate: Pairing) =>
+  const teamRating = (team: [MatchPlayer, MatchPlayer]) => ratingOf(team[0]) + ratingOf(team[1]);
+  const ratingGap = (candidate: Pairing) => Math.abs(teamRating(candidate[0]) - teamRating(candidate[1]));
+  const pairScore = (candidate: Pairing) =>
     (pairCounts.get(pairKey(...candidate[0])) ?? 0) +
     (pairCounts.get(pairKey(...candidate[1])) ?? 0);
-  const lowest = Math.min(...candidates.map(score));
-  const tied = candidates.filter((candidate) => score(candidate) === lowest);
+
+  // Balance team ratings first, then avoid repeat partnerships as a tie-break.
+  const lowestGap = Math.min(...candidates.map(ratingGap));
+  const balanced = candidates.filter((candidate) => ratingGap(candidate) === lowestGap);
+  const lowestPairScore = Math.min(...balanced.map(pairScore));
+  const tied = balanced.filter((candidate) => pairScore(candidate) === lowestPairScore);
   return tied[round % tied.length];
 }
 

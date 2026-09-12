@@ -23,6 +23,7 @@ export interface ClubPlayer {
    * network round trip during capture.
    */
   avatar_url: string | null;
+  rating: number;
 }
 
 type RosterRow = {
@@ -30,6 +31,7 @@ type RosterRow = {
   club_id: string;
   profile_id: string | null;
   name: string;
+  rating: number;
   /** PostgREST returns an embedded resource as an object or a 1-element array
    *  depending on the cardinality it infers, so accept both. */
   profiles?: { avatar_url: string | null } | { avatar_url: string | null }[] | null;
@@ -38,9 +40,9 @@ type RosterRow = {
 /** Flatten one club_players row (with its embedded profile) to cache columns. */
 export function rosterCacheRow(
   r: RosterRow
-): [string, string, string | null, string, string | null] {
+): [string, string, string | null, string, string | null, number] {
   const embedded = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles;
-  return [r.id, r.club_id, r.profile_id, r.name, embedded?.avatar_url ?? null];
+  return [r.id, r.club_id, r.profile_id, r.name, embedded?.avatar_url ?? null, r.rating];
 }
 
 export async function createClub(name: string): Promise<string> {
@@ -87,7 +89,7 @@ export async function refreshClubs(): Promise<void> {
     const [clubs, members, players] = await Promise.all([
       supabase.from("clubs").select("id, name, invite_code, personal"),
       supabase.from("club_members").select("club_id, role, profile_id"),
-      supabase.from("club_players").select("id, club_id, profile_id, name, profiles(avatar_url)"),
+      supabase.from("club_players").select("id, club_id, profile_id, name, rating, profiles(avatar_url)"),
     ]);
     if (clubs.error || players.error) return; // stay on cache
     const uid = (await supabase.auth.getUser()).data.user?.id;
@@ -120,7 +122,7 @@ export async function refreshClubs(): Promise<void> {
         ]),
       );
       await insertMany(
-        db, "club_players_cache", ["id", "club_id", "profile_id", "name", "avatar_url"],
+        db, "club_players_cache", ["id", "club_id", "profile_id", "name", "avatar_url", "rating"],
         (players.data ?? []).map(rosterCacheRow),
       );
     });

@@ -5,7 +5,7 @@ import { avatarMap, preloadAvatars } from "../../src/lib/share/avatars";
 import type { ClubPlayer } from "../../src/repos/clubRepo";
 
 function player(id: string, name: string, avatar_url: string | null): ClubPlayer {
-  return { id, club_id: "c-1", profile_id: avatar_url ? "p-1" : null, name, avatar_url };
+  return { id, club_id: "c-1", profile_id: avatar_url ? "p-1" : null, name, avatar_url, rating: 1500 };
 }
 
 afterEach(() => prefetch.mockClear());

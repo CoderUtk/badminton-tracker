@@ -290,7 +290,7 @@ export async function listAttendance(sessionId: string, clubId: string): Promise
   const db = await getDb();
   if (!db) return [];
   const rows = await db.getAllAsync<Omit<Attendance, "settled"> & { settled: number }>(
-    `select p.id, p.club_id, p.profile_id, p.name, coalesce(a.status, 'out') as status,
+    `select p.id, p.club_id, p.profile_id, p.name, p.rating, coalesce(a.status, 'out') as status,
             coalesce(a.settled, 0) as settled
      from club_players_cache p
      left join attendance_cache a on a.club_player_id = p.id and a.session_id = ?
