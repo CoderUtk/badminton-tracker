@@ -1,13 +1,11 @@
-import React, { useEffect, useState } from "react";
-import { Linking, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import React, { useState } from "react";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import BottomPanel from "./BottomPanel";
 import CarvedCard from "./CarvedCard";
 import Chip from "./Chip";
 import Icon from "./Icon";
 import Stepper from "./Stepper";
 import { formatMoney, parseMoney } from "../lib/money";
-import { buildUpiLink } from "../lib/upi";
-import { getSessionPayeeUpi } from "../repos/payeeRepo";
 import { toast } from "../lib/toast";
 import {
   setAttendanceSettled, setSessionCost, splitCost,
@@ -25,14 +23,12 @@ import { C, F, MIN_TOUCH, radius, space } from "../theme";
  * settle rather than scattered through the attendance list.
  */
 export default function SessionCost({
-  session, attendance, canManage, myProfileId, onChanged,
+  session, attendance, canManage, onChanged,
 }: {
   session: ClubSession;
   attendance: Attendance[];
   /** Session creator or club admin — the same gate the RPCs enforce server-side. */
   canManage: boolean;
-  /** Signed-in user, used only to find this viewer's own share. */
-  myProfileId: string | null;
   onChanged: () => void | Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
@@ -40,56 +36,12 @@ export default function SessionCost({
   const [shuttles, setShuttles] = useState(0);
   const [payer, setPayer] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [payeeUpi, setPayeeUpi] = useState<string | null>(null);
 
   const split = splitCost(session, attendance);
   const checkedIn = attendance.filter((a) => a.status === "in");
   const payerName = split.paidBy
     ? attendance.find((a) => a.id === split.paidBy)?.name ?? null
     : null;
-
-  // This viewer's own unsettled share, if they have one. The payer never owes
-  // themselves, and splitCost already folds that into `settled`.
-  const myPlayerId = myProfileId
-    ? attendance.find((a) => a.profile_id === myProfileId)?.id ?? null
-    : null;
-  const myShare = myPlayerId
-    ? split.shares.find((sh) => sh.playerId === myPlayerId && !sh.settled) ?? null
-    : null;
-
-  // Null unless the payer has published a UPI handle AND the server agrees
-  // this viewer owes on this session — see session_payee_upi (0051). Fetched
-  // rather than derived, because the handle is deliberately not readable from
-  // any table the client can select.
-  useEffect(() => {
-    if (!myShare) {
-      setPayeeUpi(null);
-      return;
-    }
-    let live = true;
-    getSessionPayeeUpi(session.id).then((upi) => { if (live) setPayeeUpi(upi); });
-    return () => { live = false; };
-  }, [session.id, myShare?.cents, myShare?.playerId]);
-
-  const payLink = myShare && payeeUpi
-    ? buildUpiLink({
-        upiId: payeeUpi,
-        payeeName: payerName ?? "CourtSide",
-        cents: myShare.cents,
-        note: session.location ? `CourtSide · ${session.location}` : "CourtSide",
-      })
-    : null;
-
-  const pay = async () => {
-    if (!payLink) return;
-    try {
-      await Linking.openURL(payLink);
-    } catch {
-      // No UPI app installed, or the OS refused the intent. Settling in person
-      // still works, so this is a dead end, not a failure worth a modal.
-      toast("No UPI app could open that link", "error");
-    }
-  };
 
   const openEditor = () => {
     setAmount(split.totalCents ? String(split.totalCents / 100) : "");
@@ -191,17 +143,6 @@ export default function SessionCost({
               ))}
             </View>
 
-            {payLink && (
-              <Pressable accessibilityRole="button"
-                style={s.payBtn}
-                onPress={() => void pay()}
-                accessibilityLabel={`Pay your share of ${formatMoney(myShare!.cents)} by UPI`}
-              >
-                <Icon name="wallet-outline" color={C.text} size={17} />
-                <Text style={s.payText}>Pay {formatMoney(myShare!.cents)}</Text>
-              </Pressable>
-            )}
-
             <Text style={[s.outstanding, split.outstandingCents === 0 && s.allSettled]}>
               {split.outstandingCents === 0
                 ? "All settled"
@@ -278,12 +219,6 @@ const s = StyleSheet.create({
   shareName: { flex: 1, color: C.text, fontFamily: F.body, fontSize: 14 },
   shareNameOff: { color: C.text3 },
   shareAmt: { color: C.text, fontFamily: F.medium, fontSize: 14 },
-  payBtn: {
-    flexDirection: "row", gap: space.sm, minHeight: MIN_TOUCH, borderRadius: radius.md,
-    alignItems: "center", justifyContent: "center",
-    backgroundColor: C.cardHi, borderWidth: 1, borderColor: C.line, marginTop: space.xs,
-  },
-  payText: { color: C.text, fontFamily: F.semibold, fontSize: 14 },
   outstanding: { color: C.amber, fontFamily: F.semibold, fontSize: 13 },
   allSettled: { color: C.green },
   form: { gap: space.sm, paddingBottom: space.md },

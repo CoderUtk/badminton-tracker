@@ -1,88 +1,16 @@
 -- 0051_settle_up.sql
--- Settle-up: give a player a one-tap way to pay their share, and nudge the
--- ones who have not.
+-- Nudge the people who have not settled their share of a club night.
 --
--- Deep links only. Nothing here processes a payment, holds funds, or sees a
--- transaction — the app hands the OS a upi:// intent and the banking app does
--- the rest. That is the whole reason this is a small feature and not a
--- compliance project.
-
--- ---- payee handle ----
-
--- A UPI VPA is a payment identifier: publishing one invites unsolicited
--- collect requests. It therefore does NOT go on profiles, whose SELECT policy
--- is `using (true)` — every authenticated user can read every profile row.
--- Separate table, no SELECT policy at all, read only through the RPC below.
-create table if not exists public.payee_handles (
-  profile_id uuid primary key references public.profiles (id) on delete cascade,
-  upi_id     text not null check (upi_id ~ '^[a-zA-Z0-9._-]{2,64}@[a-zA-Z][a-zA-Z0-9.]{1,63}$'),
-  updated_at timestamptz not null default now()
-);
-
-alter table public.payee_handles enable row level security;
-
--- Owner-only, and deliberately no policy for anyone else: with RLS on and no
--- matching policy, every other read and write is denied.
-drop policy if exists "a user reads their own payee handle" on public.payee_handles;
-create policy "a user reads their own payee handle"
-  on public.payee_handles for select to authenticated
-  using (auth.uid() = profile_id);
-
-drop policy if exists "a user writes their own payee handle" on public.payee_handles;
-create policy "a user writes their own payee handle"
-  on public.payee_handles for insert to authenticated
-  with check (
-    auth.uid() = profile_id
-    and coalesce((auth.jwt()->>'is_anonymous')::boolean, false) = false
-  );
-
-drop policy if exists "a user updates their own payee handle" on public.payee_handles;
-create policy "a user updates their own payee handle"
-  on public.payee_handles for update to authenticated
-  using (auth.uid() = profile_id) with check (auth.uid() = profile_id);
-
-drop policy if exists "a user removes their own payee handle" on public.payee_handles;
-create policy "a user removes their own payee handle"
-  on public.payee_handles for delete to authenticated
-  using (auth.uid() = profile_id);
-
--- The one way anyone else learns a handle: they are checked in to a session
--- that this person fronted the money for, and therefore owe them.
+-- splitCost already knows who owes what; what was missing is any prompt at
+-- all, so collection stays the organiser chasing six people in a group chat.
+-- This is one push, a day later, to the people who still owe.
 --
--- Scoped to that session, not to the club: being in a club with someone does
--- not entitle you to their payment details. Returns null rather than raising
--- when there is nothing to pay, so a caller cannot use the error to probe
--- whether a handle exists.
-create or replace function public.session_payee_upi(p_session_id uuid)
-returns text
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select h.upi_id
-    from sessions s
-    join club_players payer on payer.id = s.paid_by
-    join payee_handles h on h.profile_id = payer.profile_id
-   where s.id = p_session_id
-     and s.cost_total_cents > 0
-     -- The caller must be checked in to this very session, and must still owe.
-     and exists (
-       select 1
-         from attendance a
-         join club_players me on me.id = a.club_player_id
-        where a.session_id = s.id
-          and me.profile_id = auth.uid()
-          and a.status = 'in'
-          and not a.settled
-          and me.id <> s.paid_by
-     );
-$$;
-
-revoke all on function public.session_payee_upi(uuid) from public, anon;
-grant execute on function public.session_payee_upi(uuid) to authenticated;
-
--- ---- unsettled nudge ----
+-- An earlier draft of this migration also carried a UPI payment-handle table
+-- and a deep-link flow. That was dropped: UPI is India-only and INR-only, and
+-- baking one country's rails into the schema is not the right shape for this
+-- app. A globally valid version would be a generic payee link the player
+-- supplies themselves (PayPal.me, Revolut, Wise, a UPI intent) and the app
+-- never parses — that is a separate design, not a widening of this one.
 
 -- One nudge per session, ever. Stamped here rather than inferred from the
 -- clock so a re-run, a schedule change, or a job that overruns its window

@@ -206,13 +206,7 @@ export default function SessionDetail() {
             )}
           </View>
 
-          <SessionAdmin
-              session={session}
-              attendance={attendance}
-              canManage={canManage}
-              myProfileId={authSession?.user.id ?? null}
-              onChanged={reload}
-            />
+          <SessionAdmin session={session} attendance={attendance} canManage={canManage} onChanged={reload} />
 
           {stats && (done || stats.matchCount > 0) && (
             <View style={s.summary}>

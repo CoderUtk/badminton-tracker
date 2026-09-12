@@ -6,43 +6,14 @@ const sql = readFileSync(
   "utf8",
 );
 
-test("the UPI handle is kept off profiles, whose select policy is using (true)", () => {
-  expect(sql).toMatch(/create table if not exists public\.payee_handles/);
-  expect(sql).not.toMatch(/alter table public\.profiles/);
-});
-
-test("payee_handles is RLS-on and owner-scoped for every verb", () => {
-  expect(sql).toMatch(/alter table public\.payee_handles enable row level security/);
-  for (const verb of ["select", "insert", "update", "delete"]) {
-    expect(sql).toMatch(new RegExp(`for ${verb} to authenticated`));
+test("no payment rails are baked into the schema", () => {
+  // Dropped deliberately: UPI is India-only. A global payee link is a separate
+  // design, not a widening of this migration. Checked against the statements
+  // rather than the file, since the header comment says why it went.
+  const statements = sql.replace(/^\s*--.*$/gm, "");
+  for (const token of ["upi", "payee_handles", "vpa"]) {
+    expect(statements.toLowerCase()).not.toContain(token);
   }
-  // Four policies, every one of them bound to the owner.
-  expect(sql.match(/auth\.uid\(\) = profile_id/g)!.length).toBeGreaterThanOrEqual(4);
-});
-
-test("guests cannot publish a payment handle", () => {
-  expect(sql).toMatch(/is_anonymous'\)::boolean, false\) = false/);
-});
-
-test("the stored handle must look like a VPA", () => {
-  expect(sql).toMatch(/check \(upi_id ~ '\^\[a-zA-Z0-9\._-\]\{2,64\}@\[a-zA-Z\]\[a-zA-Z0-9\.\]\{1,63\}\$'\)/);
-});
-
-test("session_payee_upi answers only for a session the caller owes on", () => {
-  const fn = sql.slice(sql.indexOf("function public.session_payee_upi"), sql.indexOf("revoke all on function public.session_payee_upi"));
-  expect(fn).toMatch(/me\.profile_id = auth\.uid\(\)/);
-  expect(fn).toMatch(/a\.status = 'in'/);
-  expect(fn).toMatch(/not a\.settled/);
-  expect(fn).toMatch(/me\.id <> s\.paid_by/);
-  // Session-scoped, never club-scoped.
-  expect(fn).toMatch(/a\.session_id = s\.id/);
-  expect(fn).toMatch(/security definer/);
-  expect(fn).toMatch(/set search_path = public/);
-});
-
-test("anon cannot call session_payee_upi", () => {
-  expect(sql).toMatch(/revoke all on function public\.session_payee_upi\(uuid\) from public, anon/);
-  expect(sql).toMatch(/grant execute on function public\.session_payee_upi\(uuid\) to authenticated/);
 });
 
 test("the nudge is stamped, so it can never fire twice for one session", () => {

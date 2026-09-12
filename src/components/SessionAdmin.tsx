@@ -11,25 +11,16 @@ import { type Attendance, type ClubSession } from "../repos/sessionRepo";
  * plan: the ceiling is meant to force extraction, not comment-trimming.
  */
 export default function SessionAdmin({
-  session, attendance, canManage, myProfileId, onChanged,
+  session, attendance, canManage, onChanged,
 }: {
   session: ClubSession;
   attendance: Attendance[];
   canManage: boolean;
-  /** Signed-in user, so the cost card can offer to pay this player's own
-   *  share. Null for a signed-out or guest viewer. */
-  myProfileId: string | null;
   onChanged: () => void | Promise<void>;
 }) {
   return (
     <>
-      <SessionCost
-        session={session}
-        attendance={attendance}
-        canManage={canManage}
-        myProfileId={myProfileId}
-        onChanged={onChanged}
-      />
+      <SessionCost session={session} attendance={attendance} canManage={canManage} onChanged={onChanged} />
       <SessionOpenJoin session={session} canManage={canManage} onChanged={onChanged} />
       <SessionRepeat session={session} canManage={canManage} onChanged={onChanged} />
     </>
