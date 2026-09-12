@@ -125,7 +125,7 @@ export default function MatchDetail() {
 const s = StyleSheet.create({
   root: { flex: 1 },
   card: { backgroundColor: C.card, borderRadius: 12, padding: 16, gap: 4 },
-  team: { color: C.text, fontSize: 18, fontWeight: "700" },
+  team: { color: C.text, fontSize: 18, fontFamily: F.bold },
   win: { color: C.green },
   vs: { color: C.text2, fontSize: 13 },
   gameRow: {
@@ -133,7 +133,7 @@ const s = StyleSheet.create({
     backgroundColor: C.card, borderRadius: 12, padding: 14,
   },
   gameLbl: { color: C.text2, fontSize: 15 },
-  gameScore: { color: C.text, fontSize: 16, fontWeight: "700", fontVariant: ["tabular-nums"] },
+  gameScore: { color: C.text, fontSize: 16, fontFamily: F.bold, fontVariant: ["tabular-nums"] },
   meta: { color: C.text2, fontSize: 14 },
   timelineTitle: { color: C.text, fontSize: 14, fontFamily: F.semibold, marginBottom: 6 },
   timelineRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 4 },

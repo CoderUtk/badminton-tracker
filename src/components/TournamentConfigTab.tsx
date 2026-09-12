@@ -185,7 +185,7 @@ const s = StyleSheet.create({
   save: { backgroundColor: C.red, borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: 4 },
   saveText: { color: C.text, fontFamily: F.semibold, fontSize: 16 },
   share: { flexDirection: "row", gap: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 12, minHeight: 52, alignItems: "center", justifyContent: "center", marginTop: 4 },
-  shareText: { color: C.text, fontSize: 16, fontWeight: "700" },
+  shareText: { color: C.text, fontSize: 16, fontFamily: F.bold },
   start: { backgroundColor: C.red, borderRadius: 12, paddingVertical: 15, alignItems: "center", marginTop: 12 },
   startText: { color: C.text, fontFamily: F.semibold, fontSize: 16 },
   off: { opacity: 0.5 },

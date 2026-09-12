@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { Club } from "../repos/clubRepo";
 import Icon from "./Icon";
 import PressableScale from "./PressableScale";
-import { C } from "../theme";
+import { C, F } from "../theme";
 
 /**
  * Where a finished match gets saved. "Personal" means no club — the old label
@@ -85,13 +85,13 @@ const s = StyleSheet.create({
     backgroundColor: C.card, borderRadius: 12,
     borderWidth: 1, borderColor: C.line,
   },
-  buttonText: { color: C.text, fontSize: 14, fontWeight: "700", flexShrink: 1 },
+  buttonText: { color: C.text, fontSize: 14, fontFamily: F.bold, flexShrink: 1 },
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "flex-end" },
   sheet: {
     backgroundColor: C.card, borderTopLeftRadius: 18, borderTopRightRadius: 18,
     padding: 16, gap: 8,
   },
-  title: { color: C.text2, fontSize: 13, fontWeight: "700", marginBottom: 4 },
+  title: { color: C.text2, fontSize: 13, fontFamily: F.bold, marginBottom: 4 },
   row: {
     flexDirection: "row", alignItems: "center", gap: 12,
     minHeight: 52, paddingHorizontal: 12, borderRadius: 12,
@@ -99,6 +99,6 @@ const s = StyleSheet.create({
   },
   rowOn: { borderWidth: 1, borderColor: C.lineHi, backgroundColor: C.cardHi },
   rowText: { flex: 1 },
-  rowTitle: { color: C.text, fontSize: 16, fontWeight: "700" },
+  rowTitle: { color: C.text, fontSize: 16, fontFamily: F.bold },
   rowHint: { color: C.text2, fontSize: 12 },
 });

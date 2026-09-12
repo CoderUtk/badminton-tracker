@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { Animated, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import type { CourtZone } from "../lib/courtZones";
 import Icon from "./Icon";
-import { C } from "../theme";
+import { C, F } from "../theme";
 
 const LINE = "rgba(255,255,255,0.45)";
 
@@ -156,10 +156,10 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.10)",
   },
   player: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 6 },
-  name: { fontSize: 16, fontWeight: "700", flexShrink: 1 },
+  name: { fontSize: 16, fontFamily: F.bold, flexShrink: 1 },
   input: {
     alignSelf: "stretch", marginHorizontal: 10, paddingVertical: 4,
-    fontSize: 16, fontWeight: "700", textAlign: "center",
+    fontSize: 16, fontFamily: F.bold, textAlign: "center",
     borderBottomWidth: 1, borderColor: LINE,
   },
 });

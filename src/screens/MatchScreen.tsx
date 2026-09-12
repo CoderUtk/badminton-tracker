@@ -554,12 +554,12 @@ const s = StyleSheet.create({
     position: "absolute", top: 8, alignSelf: "center", zIndex: 2,
     backgroundColor: C.red, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 6,
   },
-  bubbleText: { color: C.text, fontSize: 14, fontWeight: "700" },
+  bubbleText: { color: C.text, fontSize: 14, fontFamily: F.bold },
   banner: {
     flex: 1, backgroundColor: C.card, borderRadius: 10,
     alignItems: "center", justifyContent: "center", gap: 6,
   },
-  bannerText: { color: C.text, fontSize: 20, fontWeight: "700", textAlign: "center", padding: 12 },
+  bannerText: { color: C.text, fontSize: 20, fontFamily: F.bold, textAlign: "center", padding: 12 },
   bannerSub: { color: C.text2, fontSize: 13 },
   shareButton: {
     flexDirection: "row", alignItems: "center", gap: 8, marginTop: 16,

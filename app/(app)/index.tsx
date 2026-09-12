@@ -275,7 +275,7 @@ const s = StyleSheet.create({
     width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,59,48,0.12)",
     alignItems: "center", justifyContent: "center",
   },
-  clubName: { color: C.text, fontSize: 17, fontWeight: "700" },
+  clubName: { color: C.text, fontSize: 17, fontFamily: F.bold },
   clubMeta: { color: C.text2, fontSize: 13, marginTop: 2 },
   livePill: {
     backgroundColor: "rgba(34,197,94,0.15)", borderRadius: 999,

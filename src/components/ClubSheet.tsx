@@ -111,7 +111,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 16, height: 48, minWidth: 96, alignItems: "center", justifyContent: "center",
   },
   btnOff: { opacity: 0.5 },
-  btnText: { color: C.text, fontSize: 16, fontWeight: "700" },
+  btnText: { color: C.text, fontSize: 16, fontFamily: F.bold },
   btnSecondary: { backgroundColor: C.cardHi, borderWidth: 1, borderColor: C.line },
   err: { color: C.red, fontSize: 12.5, fontFamily: F.body },
 });

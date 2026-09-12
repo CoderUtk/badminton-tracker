@@ -24,7 +24,7 @@ import { fillEmptySlots } from "../src/lib/matchLineup";
 import { toast } from "../src/lib/toast";
 import { useSession } from "../src/stores/session";
 import { recordGuestMatch } from "../src/lib/guestMatches";
-import { C } from "../src/theme";
+import { C, F } from "../src/theme";
 
 type ZoneKey = { team: "A" | "B"; row: CourtRow };
 const sameZone = (a: ZoneKey | null, b: ZoneKey) => !!a && a.team === b.team && a.row === b.row;
@@ -592,28 +592,27 @@ const s = StyleSheet.create({
   segFill: { flex: 1 },
   segBtn: { flex: 1, borderRadius: 9, minHeight: 40, alignItems: "center", justifyContent: "center" },
   segOn: { backgroundColor: C.cardHi, borderWidth: 1, borderColor: C.lineHi },
-  segText: { color: C.text2, fontSize: 15, fontWeight: "600" },
+  segText: { color: C.text2, fontSize: 15, fontFamily: F.semibold },
   segTextOn: { color: C.text },
   courtWrap: { flex: 1, minHeight: 200 },
   formatRow: { flexDirection: "row", gap: 12 },
   gameRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  gameLabel: { color: C.text2, fontSize: 13, fontWeight: "700", width: 62 },
+  gameLabel: { color: C.text2, fontSize: 13, fontFamily: F.bold, width: 62 },
   gameInput: {
     flex: 1, minHeight: 48, borderRadius: 12, backgroundColor: C.card,
     borderWidth: 1, borderColor: C.line, textAlign: "center",
-    color: C.text, fontSize: 20, fontWeight: "800",
-  },
-  gameDash: { color: C.text2, fontSize: 18, fontWeight: "700" },
+    color: C.text, fontSize: 20, fontFamily: F.bold },
+  gameDash: { color: C.text2, fontSize: 18, fontFamily: F.bold },
   addGame: { flexDirection: "row", alignItems: "center", gap: 6, minHeight: 40, paddingLeft: 2 },
   formatGroup: { flex: 1, gap: 2 },
-  caption: { color: C.text2, fontSize: 12, fontWeight: "700" },
+  caption: { color: C.text2, fontSize: 12, fontFamily: F.bold },
   pickRow: {
     flexDirection: "row", alignItems: "center", gap: 8,
     minHeight: 44, paddingHorizontal: 12,
   },
-  pickText: { color: C.text, fontSize: 14, fontWeight: "600", flexShrink: 1 },
+  pickText: { color: C.text, fontSize: 14, fontFamily: F.semibold, flexShrink: 1 },
   pickAddText: { color: C.red },
   hint: { color: C.text2, fontSize: 12 },
   cta: { backgroundColor: C.red, borderRadius: 14, minHeight: 56, alignItems: "center", justifyContent: "center" },
-  ctaText: { color: C.text, fontSize: 18, fontWeight: "800" },
+  ctaText: { color: C.text, fontSize: 18, fontFamily: F.bold },
 });

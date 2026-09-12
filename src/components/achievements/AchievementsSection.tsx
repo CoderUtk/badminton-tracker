@@ -94,7 +94,7 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: C.line, gap: 10,
   },
   head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  cardTitle: { color: C.text, fontSize: 15, fontWeight: "800" },
+  cardTitle: { color: C.text, fontSize: 15, fontFamily: F.bold },
   count: { color: C.text2, fontSize: 13, fontFamily: F.medium },
   summaryTrack: { width: "100%", height: 6, borderRadius: radius.pill, backgroundColor: C.line, overflow: "hidden" },
   summaryFill: { height: "100%", borderRadius: radius.pill, backgroundColor: C.accent },

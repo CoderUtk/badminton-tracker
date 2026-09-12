@@ -1,6 +1,6 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { C } from "../theme";
+import { C, F } from "../theme";
 
 export default function Stepper({
   value,
@@ -43,6 +43,6 @@ const s = StyleSheet.create({
     backgroundColor: C.card, borderWidth: 1, borderColor: C.line,
   },
   btnDisabled: { opacity: 0.4, backgroundColor: C.bgElev },
-  btnText: { color: C.text, fontSize: 24, fontWeight: "800" },
-  value: { color: C.text, fontSize: 24, fontWeight: "800", minWidth: 32, textAlign: "center" },
+  btnText: { color: C.text, fontSize: 24, fontFamily: F.bold },
+  value: { color: C.text, fontSize: 24, fontFamily: F.bold, minWidth: 32, textAlign: "center" },
 });

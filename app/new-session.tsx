@@ -11,7 +11,7 @@ import FormScreen from "../src/components/FormScreen";
 import Stepper from "../src/components/Stepper";
 import CalendarIcon from "../src/components/CalendarIcon";
 import { useScreenInsets } from "../src/hooks/useScreenInsets";
-import { C } from "../src/theme";
+import { C, F } from "../src/theme";
 
 /** Default club-night slot: 6:00 PM on the chosen day, as minutes-since-midnight. */
 const DEFAULT_TIME_MINUTES = 18 * 60;
@@ -147,23 +147,23 @@ export default function NewSession() {
 const s = StyleSheet.create({
   root: { flex: 1 }, content: { padding: 16, gap: 10 },
   intro: { color: C.text2, fontSize: 15, lineHeight: 22, marginBottom: 8 },
-  label: { color: C.text, fontSize: 16, fontWeight: "800", marginTop: 5 },
+  label: { color: C.text, fontSize: 16, fontFamily: F.bold, marginTop: 5 },
   input: { minHeight: 52, borderRadius: 12, borderWidth: 1, borderColor: C.line, backgroundColor: C.card, color: C.text, paddingHorizontal: 14, fontSize: 16 },
   hint: { color: C.text2, fontSize: 12, lineHeight: 17 },
   dropdown: { minHeight: 52, borderRadius: 12, borderWidth: 1, borderColor: C.line, backgroundColor: C.card, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  dropdownText: { color: C.text, fontSize: 16, fontWeight: "700" },
-  dropdownChevron: { color: C.text2, fontSize: 16, fontWeight: "800" },
+  dropdownText: { color: C.text, fontSize: 16, fontFamily: F.bold },
+  dropdownChevron: { color: C.text2, fontSize: 16, fontFamily: F.bold },
   dropdownChevronOpen: { transform: [{ rotate: "180deg" }] },
   dropdownList: { borderRadius: 12, borderWidth: 1, borderColor: C.line, backgroundColor: C.card, overflow: "hidden" },
   dropdownItem: { minHeight: 46, paddingHorizontal: 14, justifyContent: "center", borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line },
   dropdownItemOn: { backgroundColor: C.cardHi },
-  dropdownItemText: { color: C.text, fontSize: 15, fontWeight: "600" },
-  dropdownItemTextOn: { color: C.red, fontWeight: "800" },
+  dropdownItemText: { color: C.text, fontSize: 15, fontFamily: F.semibold },
+  dropdownItemTextOn: { color: C.red, fontFamily: F.bold },
   whereRow: { flexDirection: "row", alignItems: "flex-end", gap: 10 },
   whereInput: { flex: 1 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: { minWidth: 54, minHeight: 42, paddingHorizontal: 14, justifyContent: "center", alignItems: "center", borderRadius: 21, backgroundColor: C.card, borderWidth: 1, borderColor: C.line },
   iconChip: { minWidth: 42, paddingHorizontal: 10 },
-  chipOn: { backgroundColor: C.cardHi, borderColor: C.lineHi }, chipText: { color: C.text, fontWeight: "700" },
-  cta: { minHeight: 56, marginTop: 18, borderRadius: 14, backgroundColor: C.red, alignItems: "center", justifyContent: "center" }, ctaText: { color: C.text, fontSize: 18, fontWeight: "900" },
+  chipOn: { backgroundColor: C.cardHi, borderColor: C.lineHi }, chipText: { color: C.text, fontFamily: F.bold },
+  cta: { minHeight: 56, marginTop: 18, borderRadius: 14, backgroundColor: C.red, alignItems: "center", justifyContent: "center" }, ctaText: { color: C.text, fontSize: 18, fontFamily: F.bold },
 });

@@ -456,6 +456,6 @@ const s = StyleSheet.create({
     backgroundColor: C.card, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 10,
     alignSelf: "flex-start", marginBottom: 8,
   },
-  shareButtonText: { color: C.text, fontSize: 14, fontWeight: "700" },
+  shareButtonText: { color: C.text, fontSize: 14, fontFamily: F.bold },
   offscreenCard: { position: "absolute", top: -3000, left: 0 },
 });

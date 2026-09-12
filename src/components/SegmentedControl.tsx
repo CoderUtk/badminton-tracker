@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, type LayoutChangeEvent, Pressable, StyleSheet, Text, View } from "react-native";
-import { C, MIN_TOUCH } from "../theme";
+import { C, MIN_TOUCH, F } from "../theme";
 
 /** Sliding segmented control — the highlight animates between options instead of separate toggle chips. */
 export default function SegmentedControl<T extends string>({
@@ -62,6 +62,6 @@ const s = StyleSheet.create({
   indicator: { position: "absolute", top: 4, bottom: 4, left: 4, backgroundColor: C.cardHi, borderRadius: 9, borderWidth: 1, borderColor: C.lineHi },
   item: { flex: 1, minHeight: MIN_TOUCH, alignItems: "center", justifyContent: "center" },
   itemDisabled: { opacity: 0.4 },
-  itemText: { color: C.text2, fontWeight: "800", fontSize: 14 },
+  itemText: { color: C.text2, fontFamily: F.bold, fontSize: 14 },
   itemTextOn: { color: C.text },
 });

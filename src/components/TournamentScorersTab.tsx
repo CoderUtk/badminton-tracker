@@ -118,7 +118,7 @@ export default function TournamentScorersTab({
 const s = StyleSheet.create({
   root: { gap: 8, paddingVertical: 12 },
   share: { flexDirection: "row", gap: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 12, minHeight: 52, alignItems: "center", justifyContent: "center", marginBottom: 4 },
-  shareText: { color: C.text, fontSize: 16, fontWeight: "700" },
+  shareText: { color: C.text, fontSize: 16, fontFamily: F.bold },
   row: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: C.card, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: C.line },
   name: { flex: 1, color: C.text, fontFamily: F.body, fontSize: 15 },
   role: { color: C.text2, fontFamily: F.semibold, fontSize: 12, textTransform: "uppercase" },

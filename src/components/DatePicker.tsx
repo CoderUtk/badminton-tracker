@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { C } from "../theme";
+import { C, F } from "../theme";
 
 /** Strip a date to local midnight (date-only comparisons). */
 export function startOfDay(d: Date): Date {
@@ -77,14 +77,14 @@ const s = StyleSheet.create({
   wrap: { backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.line, padding: 10 },
   head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 6, paddingVertical: 4 },
   nav: { width: 40, height: 40, alignItems: "center", justifyContent: "center", borderRadius: 20, backgroundColor: C.cardHi },
-  navText: { color: C.text, fontSize: 22, fontWeight: "800", lineHeight: 24 },
-  month: { color: C.text, fontSize: 16, fontWeight: "800" },
+  navText: { color: C.text, fontSize: 22, fontFamily: F.bold, lineHeight: 24 },
+  month: { color: C.text, fontSize: 16, fontFamily: F.bold },
   grid: { flexDirection: "row", flexWrap: "wrap" },
   cell: { width: `${100 / 7}%`, aspectRatio: 1, alignItems: "center", justifyContent: "center" },
-  weekday: { color: C.text2, fontSize: 12, fontWeight: "800" },
+  weekday: { color: C.text2, fontSize: 12, fontFamily: F.bold },
   day: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center" },
   daySel: { backgroundColor: C.red },
-  dayText: { color: C.text, fontSize: 15, fontWeight: "700" },
+  dayText: { color: C.text, fontSize: 15, fontFamily: F.bold },
   dayDisabled: { color: "#4A4A4A" },
   daySelText: { color: C.text },
 });

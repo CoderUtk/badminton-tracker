@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { C } from "../theme";
+import { C, F } from "../theme";
 
 const HOURS = Array.from({ length: 12 }, (_, i) => i + 1); // 1–12
 const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5); // 00,05,…,55
@@ -89,12 +89,12 @@ const s = StyleSheet.create({
     backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.line,
   },
   column: { flex: 1, maxHeight: 140 },
-  colon: { color: C.text2, fontSize: 16, fontWeight: "800" },
+  colon: { color: C.text2, fontSize: 16, fontFamily: F.bold },
   item: {
     minHeight: 36, justifyContent: "center", alignItems: "center",
     borderRadius: 10, marginVertical: 2,
   },
   itemOn: { backgroundColor: C.cardHi, borderWidth: 1, borderColor: C.lineHi },
-  itemText: { color: C.text, fontWeight: "700", fontSize: 14 },
+  itemText: { color: C.text, fontFamily: F.bold, fontSize: 14 },
   itemTextOn: { color: C.text },
 });
