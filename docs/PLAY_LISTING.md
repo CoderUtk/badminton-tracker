@@ -5,11 +5,18 @@ Answers/declarations for CourtSide on Google Play.
 App package: `com.navalo.courtside`
 
 > **This document was rewritten on 2026-09-12.** The previous version described
-> an offline-only build with no accounts and declared "Data collected: None".
-> That is no longer true — the app has Supabase accounts, cloud sync, avatar
-> uploads and Sentry crash reporting. Filing the old declarations would be a
-> false Data safety statement. Everything below is derived from the current
-> code; the source file is named next to each claim so it can be re-checked.
+> an offline-only build with no accounts and declared "Data collected: None" —
+> stale, since the app now has Supabase accounts, cloud sync, avatar uploads and
+> Sentry crash reporting.
+>
+> **The Play Console itself was already up to date when this was checked on
+> 2026-09-12** — Data safety answers "Yes" to collection and to encryption in
+> transit with 9 personal-info data types declared, the feature graphic is in
+> place, and the live full description is already the optimised copy. Only this
+> document was out of date. Treat what follows as a record of what the app
+> actually collects, useful for re-checking the console against the code — not
+> as a form that still needs filing from scratch. Each claim names its source
+> file.
 
 ---
 
@@ -39,7 +46,7 @@ Supporting answers:
   dropped entirely (`observability.ts`). Declare crash logs as **not** linked to
   the user.
 
-### Two things to confirm before you submit
+### Two things worth confirming
 
 1. **Avatars are world-readable.** `uploadAvatar` calls `getPublicUrl` on the
    `avatars` bucket, so a profile picture is served from an unauthenticated URL.
@@ -59,7 +66,7 @@ previous version of this doc are obsolete.
 
 Check the policy text actually covers: email, display name, avatar (and that it
 is public), match/session/club content, and Sentry crash logs. If it still
-describes an offline-only app it needs updating before this listing goes live.
+describes an offline-only app it needs updating — the listing is already live.
 
 ## App content → Content rating (IARC questionnaire)
 
@@ -167,23 +174,39 @@ over the rendered ones; do not try to upload all eleven.
 
 ---
 
-## Upload checklist
+## What is actually left to do
 
-Everything below needs a signed-in Play Console session, which I cannot do.
+Checked against the live console on 2026-09-12. Most of this listing is already
+done; what follows is only the remainder.
 
-1. **Play Console → CourtSide → Store presence → Main store listing**
-   - Paste app name, short description, full description from above
-   - Upload `feature-graphic.png`
-   - Upload `screenshot-01..08.png` in order (order is the order shown; the
-     first 2–3 do most of the conversion work)
-   - Save
-2. **App content → Data safety** — rebuild the form from the table above. This
-   is the one that must not be filed as-is from the old doc.
-3. **App content → Privacy policy** — set `https://courtside-links.vercel.app/privacy`
-4. **App content → Content rating** — redo the questionnaire; UGC answer is now Yes
-5. **App content → App access** — add test credentials or the guest-mode note
-6. **Release** — upload the `.aab`, review, roll out
+**Outstanding:**
 
-Re-running the ASO audit after this lands should move the listing well off the
-44/100 it scored, since the two biggest gaps in that grade were the missing
-feature graphic and the screenshot set.
+1. **Phone screenshots — 5 of 8 filled.** All eight `screenshot-01..08.png` are
+   already uploaded to the Play asset library, so this is Add assets → select
+   the eight → Save. No re-upload needed.
+2. **Full description — one line.** The live copy reads "No account required, no
+   signup wall"; it should read "No account required to start scoring, no signup
+   wall", since clubs, sessions and tournaments all need an account.
+3. **Verify the privacy policy text** at `https://courtside-links.vercel.app/privacy`
+   still matches the app — in particular that it covers the public avatar URL.
+   The URL is set correctly in the console; only the wording is unverified.
+4. **Check the release AAB's permissions** (see the section above) before the
+   next upload.
+
+> Attempts to make changes 1 and 2 through browser automation on 2026-09-12
+> failed twice: the edits staged cleanly and Save reported success, but nothing
+> persisted and Publishing overview showed no pending change. Cause unknown —
+> worth checking whether the signed-in account has store-listing edit rights.
+> Doing it by hand in the console is the reliable route.
+
+**Already done, confirmed in the console — do not redo:**
+
+- Data safety questionnaire (collection Yes, encrypted in transit Yes, 9
+  personal-info data types)
+- Feature graphic
+- Privacy policy URL
+- App name and short description
+- The rest of the full description copy
+
+Note that managed publishing is **off**, so a saved change goes to review and
+publishes on its own — there is no manual gate to hold it back.
