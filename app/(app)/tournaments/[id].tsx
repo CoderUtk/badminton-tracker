@@ -27,7 +27,7 @@ import TournamentResultCard from "../../../src/components/share/TournamentResult
 import { captureAndShare } from "../../../src/lib/share/captureAndShare";
 import { avatarMap, preloadAvatars } from "../../../src/lib/share/avatars";
 import { toast } from "../../../src/lib/toast";
-import { C, F, press, selected } from "../../../src/theme";
+import { C, F, MIN_TOUCH, press, selected } from "../../../src/theme";
 
 type Tab = "config" | "players" | "scorers";
 const POLL_MS = 15000;
@@ -320,6 +320,7 @@ export default function TournamentBracket() {
         {!isDraft ? (
           <PressableScale
             style={s.refreshBtn}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             onPress={onRefresh}
             disabled={refreshing}
             accessibilityLabel="Refresh tournament"
@@ -373,6 +374,7 @@ export default function TournamentBracket() {
                 key={t}
                 onPress={() => { setTab(t); setPanelOpen(true); }}
                 style={({ pressed }) => [s.tabBtn, pressed && press]}
+                accessibilityRole="button"
               >
                 <Text style={s.tabText}>{t[0].toUpperCase() + t.slice(1)}</Text>
               </Pressable>
@@ -380,10 +382,13 @@ export default function TournamentBracket() {
             {isAdmin ? (
               <Pressable
                 onPress={() => router.push(`/tournaments/ops/${id}`)}
-                style={({ pressed }) => [s.tabBtn, pressed && press]}
+                style={({ pressed }) => [s.tabBtn, s.opsBtn, pressed && press]}
+                accessibilityRole="button"
+                accessibilityLabel="Ops console, opens a separate screen"
               >
                 <Icon name="cog" color={C.text2} size={16} />
                 <Text style={s.tabText}>Ops</Text>
+                <Icon name="chevron-forward" color={C.text3} size={14} />
               </Pressable>
             ) : null}
           </View>
@@ -445,9 +450,14 @@ export default function TournamentBracket() {
 const s = StyleSheet.create({
   titleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 },
   titleText: { color: C.text, fontFamily: F.bold, fontSize: 18 },
+  // The control a spectator taps most, and the app's only manual refresh.
+  // Keeps its 28dp visual size; hitSlop carries it to the 48dp touch minimum.
   refreshBtn: { width: 28, height: 28, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: C.card },
   tabRow: { flexDirection: "row", gap: 8, marginTop: 8 },
-  tabBtn: { flex: 1, alignItems: "center", paddingVertical: 10, backgroundColor: C.card, borderRadius: 10, borderWidth: 1, borderColor: C.line },
+  tabBtn: { flex: 1, flexDirection: "row", gap: 4, justifyContent: "center", alignItems: "center", minHeight: MIN_TOUCH, paddingVertical: 10, backgroundColor: C.card, borderRadius: 10, borderWidth: 1, borderColor: C.line },
+  // Ops leaves the screen while its three siblings open a panel in place. The
+  // chevron and the separating margin are the only thing saying so.
+  opsBtn: { marginLeft: 6, borderColor: C.lineHi },
   tabOn: selected,
   tabText: { color: C.text2, fontFamily: F.semibold, fontSize: 14 },
   tabTextOn: { color: C.text },

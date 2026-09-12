@@ -349,7 +349,16 @@ export default function MatchScreen({
   const scoreBlock = (
     <View style={s.scoreWrap}>
       <ElapsedChip startedAt={startedAt} pausedMs={pausedMs} pausedSince={pausedSince} />
-      <View style={s.scoreRibbon}>
+      {/* The scoring screen's whole job is this number changing. Without a live
+          region a TalkBack user taps +1 and gets a haptic and nothing else, so
+          the ribbon announces the new score and who serves next as one string
+          rather than leaving the reader to stitch six sibling nodes together. */}
+      <View
+        style={s.scoreRibbon}
+        accessibilityLiveRegion="polite"
+        accessible
+        accessibilityLabel={`${teamName("A")} ${state.score.A}, ${teamName("B")} ${state.score.B}, ${teamName(state.servingTeam)} serving`}
+      >
         <View style={[s.ribbonTeam, s.ribbonTeamA]}>
           <View style={s.serveSlot}>{state.servingTeam === "A" && <View style={[s.serveDot, { backgroundColor: C.red }]} />}</View>
           <Text style={[s.ribbonName, { color: C.red }]} numberOfLines={1}>{teamName("A")}</Text>
@@ -475,8 +484,10 @@ const s = StyleSheet.create({
   scoreFill: { flex: 1, alignItems: "center" },
   controls: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   group: { flexDirection: "row", gap: 8 },
+  // MIN_TOUCH on both axes: undo, redo and the orientation toggle sit next to
+  // End, and a mis-tap during a live match is destructive.
   iconBtn: {
-    backgroundColor: C.card, borderRadius: 10, width: 46, height: 40,
+    backgroundColor: C.card, borderRadius: 10, width: 48, height: MIN_TOUCH,
     alignItems: "center", justifyContent: "center",
   },
   iconDisabled: { opacity: 0.35 },
@@ -498,14 +509,15 @@ const s = StyleSheet.create({
   pausedTitle: { color: C.text, fontFamily: F.display, fontSize: 22, letterSpacing: 0.5 },
   pausedHint: { color: C.text2, fontFamily: F.body, fontSize: 14, textAlign: "center" },
   orientDropdown: {
-    position: "absolute", top: 46, left: 0, zIndex: 20,
+    // Tracks iconBtn's height (MIN_TOUCH) plus the 6pt gap it opens below it.
+    position: "absolute", top: MIN_TOUCH + 6, left: 0, zIndex: 20,
     backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.line, padding: 5, gap: 4,
   },
-  orientOption: { width: 40, height: 40, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  orientOption: { width: MIN_TOUCH, height: MIN_TOUCH, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   orientOptionOn: { backgroundColor: C.cardHi },
   pressed: { transform: [{ scale: 0.97 }], opacity: 0.92 },
   endBtn: {
-    flexDirection: "row", gap: 6, backgroundColor: C.red, borderRadius: 10, height: 40, paddingHorizontal: 14,
+    flexDirection: "row", gap: 6, backgroundColor: C.red, borderRadius: 10, height: MIN_TOUCH, paddingHorizontal: 14,
     alignItems: "center", justifyContent: "center",
   },
   endText: { color: C.text, fontSize: 15, fontFamily: F.bold },

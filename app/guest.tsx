@@ -1,5 +1,5 @@
 import React from "react";
-import { Linking, Platform, StyleSheet, Text, View } from "react-native";
+import { Linking, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { supabase } from "../src/lib/supabase";
 import { clearGuestMatchIds } from "../src/lib/guestMatches";
@@ -26,7 +26,11 @@ export default function GuestHome() {
   };
 
   return (
-    <View style={s.root}>
+    // The PWA's front door. A centred flex:1 box with no scroller cannot be
+    // reached past its own height — at 200% OS text scale, in landscape, or in
+    // a short desktop window the sign-in row simply had no way to be scrolled
+    // to. flexGrow keeps the vertical centring while there is room to spare.
+    <ScrollView contentContainerStyle={s.root} style={s.fill}>
       <View style={s.hero}>
         <Logo size={48} />
         <Text style={s.eyebrow}>GUEST</Text>
@@ -67,12 +71,13 @@ export default function GuestHome() {
             : "Sign in for clubs, tournaments, and more"}
         </Text>
       </PressableScale>
-    </View>
+    </ScrollView>
   );
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, padding: 22, gap: 16, justifyContent: "center" },
+  fill: { flex: 1 },
+  root: { flexGrow: 1, padding: 22, gap: 16, justifyContent: "center" },
   hero: { alignItems: "center", gap: 8, marginBottom: 12 },
   eyebrow: { color: C.text3, fontFamily: F.medium, fontSize: 11, letterSpacing: 2.4 },
   headline: { color: C.text, fontFamily: F.display, fontSize: 24, lineHeight: 30, textAlign: "center" },

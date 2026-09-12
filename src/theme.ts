@@ -1,3 +1,5 @@
+import { Platform } from "react-native";
+
 /**
  * CourtSide theme — premium "sports game HUD" direction.
  * Deep near-black surfaces, action red primary, an electric-cyan accent for
@@ -102,6 +104,20 @@ export const easing = {
 
 /** Instant press feedback for any Pressable — subtle scale + dim. Transform/opacity only (GPU-safe). */
 export const press = { transform: [{ scale: 0.97 }], opacity: 0.92 } as const;
+
+/**
+ * Keyboard focus ring for the web build. The app ships as a PWA as well as a
+ * native app, and on the web a keyboard user had no indication whatsoever of
+ * what was focused — WCAG 2.4.7. Native has no keyboard focus to draw, so this
+ * is empty there rather than painting an outline nobody can reach.
+ *
+ * An outline, not a border: a border would change the element's box and shift
+ * the layout the moment focus lands on it.
+ */
+export const focusRing =
+  Platform.OS === "web"
+    ? ({ outlineWidth: 2, outlineStyle: "solid", outlineColor: C.accent, outlineOffset: 2 } as const)
+    : ({} as const);
 
 /** 8pt spatial grid. Every margin, padding and gap comes from here. */
 export const space = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 } as const;

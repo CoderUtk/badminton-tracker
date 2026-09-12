@@ -24,7 +24,7 @@ import { fillEmptySlots } from "../src/lib/matchLineup";
 import { toast } from "../src/lib/toast";
 import { useSession } from "../src/stores/session";
 import { recordGuestMatch } from "../src/lib/guestMatches";
-import { C, F } from "../src/theme";
+import { C, F, MIN_TOUCH } from "../src/theme";
 
 type ZoneKey = { team: "A" | "B"; row: CourtRow };
 const sameZone = (a: ZoneKey | null, b: ZoneKey) => !!a && a.team === b.team && a.row === b.row;
@@ -450,17 +450,13 @@ export default function NewMatch() {
         style={s.topRow}
         onLayout={(e) => { topRow.value = e.nativeEvent.layout.height; }}
       >
-        <View style={[s.seg, s.segFill]}>
-          {[true, false].map((d) => (
-            <PressableScale
-              key={String(d)}
-              style={[s.segBtn, doubles === d && s.segOn]}
-              onPress={() => toggleFormat(d)}
-              scaleTo={0.96}
-            >
-              <Text style={[s.segText, doubles === d && s.segTextOn]}>{d ? "Doubles" : "Singles"}</Text>
-            </PressableScale>
-          ))}
+        <View style={s.segFill}>
+          <SegmentedControl
+            options={[{ label: "Doubles", value: "doubles" }, { label: "Singles", value: "singles" }]}
+            value={doubles ? "doubles" : "singles"}
+            onChange={(v) => toggleFormat(v === "doubles")}
+            role="radio"
+          />
         </View>
         {!isGuest && <ClubPicker clubs={clubs} clubId={clubId} onChange={setClubId} />}
       </View>
@@ -534,23 +530,21 @@ export default function NewMatch() {
         <View style={s.formatRow}>
         <View style={s.formatGroup}>
           <Text style={s.caption}>Points</Text>
-          <View style={s.seg}>
-            {([11, 15, 21] as const).map((p) => (
-              <Pressable key={p} style={[s.segBtn, points === p && s.segOn]} onPress={() => setPoints(p)}>
-                <Text style={[s.segText, points === p && s.segTextOn]}>{p}</Text>
-              </Pressable>
-            ))}
-          </View>
+          <SegmentedControl
+            options={[{ label: "11", value: "11" }, { label: "15", value: "15" }, { label: "21", value: "21" }]}
+            value={String(points)}
+            onChange={(v) => setPoints(Number(v) as 11 | 15 | 21)}
+            role="radio"
+          />
         </View>
         <View style={s.formatGroup}>
           <Text style={s.caption}>Games (best of)</Text>
-          <View style={s.seg}>
-            {([1, 3, 5] as const).map((bo) => (
-              <Pressable key={bo} style={[s.segBtn, bestOf === bo && s.segOn]} onPress={() => setBestOf(bo)}>
-                <Text style={[s.segText, bestOf === bo && s.segTextOn]}>{bo}</Text>
-              </Pressable>
-            ))}
-          </View>
+          <SegmentedControl
+            options={[{ label: "1", value: "1" }, { label: "3", value: "3" }, { label: "5", value: "5" }]}
+            value={String(bestOf)}
+            onChange={(v) => setBestOf(Number(v) as 1 | 3 | 5)}
+            role="radio"
+          />
         </View>
         </View>
         )}
@@ -588,12 +582,7 @@ const s = StyleSheet.create({
   topRow: { flexDirection: "row", gap: 8, alignItems: "center" },
   // No flex here: inside the column-laid-out format groups it would stretch the
   // pill row past the card background. The top row opts in with segFill.
-  seg: { flexDirection: "row", backgroundColor: C.card, borderRadius: 12, padding: 4, gap: 4 },
   segFill: { flex: 1 },
-  segBtn: { flex: 1, borderRadius: 9, minHeight: 40, alignItems: "center", justifyContent: "center" },
-  segOn: { backgroundColor: C.cardHi, borderWidth: 1, borderColor: C.lineHi },
-  segText: { color: C.text2, fontSize: 15, fontFamily: F.semibold },
-  segTextOn: { color: C.text },
   courtWrap: { flex: 1, minHeight: 200 },
   formatRow: { flexDirection: "row", gap: 12 },
   gameRow: { flexDirection: "row", alignItems: "center", gap: 10 },
@@ -603,7 +592,7 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: C.line, textAlign: "center",
     color: C.text, fontSize: 20, fontFamily: F.bold },
   gameDash: { color: C.text2, fontSize: 18, fontFamily: F.bold },
-  addGame: { flexDirection: "row", alignItems: "center", gap: 6, minHeight: 40, paddingLeft: 2 },
+  addGame: { flexDirection: "row", alignItems: "center", gap: 6, minHeight: MIN_TOUCH, paddingLeft: 2 },
   formatGroup: { flex: 1, gap: 2 },
   caption: { color: C.text2, fontSize: 12, fontFamily: F.bold },
   pickRow: {

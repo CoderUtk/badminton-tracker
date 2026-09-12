@@ -21,6 +21,11 @@ export default function Toaster() {
           entering={reduced ? undefined : FadeInDown.springify().damping(18).stiffness(180)}
           exiting={reduced ? undefined : FadeOutUp.duration(180)}
           style={[s.toast, { borderLeftColor: edgeColor(t.kind) }]}
+          // Every failure in the app surfaces here and nowhere else, and the
+          // toast auto-dismisses — without a live region a screen-reader user
+          // gets silence when a match fails to start. Errors interrupt;
+          // anything else waits for a pause.
+          accessibilityLiveRegion={t.kind === "error" ? "assertive" : "polite"}
         >
           <Pressable onPress={() => dismissToast(t.id)} style={s.press} accessibilityRole="button">
             <Text style={s.text} numberOfLines={3}>{t.message}</Text>

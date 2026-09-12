@@ -6,6 +6,7 @@ import type { TeamId } from "../../../src/engine";
 import { syncNow } from "../../../src/sync/runner";
 import AppDialog from "../../../src/components/AppDialog";
 import Icon from "../../../src/components/Icon";
+import Chip from "../../../src/components/Chip";
 import { C, F, glow, textGlow } from "../../../src/theme";
 
 /** A completed match's per-game scores, or a live snapshot from replaying its log. */
@@ -123,13 +124,14 @@ export default function Matches() {
       {hasAnyMatches && (
       <View style={s.filterBar}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterRow}>
-          <Pressable style={[s.fChip, !filter && s.fChipOn]} onPress={() => setFilter(null)}>
-            <Text style={[s.fChipText, !filter && s.fChipTextOn]}>All</Text>
-          </Pressable>
+          <Chip label="All" isSelected={!filter} onPress={() => setFilter(null)} />
           {FILTERS.map((f) => (
-            <Pressable key={f.key} style={[s.fChip, filter === f.key && s.fChipOn]} onPress={() => setFilter(filter === f.key ? null : f.key)}>
-              <Text style={[s.fChipText, filter === f.key && s.fChipTextOn]}>{f.label}</Text>
-            </Pressable>
+            <Chip
+              key={f.key}
+              label={f.label}
+              isSelected={filter === f.key}
+              onPress={() => setFilter(filter === f.key ? null : f.key)}
+            />
           ))}
         </ScrollView>
       </View>
@@ -243,10 +245,6 @@ const s = StyleSheet.create({
   root: { flex: 1 },
   filterBar: { paddingTop: 12, paddingBottom: 4 },
   filterRow: { paddingHorizontal: 16, gap: 8 },
-  fChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: C.card, borderWidth: 1, borderColor: C.line },
-  fChipOn: { backgroundColor: C.cardHi, borderColor: C.lineHi },
-  fChipText: { color: C.text2, fontSize: 13, fontFamily: F.bold },
-  fChipTextOn: { color: C.text },
   list: { padding: 16, paddingBottom: 32 },
   emptyWrap: { flexGrow: 1, justifyContent: "center", padding: 24 },
 
