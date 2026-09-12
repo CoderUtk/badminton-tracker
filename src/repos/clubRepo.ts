@@ -3,7 +3,6 @@ import { supabase } from "../lib/supabase";
 import { getDb } from "../db/db";
 import { insertMany } from "../db/batch";
 import { clearSetting, MATCH_PULL_KEY } from "./settingsRepo";
-import { getMyProfile } from "./profileRepo";
 
 export interface Club {
   id: string;
@@ -181,6 +180,12 @@ export type ClubRating = { clubId: string; clubName: string; rating: number };
  *  trigger) and the profile screen has no offline requirement to preserve. */
 export async function listMyClubRatings(): Promise<ClubRating[]> {
   if (!supabase) return [];
+  // Dynamic import, not top-level: profileRepo.ts pulls in expo-file-system,
+  // a native-only ESM module several jest suites that import clubRepo for
+  // unrelated reasons (addFriendToClub.test.ts, clubRoster.test.ts, etc.)
+  // cannot transform. A static import here broke 8 suites that never call
+  // this function.
+  const { getMyProfile } = await import("./profileRepo");
   const me = await getMyProfile();
   if (!me) return [];
 
