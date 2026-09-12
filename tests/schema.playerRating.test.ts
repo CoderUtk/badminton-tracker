@@ -30,9 +30,18 @@ test("uses the standard ELO expected-score formula", () => {
   expect(sql).toMatch(/1 \/ \(1 \+ power\(10, \(rating_b - rating_a\) \/ 400\)\)/);
 });
 
-test("applies the delta symmetrically to both sides", () => {
-  expect(sql).toMatch(/set rating = rating \+ delta where id = any\(ids_a\)/);
-  expect(sql).toMatch(/set rating = rating - delta where id = any\(ids_b\)/);
+test("applies the delta symmetrically to both sides in a single update (no deadlock window)", () => {
+  expect(sql).toMatch(/set rating = rating \+ case when id = any\(ids_a\) then delta else -delta end/);
+  expect(sql).toMatch(/where id = any\(ids_a\) or id = any\(ids_b\)/);
+});
+
+test("guards against ids outside the match's club before rating (guest-match fallback)", () => {
+  const fn = sql.slice(sql.indexOf("function public.apply_match_rating"));
+  expect(fn).toMatch(/cp\.club_id = new\.club_id/);
+});
+
+test("empty-array guard is present", () => {
+  expect(sql).toMatch(/array_length\(ids_a, 1\) is null/);
 });
 
 test("function branches on tg_op to handle INSERT (no old.rated) and UPDATE separately", () => {

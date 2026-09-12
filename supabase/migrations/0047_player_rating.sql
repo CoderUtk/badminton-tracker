@@ -42,6 +42,21 @@ begin
     return new;
   end if;
 
+  -- Every cited club_player_id must actually belong to this match's club.
+  -- Without this, a security-definer write could rate a stranger's row in
+  -- another club, or NULL out of a missing join and abort the match write.
+  if exists (
+    select 1
+      from unnest(ids_a || ids_b) as cited_id
+     where not exists (
+       select 1 from public.club_players cp
+        where cp.id = cited_id and cp.club_id = new.club_id
+     )
+  ) then
+    new.rated := true;
+    return new;
+  end if;
+
   select avg(rating) into rating_a from public.club_players where id = any(ids_a);
   select avg(rating) into rating_b from public.club_players where id = any(ids_b);
 
@@ -49,8 +64,9 @@ begin
   actual_a := case when new.winner = 'A' then 1 else 0 end;
   delta := round(k * (actual_a - expected_a));
 
-  update public.club_players set rating = rating + delta where id = any(ids_a);
-  update public.club_players set rating = rating - delta where id = any(ids_b);
+  update public.club_players
+     set rating = rating + case when id = any(ids_a) then delta else -delta end
+   where id = any(ids_a) or id = any(ids_b);
 
   new.rated := true;
   return new;

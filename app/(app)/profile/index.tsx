@@ -435,7 +435,7 @@ export default function Profile() {
       {ratings.length > 0 && (
         <View style={s.ratingGrid}>
           {ratings.map((r) => (
-            <Stat key={r.clubId} label={r.clubName} value={r.rating} />
+            <Stat key={r.clubId} label={`${r.clubName} rating`} value={r.rating} />
           ))}
         </View>
       )}
