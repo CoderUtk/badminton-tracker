@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import { getDb } from "../db/db";
 import { insertMany } from "../db/batch";
 import { clearSetting, MATCH_PULL_KEY } from "./settingsRepo";
+import { getMyProfile } from "./profileRepo";
 
 export interface Club {
   id: string;
@@ -171,6 +172,31 @@ export async function deleteClub(id: string): Promise<void> {
   const db = await getDb();
   await db?.runAsync("delete from clubs_cache where id = ?", id);
   await db?.runAsync("delete from club_players_cache where club_id = ?", id);
+}
+
+export type ClubRating = { clubId: string; clubName: string; rating: number };
+
+/** This player's rating in every club they belong to. Live query, not cached
+ *  like club_players_cache — rating changes server-side (the matches_apply_rating
+ *  trigger) and the profile screen has no offline requirement to preserve. */
+export async function listMyClubRatings(): Promise<ClubRating[]> {
+  if (!supabase) return [];
+  const me = await getMyProfile();
+  if (!me) return [];
+
+  const { data, error } = await supabase
+    .from("club_players")
+    .select("rating, clubs(id, name)")
+    .eq("profile_id", me.id);
+  if (error || !data) return [];
+
+  const out: ClubRating[] = [];
+  for (const row of data as { rating: number; clubs: { id: string; name: string } | { id: string; name: string }[] | null }[]) {
+    const club = Array.isArray(row.clubs) ? row.clubs[0] : row.clubs;
+    if (!club) continue;
+    out.push({ clubId: club.id, clubName: club.name, rating: row.rating });
+  }
+  return out;
 }
 
 export async function listPlayers(clubId: string): Promise<ClubPlayer[]> {
