@@ -119,7 +119,9 @@ function Gate({ children }: { children: React.ReactNode }) {
         void supabase?.auth.signInAnonymously();
         return;
       }
-      if (!inAuth) {
+      // A public player page is readable with no account at all (0052 grants
+      // the RPC to anon), so a shared link must not bounce to sign-in.
+      if (!inAuth && segments[0] !== "u") {
         // Remember where they were headed; Gate replays it once signed in.
         if (segments[0] === "join") setPendingLink(pathname);
         router.replace("/sign-in");

@@ -6,6 +6,11 @@ test("guest shell and its sub-routes are allowed", () => {
   expect(isGuestAllowedSegments(["guest", "matches"])).toBe(true);
 });
 
+test("public player pages are allowed, signed in or not", () => {
+  expect(isGuestAllowedSegments(["u"])).toBe(true);
+  expect(isGuestAllowedSegments(["u", "[username]"])).toBe(true);
+});
+
 test("quick match screens are allowed", () => {
   expect(isGuestAllowedSegments(["new-match"])).toBe(true);
   expect(isGuestAllowedSegments(["score", "[matchId]"])).toBe(true);

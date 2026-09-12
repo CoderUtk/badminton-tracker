@@ -21,6 +21,7 @@ import { evaluateBadges } from "../../../src/achievements/rules";
 import { getSetting, setSetting, REMINDERS_KEY } from "../../../src/repos/settingsRepo";
 import { scheduleInactivityReminder, syncSessionReminders, cancelReminders } from "../../../src/lib/reminders";
 import UpiHandleCard from "../../../src/components/UpiHandleCard";
+import PublicProfileCard from "../../../src/components/PublicProfileCard";
 import { registerPushToken, unregisterPushToken } from "../../../src/lib/push";
 import { notificationsBlocked } from "../../../src/lib/notificationPermission";
 import { C, F, glow, screenMax } from "../../../src/theme";
@@ -549,6 +550,10 @@ export default function Profile() {
           />
         </View>
       </View>
+
+      {session && !session.user.is_anonymous && (
+        <PublicProfileCard username={username} />
+      )}
 
       {session && !session.user.is_anonymous && <UpiHandleCard />}
 

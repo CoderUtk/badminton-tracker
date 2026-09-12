@@ -6,6 +6,9 @@
  */
 export function isGuestAllowedSegments(segments: string[]): boolean {
   if (segments[0] === "guest") return true;
+  // Public player pages (0052). The whole point is that anyone can open one,
+  // and a guest bounced to /guest would never see a link someone shared.
+  if (segments[0] === "u") return true;
   if (segments[0] === "new-match") return true;
   if (segments[0] === "score") return true;
   if (segments[0] === "join" && segments[1] === "tournament" && segments[3] === "spectator") return true;
