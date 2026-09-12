@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { Pressable, ScrollView, SectionList, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import { endMatchEarly, listMatches, MatchRecord, replayMatch } from "../../../src/repos/matchRepo";
+import { deleteMatch, endMatchEarly, listMatches, MatchRecord, replayMatch } from "../../../src/repos/matchRepo";
 import type { TeamId } from "../../../src/engine";
 import { syncNow } from "../../../src/sync/runner";
 import AppDialog from "../../../src/components/AppDialog";
@@ -42,6 +42,7 @@ export default function Matches() {
   const [done, setDone] = useState<Row[]>([]);
   const [filter, setFilter] = useState<StatusFilter | null>(null);
   const [confirmingEndId, setConfirmingEndId] = useState<string | null>(null);
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     const list = await listMatches();
@@ -67,6 +68,14 @@ export default function Matches() {
     void syncNow();
     void reload();
   }, [confirmingEndId, reload]);
+
+  const onConfirmDelete = useCallback(async () => {
+    const id = confirmingDeleteId;
+    setConfirmingDeleteId(null);
+    if (!id) return;
+    await deleteMatch(id);
+    void reload();
+  }, [confirmingDeleteId, reload]);
 
   const completed = useMemo(() => done.filter((m) => m.status === "completed"), [done]);
   const forfeited = useMemo(() => done.filter((m) => m.status === "forfeited"), [done]);
@@ -159,6 +168,10 @@ export default function Matches() {
         )}
         renderItem={({ item }) => {
           const isLive = item.status === "live";
+          // Club matches are shared history synced to other members — no
+          // delete path for those yet (see matchRepo.deleteMatch). A live
+          // match already has an End action; deleting mid-play isn't offered.
+          const canDelete = !isLive && item.club_id === null;
           return (
             <Pressable
               style={[s.card, isLive && s.cardLive]}
@@ -166,9 +179,20 @@ export default function Matches() {
             >
               <View style={s.cardTop}>
                 <Text style={s.format}>{format(item)}</Text>
-                {isLive
-                  ? <View style={s.liveBadge}><Text style={s.liveBadgeText}>● LIVE · Game {item.live?.game ?? 1}</Text></View>
-                  : <Text style={s.date}>{relDate(item.created_at)}</Text>}
+                <View style={s.cardTopRight}>
+                  {isLive
+                    ? <View style={s.liveBadge}><Text style={s.liveBadgeText}>● LIVE · Game {item.live?.game ?? 1}</Text></View>
+                    : <Text style={s.date}>{relDate(item.created_at)}</Text>}
+                  {canDelete && (
+                    <Pressable
+                      hitSlop={8}
+                      accessibilityLabel="Delete match"
+                      onPress={() => setConfirmingDeleteId(item.id)}
+                    >
+                      <Icon name="trash-outline" color={C.text2} size={17} />
+                    </Pressable>
+                  )}
+                </View>
               </View>
 
               <TeamLine m={item} team="A" />
@@ -201,6 +225,16 @@ export default function Matches() {
         onConfirm={onConfirmEndLive}
         onCancel={() => setConfirmingEndId(null)}
       />
+      <AppDialog
+        visible={!!confirmingDeleteId}
+        title="Delete match?"
+        message="This removes it from your history. This can't be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        destructive
+        onConfirm={onConfirmDelete}
+        onCancel={() => setConfirmingDeleteId(null)}
+      />
     </View>
   );
 }
@@ -223,6 +257,7 @@ const s = StyleSheet.create({
   card: { backgroundColor: C.card, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: C.line },
   cardLive: { borderColor: C.green, ...glow(C.green, 12, 0.35) },
   cardTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
+  cardTopRight: { flexDirection: "row", alignItems: "center", gap: 10 },
   format: { color: C.text2, fontSize: 12, fontWeight: "700", letterSpacing: 0.3 },
   date: { color: C.text2, fontSize: 12, fontWeight: "600" },
   liveBadge: { backgroundColor: "rgba(34,197,94,0.15)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },

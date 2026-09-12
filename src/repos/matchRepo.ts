@@ -213,6 +213,21 @@ export async function listMatchesForClub(clubId: string): Promise<MatchRecord[]>
   return rows.map(rowToRecord);
 }
 
+/**
+ * Personal matches (no club) are local-only — never pushed by syncNow (see
+ * sync/runner.ts's `club_id is not null` filter) — so deleting one is a plain
+ * local delete. Club matches are shared history synced to other members and
+ * have no delete path yet; the `club_id is null` guard keeps this function
+ * from silently doing a local-only "delete" that syncNow just re-pulls back.
+ */
+export async function deleteMatch(matchId: string): Promise<void> {
+  const db = await getDb();
+  await db?.withTransactionAsync(async () => {
+    await db.runAsync("delete from match_events where match_id = ?", matchId);
+    await db.runAsync("delete from matches where id = ? and club_id is null", matchId);
+  });
+}
+
 export async function replayMatch(matchId: string): Promise<MatchState | null> {
   const events = await loadEvents(matchId);
   return events.length ? replay(events) : null;
