@@ -21,7 +21,10 @@ declare
   actual_a numeric;
   delta numeric;
 begin
-  if new.status <> 'completed' or old.rated or new.winner is null then
+  if new.status <> 'completed' or new.winner is null then
+    return new;
+  end if;
+  if tg_op = 'UPDATE' and old.rated then
     return new;
   end if;
 
@@ -32,6 +35,7 @@ begin
 
   -- Guest/quick matches or any side missing a club_player_id can't be rated.
   if ids_a is null or ids_b is null
+     or array_length(ids_a, 1) is null or array_length(ids_b, 1) is null
      or array_position(ids_a, null) is not null
      or array_position(ids_b, null) is not null then
     new.rated := true;
@@ -59,4 +63,10 @@ create trigger matches_apply_rating
   before update on public.matches
   for each row
   when (new.status = 'completed' and not old.rated)
+  execute function public.apply_match_rating();
+
+create trigger matches_apply_rating_insert
+  before insert on public.matches
+  for each row
+  when (new.status = 'completed')
   execute function public.apply_match_rating();

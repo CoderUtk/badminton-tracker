@@ -34,3 +34,14 @@ test("applies the delta symmetrically to both sides", () => {
   expect(sql).toMatch(/set rating = rating \+ delta where id = any\(ids_a\)/);
   expect(sql).toMatch(/set rating = rating - delta where id = any\(ids_b\)/);
 });
+
+test("function branches on tg_op to handle INSERT (no old.rated) and UPDATE separately", () => {
+  const fn = sql.slice(sql.indexOf("function public.apply_match_rating"));
+  expect(fn).toMatch(/if tg_op = 'UPDATE' and old\.rated then/);
+});
+
+test("insert trigger fires before insert, guarded on completed status", () => {
+  const insertTrigger = sql.slice(sql.indexOf("create trigger matches_apply_rating_insert"));
+  expect(insertTrigger).toMatch(/before insert on public\.matches/);
+  expect(insertTrigger).toMatch(/when \(new\.status = 'completed'\)/);
+});
