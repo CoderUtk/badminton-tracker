@@ -1,0 +1,260 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Chakra+Petch:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0C0E12;--card:#171A21;--line:rgba(255,255,255,.07);--lineHi:rgba(255,255,255,.15);--red:#FF3B30;--accent:#22D3EE;--green:#22C55E;--text:#F2F4F8;--t2:#9BA3B2;--t3:#838B9D;--ghost:#5C6472;
+--disp:"Russo One",system-ui,sans-serif;--body:"Chakra Petch",system-ui,sans-serif}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;font-family:var(--body)}
+.screen{display:none}
+.screen.on{display:block}
+.shot{width:1080px;height:1920px;position:relative;overflow:hidden;
+background:radial-gradient(120% 70% at 50% -10%,#18202B 0%,#0F1319 45%,#0A0C10 100%)}
+.shot:after{content:"";position:absolute;inset:0;background:
+radial-gradient(40% 22% at 12% 8%,rgba(255,59,48,.20),transparent 70%),
+radial-gradient(46% 26% at 92% 30%,rgba(34,211,238,.14),transparent 70%);pointer-events:none}
+.cap{position:absolute;top:96px;left:0;right:0;text-align:center;padding:0 70px;z-index:3}
+.cap h1{font-family:var(--disp);font-size:72px;line-height:1.06;color:#fff;letter-spacing:.5px}
+.cap h1 em{font-style:normal;color:var(--accent);text-shadow:0 0 28px rgba(34,211,238,.55)}
+.cap p{margin-top:22px;font-size:36px;color:var(--t2);font-weight:500}
+.phone{position:absolute;top:392px;left:50%;transform:translateX(-50%);width:760px;height:1480px;
+background:var(--bg);border-radius:56px;border:3px solid var(--lineHi);overflow:hidden;
+box-shadow:0 40px 120px rgba(0,0,0,.7),0 0 0 12px #05070A}
+.sb{height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 34px;font-size:22px;color:var(--t2);font-weight:600}
+.hd{padding:18px 30px 12px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--line)}
+.hd .wm{font-family:var(--disp);font-size:26px;color:#fff;letter-spacing:2px}
+.hd .wm i{font-style:normal;color:var(--red)}
+.body{padding:28px 30px}
+.eyebrow{font-size:22px;letter-spacing:3px;text-transform:uppercase;color:var(--t3);font-weight:600;margin-bottom:14px}
+.card{background:linear-gradient(180deg,#1B1F27,#141821);border:1px solid var(--line);border-radius:20px;padding:24px;margin-bottom:18px}
+.card.hi{border-color:rgba(34,211,238,.35);box-shadow:0 0 32px rgba(34,211,238,.12)}
+.row{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.nm{font-size:30px;color:var(--text);font-weight:600}
+.sm{font-size:24px;color:var(--t2)}
+.rt{font-family:var(--disp);font-size:28px;color:var(--accent)}
+.pill{font-size:20px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:8px 16px;border-radius:999px}
+.pill.red{background:rgba(255,59,48,.14);color:var(--red);border:1px solid rgba(255,59,48,.35)}
+.pill.cy{background:rgba(34,211,238,.12);color:var(--accent);border:1px solid rgba(34,211,238,.35)}
+.pill.gr{background:rgba(34,197,94,.14);color:var(--green);border:1px solid rgba(34,197,94,.35)}
+.cta{margin-top:8px;background:linear-gradient(180deg,#FF4D42,#D42318);border-radius:16px;text-align:center;padding:26px;font-family:var(--disp);font-size:30px;color:#fff;letter-spacing:1px;box-shadow:0 10px 34px rgba(255,59,48,.35)}
+.vs{font-family:var(--disp);font-size:24px;color:var(--ghost);text-align:center;margin:10px 0}
+.tot{display:flex;justify-content:space-between;margin-top:16px;padding-top:16px;border-top:1px dashed var(--line);font-size:22px;color:var(--t3)}
+.tot b{color:var(--accent);font-family:var(--disp)}
+.tabs{position:absolute;bottom:0;left:0;right:0;height:104px;background:#0B0D11;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-around;font-size:18px;color:var(--ghost);letter-spacing:1px}
+.tabs .a{color:var(--red)}
+.dot{width:14px;height:14px;border-radius:999px;background:var(--green);box-shadow:0 0 14px var(--green)}
+.court{background:linear-gradient(180deg,#1A2A2E,#14202A);border:2px solid rgba(255,255,255,.18);border-radius:12px;position:relative;height:380px;display:grid;grid-template-columns:1fr 1fr}
+.court:before{content:"";position:absolute;left:50%;top:-10px;bottom:-10px;width:3px;background:rgba(255,255,255,.45)}
+.half{display:grid;grid-template-rows:1fr 1fr}
+.cellp{display:flex;align-items:center;justify-content:center;font-size:26px;color:var(--text);font-weight:600;border:1px solid rgba(255,255,255,.10)}
+.cellp.srv{background:rgba(255,59,48,.14);color:#fff}
+.score{display:flex;align-items:center;justify-content:center;gap:34px;margin:22px 0 8px}
+.score .n{font-family:var(--disp);font-size:110px;color:#fff;line-height:1}
+.score .n.win{color:var(--accent);text-shadow:0 0 34px rgba(34,211,238,.5)}
+.score .d{font-family:var(--disp);font-size:60px;color:var(--ghost)}
+.serve{text-align:center;font-size:26px;color:var(--red);font-weight:700;letter-spacing:1px}
+.big{font-family:var(--disp);font-size:64px;color:#fff;text-align:center}
+.lead{font-size:26px;color:var(--t2);text-align:center;margin-top:10px}
+.foot{display:none;position:absolute;bottom:48px;left:0;right:0;text-align:center;font-family:var(--disp);font-size:28px;letter-spacing:6px;color:var(--ghost);z-index:3}
+.fg{width:1024px;height:500px;position:relative;overflow:hidden;
+background:radial-gradient(90% 130% at 78% 20%,#1B2430 0%,#0F1319 50%,#0A0C10 100%);display:flex;align-items:center}
+.fg:after{content:"";position:absolute;inset:0;background:
+radial-gradient(38% 60% at 8% 90%,rgba(255,59,48,.22),transparent 70%),
+radial-gradient(44% 70% at 86% 18%,rgba(34,211,238,.20),transparent 70%)}
+.fg .l{padding-left:72px;width:600px;z-index:2}
+.fg .wm{font-family:var(--disp);font-size:76px;letter-spacing:3px;color:#fff;line-height:1}
+.fg .wm i{font-style:normal;color:var(--red)}
+.fg .tag{margin-top:18px;font-family:var(--disp);font-size:33px;color:var(--accent);text-shadow:0 0 26px rgba(34,211,238,.5);line-height:1.25}
+.fg .sub{margin-top:16px;font-size:25px;color:var(--t2);font-weight:500;line-height:1.35}
+.fg .r{position:absolute;right:0;top:0;bottom:0;width:430px;z-index:2;display:flex;align-items:center;justify-content:center}
+.mini{width:300px;background:linear-gradient(180deg,#1B1F27,#141821);border:1px solid rgba(34,211,238,.3);border-radius:20px;padding:22px;box-shadow:0 24px 70px rgba(0,0,0,.7),0 0 40px rgba(34,211,238,.12);transform:rotate(-4deg)}
+.mini .t{font-size:17px;letter-spacing:2px;color:var(--t3);text-transform:uppercase;font-weight:700;margin-bottom:14px}
+.mini .r2{display:flex;justify-content:space-between;font-size:20px;color:var(--text);padding:7px 0;font-weight:600}
+.mini .r2 span{color:var(--accent);font-family:var(--disp);font-size:18px}
+.mini .bal{margin-top:12px;padding-top:12px;border-top:1px dashed var(--line);font-size:17px;color:var(--t3);display:flex;justify-content:space-between}
+.mini .bal b{color:var(--green)}
+.pb{width:1200px;height:628px;position:relative;overflow:hidden;background:radial-gradient(100% 120% at 20% 0%,#1B2430,#0A0C10);display:flex;flex-direction:column;justify-content:center;padding:0 90px}
+.pb:after{content:"";position:absolute;inset:0;background:radial-gradient(40% 60% at 90% 80%,rgba(255,59,48,.22),transparent 70%),radial-gradient(40% 60% at 85% 10%,rgba(34,211,238,.18),transparent 70%)}
+.pb .k{position:relative;z-index:2}
+.pb .wm{font-family:var(--disp);font-size:34px;letter-spacing:6px;color:#fff}
+.pb .wm i{font-style:normal;color:var(--red)}
+.pb h2{font-family:var(--disp);font-size:76px;color:#fff;line-height:1.08;margin-top:26px;max-width:900px}
+.pb h2 em{font-style:normal;color:var(--accent);text-shadow:0 0 30px rgba(34,211,238,.5)}
+.pb p{font-size:30px;color:var(--t2);margin-top:24px;max-width:760px;line-height:1.4}
+.pb .b{margin-top:36px;display:inline-block;background:linear-gradient(180deg,#FF4D42,#D42318);padding:20px 40px;border-radius:14px;font-family:var(--disp);font-size:26px;color:#fff;letter-spacing:1px}
+</style></head><body>
+
+<div class="screen" id="s1"><div class="shot">
+<div class="cap"><h1>Rounds balanced<br>by <em>player rating</em></h1><p>Every court a close game. No mental maths.</p></div>
+<div class="phone">
+ <div class="sb"><span>19:42</span><span>5G &nbsp; 87%</span></div>
+ <div class="hd"><div class="wm">COURT<i>SIDE</i></div><div style="margin-left:auto" class="pill red">Round 3</div></div>
+ <div class="body">
+  <div class="eyebrow">Thursday Club Night &middot; 16 in</div>
+  <div class="card hi"><div class="eyebrow" style="margin:0 0 16px">Court 1</div>
+   <div class="row"><div class="nm">Aarav K.</div><div class="rt">1482</div></div>
+   <div class="row"><div class="nm">Meera S.</div><div class="rt">1401</div></div>
+   <div class="vs">&mdash; VS &mdash;</div>
+   <div class="row"><div class="nm">Dhiraj P.</div><div class="rt">1455</div></div>
+   <div class="row"><div class="nm">Shreesh N.</div><div class="rt">1424</div></div>
+   <div class="tot"><span>Team gap</span><b>4 pts</b></div></div>
+  <div class="card"><div class="eyebrow" style="margin:0 0 16px">Court 2</div>
+   <div class="row"><div class="nm">Nikhil R.</div><div class="rt">1370</div></div>
+   <div class="row"><div class="nm">Priya M.</div><div class="rt">1298</div></div>
+   <div class="vs">&mdash; VS &mdash;</div>
+   <div class="row"><div class="nm">Tara V.</div><div class="rt">1344</div></div>
+   <div class="row"><div class="nm">Omar B.</div><div class="rt">1319</div></div>
+   <div class="tot"><span>Team gap</span><b>5 pts</b></div></div>
+  <div class="cta">GENERATE NEXT ROUND</div>
+ </div>
+ <div class="tabs"><span class="a">HOME</span><span>CLUBS</span><span>MATCHES</span><span>SESSIONS</span><span>YOU</span></div>
+</div><div class="foot">COURTSIDE</div></div></div>
+
+<div class="screen" id="s2"><div class="shot">
+<div class="cap"><h1>Club night,<br>without the <em>clipboard</em></h1><p>One screen replaces the sheet and the spreadsheet.</p></div>
+<div class="phone">
+ <div class="sb"><span>18:58</span><span>5G &nbsp; 91%</span></div>
+ <div class="hd"><div class="wm">COURT<i>SIDE</i></div><div style="margin-left:auto" class="pill gr">Live</div></div>
+ <div class="body">
+  <div class="eyebrow">Next session</div>
+  <div class="card hi"><div class="row"><div><div class="nm" style="font-size:36px">Thursday Club Night</div><div class="sm" style="margin-top:8px">Riverside Sports Hall &middot; 19:00</div></div><div class="dot"></div></div>
+   <div class="tot" style="border-top-style:solid"><span>Checked in</span><b>16 / 20</b></div></div>
+  <div class="card"><div class="row"><div class="nm">Courts booked</div><div class="rt">4</div></div></div>
+  <div class="card"><div class="row"><div class="nm">Cost per head</div><div class="rt">&#8377; 125</div></div>
+   <div class="tot"><span>Unsettled</span><b style="color:#FF3B30">3 players</b></div></div>
+  <div class="card"><div class="row"><div class="nm">Rounds played</div><div class="rt">2</div></div></div>
+  <div class="cta">CHECK PLAYERS IN</div>
+ </div>
+ <div class="tabs"><span>HOME</span><span>CLUBS</span><span>MATCHES</span><span class="a">SESSIONS</span><span>YOU</span></div>
+</div><div class="foot">COURTSIDE</div></div></div>
+
+<div class="screen" id="s3"><div class="shot">
+<div class="cap"><h1>Check players in<br>as they <em>arrive</em></h1><p>Tap a name. That is the whole job.</p></div>
+<div class="phone">
+ <div class="sb"><span>19:03</span><span>5G &nbsp; 90%</span></div>
+ <div class="hd"><div class="wm">COURT<i>SIDE</i></div><div style="margin-left:auto" class="pill cy">16 IN</div></div>
+ <div class="body">
+  <div class="eyebrow">Attendance</div>
+  <div class="card"><div class="row"><div><div class="nm">Aarav Kulkarni</div><div class="sm">1482 &middot; played 2</div></div><div class="pill gr">In</div></div></div>
+  <div class="card"><div class="row"><div><div class="nm">Meera Shah</div><div class="sm">1401 &middot; played 2</div></div><div class="pill gr">In</div></div></div>
+  <div class="card"><div class="row"><div><div class="nm">Dhiraj Patel</div><div class="sm">1455 &middot; played 1</div></div><div class="pill gr">In</div></div></div>
+  <div class="card"><div class="row"><div><div class="nm">Priya Menon</div><div class="sm">1298 &middot; played 2</div></div><div class="pill cy">Maybe</div></div></div>
+  <div class="card"><div class="row"><div><div class="nm">Omar Bashir</div><div class="sm">1319 &middot; played 1</div></div><div class="pill gr">In</div></div></div>
+  <div class="card"><div class="row"><div><div class="nm">Tara Verma</div><div class="sm">1344 &middot; played 2</div></div><div class="pill red">Out</div></div></div>
+ </div>
+ <div class="tabs"><span>HOME</span><span>CLUBS</span><span>MATCHES</span><span class="a">SESSIONS</span><span>YOU</span></div>
+</div><div class="foot">COURTSIDE</div></div></div>
+
+<div class="screen" id="s4"><div class="shot">
+<div class="cap"><h1>Nobody sits<br>out <em>twice</em></h1><p>The generator tracks the bench for you.</p></div>
+<div class="phone">
+ <div class="sb"><span>20:11</span><span>5G &nbsp; 84%</span></div>
+ <div class="hd"><div class="wm">COURT<i>SIDE</i></div><div style="margin-left:auto" class="pill red">Round 4</div></div>
+ <div class="body">
+  <div class="eyebrow">Sitting out this round</div>
+  <div class="card hi"><div class="row"><div class="nm">Priya M.</div><div class="sm">1st sit-out</div></div></div>
+  <div class="card hi"><div class="row"><div class="nm">Omar B.</div><div class="sm">1st sit-out</div></div></div>
+  <div class="eyebrow" style="margin-top:34px">Sit-outs so far</div>
+  <div class="card"><div class="row"><div class="nm">Aarav K.</div><div class="rt">1</div></div></div>
+  <div class="card"><div class="row"><div class="nm">Meera S.</div><div class="rt">1</div></div></div>
+  <div class="card"><div class="row"><div class="nm">Dhiraj P.</div><div class="rt">1</div></div></div>
+  <div class="card"><div class="row"><div class="nm">Tara V.</div><div class="rt">1</div></div></div>
+ </div>
+ <div class="tabs"><span>HOME</span><span>CLUBS</span><span>MATCHES</span><span class="a">SESSIONS</span><span>YOU</span></div>
+</div><div class="foot">COURTSIDE</div></div></div>
+
+<div class="screen" id="s5"><div class="shot">
+<div class="cap"><h1>Full <em>BWF</em> scoring,<br>singles and doubles</h1><p>21 / win by 2 / cap at 30. Undo any point.</p></div>
+<div class="phone">
+ <div class="sb"><span>20:26</span><span>OFFLINE &nbsp; 82%</span></div>
+ <div class="hd"><div class="wm">COURT<i>SIDE</i></div><div style="margin-left:auto" class="pill red">Game 2 of 3</div></div>
+ <div class="body">
+  <div class="score"><div class="n win">19</div><div class="d">&ndash;</div><div class="n">17</div></div>
+  <div class="serve">DHIRAJ TO SERVE &middot; 19&ndash;17</div>
+  <div class="card" style="margin-top:26px;padding:18px">
+   <div class="court"><div class="half"><div class="cellp">Aarav</div><div class="cellp srv">Dhiraj</div></div>
+   <div class="half"><div class="cellp">Meera</div><div class="cellp">Shreesh</div></div></div>
+  </div>
+  <div class="row" style="gap:18px">
+   <div class="cta" style="flex:1">+1 LEFT</div>
+   <div class="cta" style="flex:1;background:linear-gradient(180deg,#2E3A4A,#1B2230);box-shadow:none">+1 RIGHT</div></div>
+  <div class="tot" style="justify-content:center;gap:40px"><span>UNDO</span><span>INTERVAL AT 11</span><span>END</span></div>
+  <div class="card" style="margin-top:34px"><div class="row"><div class="nm">Game 1</div><div class="rt">21 &ndash; 18</div></div></div>
+  <div class="card"><div class="row"><div class="nm">Longest run</div><div class="sm" style="font-size:28px;color:#F2F4F8">5 points &middot; Aarav / Dhiraj</div></div></div>
+  <div class="card"><div class="row"><div class="nm">Saved offline</div><div class="dot"></div></div></div>
+ </div>
+</div><div class="foot">COURTSIDE</div></div></div>
+
+<div class="screen" id="s6"><div class="shot">
+<div class="cap"><h1>The diagram shows<br>who <em>serves next</em></h1><p>Rotation and side switching, handled.</p></div>
+<div class="phone">
+ <div class="sb"><span>20:31</span><span>OFFLINE &nbsp; 81%</span></div>
+ <div class="hd"><div class="wm">COURT<i>SIDE</i></div><div style="margin-left:auto" class="pill cy">Doubles</div></div>
+ <div class="body">
+  <div class="card" style="padding:18px"><div class="court" style="height:520px">
+   <div class="half"><div class="cellp">Aarav</div><div class="cellp srv">Dhiraj &#9650;</div></div>
+   <div class="half"><div class="cellp">Meera</div><div class="cellp">Shreesh</div></div></div></div>
+  <div class="serve" style="font-size:30px;margin-top:26px">SERVE FROM THE RIGHT COURT</div>
+  <div class="lead">Score is even, so the serving side starts right.</div>
+  <div class="card" style="margin-top:30px"><div class="row"><div class="nm">Side switch</div><div class="pill cy">At 11 in game 3</div></div></div>
+  <div class="card"><div class="row"><div class="nm">Interval</div><div class="pill gr">Taken</div></div></div>
+  <div class="card"><div class="row"><div class="nm">Service court</div><div class="pill cy">Right</div></div></div>
+  <div class="card"><div class="row"><div class="nm">Receiver</div><div class="sm" style="font-size:28px;color:#F2F4F8">Shreesh N.</div></div></div>
+ </div>
+</div><div class="foot">COURTSIDE</div></div></div>
+
+<div class="screen" id="s7"><div class="shot">
+<div class="cap"><h1>Share a link.<br>They <em>watch live</em>.</h1><p>No install, no account, any browser.</p></div>
+<div class="phone">
+ <div class="sb"><span>20:34</span><span>5G &nbsp; 80%</span></div>
+ <div class="hd"><div class="wm">COURT<i>SIDE</i></div><div style="margin-left:auto" class="pill gr">&#9679; LIVE</div></div>
+ <div class="body">
+  <div class="eyebrow">Court 1 &middot; Spectating</div>
+  <div class="card hi">
+   <div class="row"><div class="nm">Aarav / Dhiraj</div><div class="big" style="font-size:56px">20</div></div>
+   <div class="row" style="margin-top:14px"><div class="nm">Meera / Shreesh</div><div class="big" style="font-size:56px;color:#22D3EE">21</div></div>
+   <div class="tot"><span>Game 3 &middot; deuce watch</span><b>LIVE</b></div></div>
+  <div class="card"><div class="row"><div><div class="nm">Watching now</div><div class="sm">7 people on the link</div></div><div class="dot"></div></div></div>
+  <div class="card"><div class="row"><div class="nm">courtside-links.vercel.app</div><div class="pill cy">Copy</div></div></div>
+  <div class="cta">SHARE LIVE LINK</div>
+ </div>
+ <div class="tabs"><span>HOME</span><span>CLUBS</span><span class="a">MATCHES</span><span>SESSIONS</span><span>YOU</span></div>
+</div><div class="foot">COURTSIDE</div></div></div>
+
+<div class="screen" id="s8"><div class="shot">
+<div class="cap"><h1>Free. Offline.<br><em>No account</em> needed.</h1><p>Sports halls have bad signal. This does not care.</p></div>
+<div class="phone">
+ <div class="sb"><span>20:40</span><span>NO SIGNAL &nbsp; 78%</span></div>
+ <div class="hd"><div class="wm">COURT<i>SIDE</i></div><div style="margin-left:auto" class="pill cy">Guest</div></div>
+ <div class="body">
+  <div class="card hi"><div class="row"><div><div class="nm">Scoring offline</div><div class="sm">Saved on device, syncs later</div></div><div class="dot"></div></div></div>
+  <div class="eyebrow" style="margin-top:34px">Your stats</div>
+  <div class="card"><div class="row"><div class="nm">Matches</div><div class="rt">48</div></div></div>
+  <div class="card"><div class="row"><div class="nm">Win rate</div><div class="rt">62%</div></div></div>
+  <div class="card"><div class="row"><div class="nm">Club rating</div><div class="rt">1482 <span style="color:#22C55E">+12</span></div></div></div>
+  <div class="card"><div class="row"><div class="nm">Best partner</div><div class="sm" style="font-size:28px;color:#F2F4F8">Meera S. &middot; 9&ndash;2</div></div></div>
+  <div class="cta">START A MATCH</div>
+ </div>
+ <div class="tabs"><span class="a">HOME</span><span>CLUBS</span><span>MATCHES</span><span>SESSIONS</span><span>YOU</span></div>
+</div><div class="foot">COURTSIDE</div></div></div>
+
+<div class="screen" id="fg"><div class="fg">
+ <div class="l"><div class="wm">COURT<i>SIDE</i></div>
+  <div class="tag">RATING-BALANCED<br>CLUB NIGHTS</div>
+  <div class="sub">Score by BWF rules, check players in,<br>and let the app pick even teams.</div></div>
+ <div class="r"><div class="mini"><div class="t">Court 1 &middot; Round 3</div>
+  <div class="r2">Aarav K.<span>1482</span></div><div class="r2">Meera S.<span>1401</span></div>
+  <div class="r2" style="color:#5C6472;justify-content:center;font-size:15px">VS</div>
+  <div class="r2">Dhiraj P.<span>1455</span></div><div class="r2">Shreesh N.<span>1424</span></div>
+  <div class="bal"><span>Team gap</span><b>4 pts</b></div></div></div>
+</div></div>
+
+<div class="screen" id="pb"><div class="pb"><div class="k">
+ <div class="wm">COURT<i>SIDE</i></div>
+ <h2>Your club night,<br><em>balanced by rating</em>.</h2>
+ <p>Check players in, generate even courts, score by BWF rules. Works offline, no account, free.</p>
+ <div class="b">GET IT ON GOOGLE PLAY</div></div></div></div>
+
+<script>
+var id=new URLSearchParams(location.search).get('s')||'s1';
+var el=document.getElementById(id); if(el){el.className='screen on';}
+</script></body></html>
