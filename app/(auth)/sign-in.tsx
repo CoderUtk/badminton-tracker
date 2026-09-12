@@ -56,6 +56,24 @@ export default function SignIn() {
     if (!data.session) toast(`Check ${email.trim()} to confirm your account`, "success");
   };
 
+  const sendPasswordReset = async () => {
+    if (!supabase) return;
+    const addr = email.trim();
+    if (!/\S+@\S+\.\S+/.test(addr)) {
+      toast("Enter your email address first", "error");
+      return;
+    }
+    setBusy(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(addr, {
+      redirectTo: Linking.createURL("auth"),
+    });
+    setBusy(false);
+    // Always the same message: confirming whether an address has an account
+    // here would leak account existence to anyone who can open the app.
+    if (error) toast(error.message || "Could not send the reset email", "error");
+    else toast(`If ${addr} has an account, a reset link is on its way`, "success");
+  };
+
   const googleSignIn = async () => {
     if (!supabase) return;
     // Show the spinner from the moment of the tap, not from whenever the
@@ -156,6 +174,11 @@ export default function SignIn() {
             placeholderTextColor={C.text3}
             secureTextEntry
             autoCapitalize="none"
+            // Without these the OS keychain neither fills an existing password
+            // nor offers to save a new one, which is half of why a forgotten
+            // password used to be unrecoverable.
+            autoComplete={isSignUp ? "new-password" : "current-password"}
+            textContentType={isSignUp ? "newPassword" : "password"}
             value={password}
             onChangeText={setPassword}
             onSubmitEditing={() => canSubmit && (isSignUp ? passwordSignUp() : passwordSignIn())}
@@ -171,11 +194,21 @@ export default function SignIn() {
               <Text style={s.ctaText}>{isSignUp ? "CREATE ACCOUNT" : "SIGN IN"}</Text>
             </LinearGradient>
           </BusyButton>
-          <Pressable onPress={() => setIsSignUp((v) => !v)} hitSlop={8}>
+          <Pressable onPress={() => setIsSignUp((v) => !v)} hitSlop={8} accessibilityRole="button">
             <Text style={s.link}>
               {isSignUp ? "Already have an account? Sign in" : "New here? Create an account"}
             </Text>
           </Pressable>
+          {!isSignUp && (
+            <Pressable
+              onPress={sendPasswordReset}
+              disabled={busy}
+              hitSlop={8}
+              accessibilityRole="button"
+            >
+              <Text style={[s.link, s.linkQuiet]}>Forgot password?</Text>
+            </Pressable>
+          )}
 
           <View style={s.dividerRow}>
             <View style={s.rule} />
@@ -225,6 +258,9 @@ const s = StyleSheet.create({
   ctaText: { color: C.text, fontFamily: F.display, fontSize: 15, letterSpacing: 1.2 },
   off: { opacity: 0.45 },
   link: { color: C.accent, fontFamily: F.medium, textAlign: "center", fontSize: 14, paddingVertical: 6 },
+  // Recovery is a secondary path — same target size, quieter than the primary
+  // "create an account" link directly above it.
+  linkQuiet: { color: C.text2, fontSize: 13 },
 
   dividerRow: { flexDirection: "row", alignItems: "center", gap: 12, marginVertical: 4 },
   rule: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: C.lineHi },

@@ -51,6 +51,9 @@ export default function Profile() {
   const [editingUsername, setEditingUsername] = useState(false);
   const [usernameBusy, setUsernameBusy] = useState(false);
   const [selectedBadge, setSelectedBadge] = useState<EarnedBadge | null>(null);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordDraft, setPasswordDraft] = useState("");
+  const [passwordBusy, setPasswordBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
 
@@ -156,6 +159,28 @@ export default function Profile() {
       .catch((e: Error) => toast(e.message || "Could not save your username", "error"))
       .finally(() => setUsernameBusy(false));
   }, [usernameDraft, usernameError, username]);
+
+  const cancelPasswordEdit = useCallback(() => {
+    setChangingPassword(false);
+    setPasswordDraft("");
+  }, []);
+
+  // Also the landing point for password recovery: the emailed link signs the
+  // user in but leaves the forgotten password in place, so this is where they
+  // actually replace it.
+  const savePassword = useCallback(() => {
+    if (!supabase || passwordDraft.length < 6) return;
+    setPasswordBusy(true);
+    supabase.auth
+      .updateUser({ password: passwordDraft })
+      .then(({ error }) => {
+        if (error) { toast(error.message || "Could not update your password", "error"); return; }
+        setChangingPassword(false);
+        setPasswordDraft("");
+        toast("Password updated", "success");
+      })
+      .finally(() => setPasswordBusy(false));
+  }, [passwordDraft]);
 
   const openDetailsEdit = () => {
     setAge(savedAge);
@@ -524,6 +549,56 @@ export default function Profile() {
         </View>
       </View>
 
+      {session && !session.user.is_anonymous && (
+        <Pressable
+          style={s.rowBtn}
+          onPress={() => setChangingPassword(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Change password"
+        >
+          <Icon name="lock-closed-outline" color={C.text2} size={18} />
+          <Text style={s.rowBtnText}>Change password</Text>
+        </Pressable>
+      )}
+
+      <Modal visible={changingPassword} transparent animationType="fade" onRequestClose={cancelPasswordEdit}>
+        <Pressable style={s.modalBack} onPress={cancelPasswordEdit}>
+          <Pressable style={s.modalCard} onPress={(e) => e.stopPropagation()}>
+            <Text style={s.cardTitle}>New password</Text>
+            <TextInput
+              style={s.nameInput}
+              placeholder="At least 6 characters"
+              placeholderTextColor={C.text2}
+              value={passwordDraft}
+              onChangeText={setPasswordDraft}
+              onSubmitEditing={savePassword}
+              returnKeyType="done"
+              autoFocus
+              secureTextEntry
+              autoCapitalize="none"
+              autoComplete="new-password"
+              textContentType="newPassword"
+            />
+            <Text style={s.usernameHint}>
+              Set a new password here after a reset email, or change the one you have.
+            </Text>
+            <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
+              <Pressable style={[s.modalBtn, s.modalCancel]} onPress={cancelPasswordEdit} accessibilityRole="button">
+                <Text style={s.modalCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[s.modalBtn, s.modalSave, (passwordDraft.length < 6 || passwordBusy) && { opacity: 0.5 }]}
+                disabled={passwordDraft.length < 6 || passwordBusy}
+                onPress={savePassword}
+                accessibilityRole="button"
+              >
+                <Text style={s.modalSaveText}>{passwordBusy ? "Saving…" : "Save"}</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {session && (
         <Pressable
           style={s.signOut}
@@ -668,6 +743,10 @@ const s = StyleSheet.create({
   startBtn: { flexDirection: "row", gap: 8, backgroundColor: C.red, borderRadius: 12, paddingHorizontal: 20, minHeight: 46, alignItems: "center", justifyContent: "center" },
   startText: { color: C.text, fontWeight: "800", fontSize: 15 },
   signOut: { flexDirection: "row", gap: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 12, minHeight: 52, alignItems: "center", justifyContent: "center", marginTop: 4 },
+  // Same shell as signOut, neutral text: this is an ordinary settings action,
+  // not a way out of the account.
+  rowBtn: { flexDirection: "row", gap: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 12, minHeight: 52, alignItems: "center", justifyContent: "center", marginTop: 4 },
+  rowBtnText: { color: C.text, fontFamily: F.semibold, fontSize: 16 },
   signOutText: { color: C.red, fontSize: 16, fontWeight: "700" },
   deleteAccount: { alignItems: "center", justifyContent: "center", minHeight: 44, marginTop: 2 },
   deleteAccountText: { color: C.text2, fontSize: 13.5, fontFamily: F.medium, textDecorationLine: "underline" },

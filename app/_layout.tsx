@@ -104,7 +104,13 @@ function Gate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (loading) return;
-    const inAuth = segments[0] === "(auth)";
+    // "auth" (no parens) is not a route in this app — it is the path Supabase
+    // redirects email links back to (`Linking.createURL("auth")` in sign-in).
+    // SessionProvider turns that URL into a session, but the router has already
+    // navigated to an unmatched route by then; treating it as an auth route is
+    // what lets the signed-in branch below replace it with home. Without this a
+    // confirmation or password-recovery link strands the user on Unmatched.
+    const inAuth = segments[0] === "(auth)" || segments[0] === "auth";
     const inWelcome = segments[0] === "welcome";
     if (!session) {
       if (Platform.OS === "web") {
