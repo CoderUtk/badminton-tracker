@@ -1,7 +1,7 @@
 import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import { ensureNotificationPermission } from "./notificationPermission";
-import { getSetting, REMINDERS_KEY } from "../repos/settingsRepo";
+import { remindersEnabled } from "../repos/settingsRepo";
 import { listSessions } from "../repos/sessionRepo";
 import { INACTIVITY_ID, SESSION_PREFIX, planSessionReminders } from "./reminderPlan";
 
@@ -13,10 +13,6 @@ const SEVEN_DAYS_SECONDS = 7 * 24 * 60 * 60;
  * here may call cancelAllScheduledNotificationsAsync() — it would wipe the
  * other kind.
  */
-
-async function remindersEnabled(): Promise<boolean> {
-  return (await getSetting(REMINDERS_KEY)) === "1";
-}
 
 async function scheduledIds(): Promise<string[]> {
   const all = await Notifications.getAllScheduledNotificationsAsync();

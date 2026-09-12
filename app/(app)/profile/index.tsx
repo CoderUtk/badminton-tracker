@@ -18,7 +18,7 @@ import BadgeSharePopup from "../../../src/components/BadgeSharePopup";
 import type { EarnedBadge } from "../../../src/achievements/types";
 import Sheet from "../../../src/components/Sheet";
 import { evaluateBadges } from "../../../src/achievements/rules";
-import { getSetting, setSetting, REMINDERS_KEY } from "../../../src/repos/settingsRepo";
+import { setSetting, remindersEnabled, REMINDERS_KEY } from "../../../src/repos/settingsRepo";
 import { scheduleInactivityReminder, syncSessionReminders, cancelReminders } from "../../../src/lib/reminders";
 import PublicProfileCard from "../../../src/components/PublicProfileCard";
 import { registerPushToken, unregisterPushToken } from "../../../src/lib/push";
@@ -73,7 +73,10 @@ export default function Profile() {
   }, []);
 
   useEffect(() => {
-    void getSetting(REMINDERS_KEY).then((v) => setRemindersOn(v === "1"));
+    // remindersEnabled(), not a bare === "1": notifications default to on, so
+    // reading the raw value would show this switch OFF on a fresh install while
+    // push was actually running.
+    void remindersEnabled().then(setRemindersOn);
   }, []);
 
   const toggleReminders = async () => {

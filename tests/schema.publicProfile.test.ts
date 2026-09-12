@@ -33,7 +33,10 @@ test("a private profile is indistinguishable from a missing one", () => {
 });
 
 test("the payload is a fixed whitelist, with no contact details", () => {
-  const built = sql.slice(sql.indexOf("return jsonb_build_object"));
+  // Bounded to the return statement itself: slicing to end-of-file lets a
+  // later function's text satisfy (or break) an assertion about the payload.
+  const start = sql.indexOf("return jsonb_build_object");
+  const built = sql.slice(start, sql.indexOf(";", start));
   expect(built).toMatch(/'username'/);
   expect(built).toMatch(/'displayName'/);
   expect(built).toMatch(/'avatarUrl'/);
@@ -52,6 +55,18 @@ test("club data is limited to name, rating and rank", () => {
   expect(fn).toMatch(/'rank'/);
   expect(fn).not.toMatch(/cp\.name/);
   expect(fn).not.toMatch(/profile_id,/);
+});
+
+test("the anon-facing read is bounded by club, not a full matches scan", () => {
+  const fn = sql.slice(sql.indexOf("function public.public_player_profile"));
+  // Without this the function is an unauthenticated request amplifier: a
+  // sequential scan of matches with a jsonb probe per row, on every call.
+  expect(fn).toMatch(/where m\.club_id = any \(v_club_ids\)/);
+});
+
+test("a guest session cannot publish a profile", () => {
+  const fn = sql.slice(sql.indexOf("function public.set_public_profile"));
+  expect(fn).toMatch(/is_anonymous'\)::boolean, false\) then/);
 });
 
 test("the owner switch touches only the caller's own row and is authenticated-only", () => {

@@ -35,14 +35,15 @@ security definer
 set search_path = public
 as $$
 declare
-  v_id      uuid;
-  v_name    text;
-  v_avatar  text;
-  v_handle  text;
-  v_ids     uuid[];
-  v_played  int := 0;
-  v_won     int := 0;
-  v_clubs   jsonb;
+  v_id       uuid;
+  v_name     text;
+  v_avatar   text;
+  v_handle   text;
+  v_ids      uuid[];
+  v_club_ids uuid[];
+  v_played   int := 0;
+  v_won      int := 0;
+  v_clubs    jsonb;
 begin
   if p_username is null or btrim(p_username) = '' then return null; end if;
 
@@ -55,8 +56,9 @@ begin
   if v_id is null then return null; end if;
 
   -- Every roster row this person occupies, across their clubs. These ids are
-  -- what the match jsonb cites.
-  select array_agg(cp.id) into v_ids
+  -- what the match jsonb cites; the club ids bound the scan below.
+  select array_agg(cp.id), array_agg(distinct cp.club_id)
+    into v_ids, v_club_ids
     from club_players cp where cp.profile_id = v_id;
 
   if v_ids is not null then
@@ -71,7 +73,14 @@ begin
            )::int
       into v_played, v_won
       from matches m
-     where m.status = 'completed'
+     -- MUST come first, and must stay. This function is granted to `anon`,
+     -- so without a club filter every unauthenticated call is a sequential
+     -- scan of the whole matches table with a jsonb_array_elements probe per
+     -- row -- an anonymous request amplifier. matches_club_id (0036) turns
+     -- that into an index scan over the handful of clubs this player is in,
+     -- and a player's matches can only ever be in their own clubs anyway.
+     where m.club_id = any (v_club_ids)
+       and m.status = 'completed'
        and m.winner is not null
        and (exists (select 1 from jsonb_array_elements(m.side_a) e
                      where (e->>'club_player_id')::uuid = any (v_ids))
@@ -114,6 +123,12 @@ returns void language plpgsql security definer set search_path = public as $$
 begin
   if auth.uid() is null then
     raise exception 'set_public_profile: not authenticated';
+  end if;
+  -- `authenticated` includes anonymous sessions in Supabase, so the role
+  -- grant above is not the account check it looks like. Same guard and same
+  -- reason as register_push_token (0035): a guest has no account to publish.
+  if coalesce((auth.jwt()->>'is_anonymous')::boolean, false) then
+    raise exception 'set_public_profile: anonymous sessions have no public profile';
   end if;
   -- A profile with no username has no URL to be published at.
   if coalesce(p_public, false)

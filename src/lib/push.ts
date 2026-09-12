@@ -4,7 +4,10 @@ import * as Notifications from "expo-notifications";
 import { supabase } from "./supabase";
 import { pushTokenRow } from "./pushToken";
 import { ensureNotificationPermission } from "./notificationPermission";
-import { getSetting, setSetting, PUSH_TOKEN_KEY, REMINDERS_KEY } from "../repos/settingsRepo";
+import {
+  getSetting, setSetting, remindersEnabled, remindersUndecided,
+  PUSH_TOKEN_KEY, REMINDERS_KEY,
+} from "../repos/settingsRepo";
 
 /**
  * Android downgrades notifications with no matching channel, and nothing
@@ -52,7 +55,7 @@ export async function registerPushToken(): Promise<boolean> {
   try {
     // The presence of a token row IS the setting: registering here would
     // silently re-enable push for a user who explicitly turned it off.
-    if ((await getSetting(REMINDERS_KEY)) !== "1") return false;
+    if (!(await remindersEnabled())) return false;
 
     const user = (await supabase?.auth.getUser())?.data.user;
     if (!user) return false;
@@ -83,6 +86,42 @@ export async function registerPushToken(): Promise<boolean> {
     return true;
   } catch {
     return false;
+  }
+}
+
+/**
+ * First-open notification prompt.
+ *
+ * Notifications default to on (see remindersEnabled), so a fresh install is
+ * already opted in as far as the app is concerned — but Android 13+ and iOS
+ * both still need the OS permission, and nothing else in the app ever asks for
+ * it unless the user goes to Profile and flips a switch that already looks on.
+ * That gap is why the push infrastructure built in 0035 reached almost nobody.
+ *
+ * Runs exactly once per install: whichever way the OS dialog goes, the answer
+ * is written to REMINDERS_KEY, so remindersUndecided() is false forever after
+ * and the user is never asked again by this path. A denial is recorded as an
+ * explicit "0" rather than left absent, so the app does not keep behaving as
+ * though push were available.
+ *
+ * Deliberately NOT called before there is a session: requestPermissions on the
+ * very first frame of a cold start, in front of the sign-in screen, is the
+ * prompt people reflexively decline — and once canAskAgain flips to false the
+ * OS never offers it again.
+ */
+export async function primeNotificationPermission(): Promise<void> {
+  if (Platform.OS === "web") return;
+  try {
+    const user = (await supabase?.auth.getUser())?.data.user;
+    if (!user) return;
+    if (!(await remindersUndecided())) return;
+
+    const granted = await ensureNotificationPermission();
+    await setSetting(REMINDERS_KEY, granted ? "1" : "0");
+    if (granted) await registerPushToken();
+  } catch {
+    // Leave the setting absent so the next open tries again — an error here
+    // is not the user declining.
   }
 }
 
@@ -131,7 +170,7 @@ export async function syncPushRegistration(): Promise<void> {
     const user = (await supabase?.auth.getUser())?.data.user;
     if (!user) return;
 
-    if ((await getSetting(REMINDERS_KEY)) === "1") {
+    if (await remindersEnabled()) {
       await registerPushToken();
       return;
     }

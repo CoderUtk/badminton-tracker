@@ -22,7 +22,9 @@ import { getDb } from "../src/db/db";
 import { startSyncListener } from "../src/sync/runner";
 import { sweepStaleLiveSessions } from "../src/repos/sessionRepo";
 import { scheduleInactivityReminder } from "../src/lib/reminders";
-import { configureNotificationHandling, syncPushRegistration } from "../src/lib/push";
+import {
+  configureNotificationHandling, primeNotificationPermission, syncPushRegistration,
+} from "../src/lib/push";
 import { notificationRoute } from "../src/lib/notificationRoute";
 import AnimatedSplash from "../src/components/AnimatedSplash";
 import Toaster from "../src/components/Toaster";
@@ -92,6 +94,19 @@ function Gate({ children }: { children: React.ReactNode }) {
   const [profileTick, setProfileTick] = useState(0);
 
   useEffect(() => subscribeProfile(() => setProfileTick((n) => n + 1)), []);
+
+  // The once-per-install notification prompt, fired the first time a real
+  // session exists rather than at mount: at mount the session is still being
+  // restored, so the call would no-op and never retry this launch. Guests are
+  // skipped — they cannot register a push token at all (0035).
+  //
+  // primeNotificationPermission() is itself idempotent (it returns early once
+  // the user has an answer stored), so re-running it as `session` settles is
+  // harmless.
+  useEffect(() => {
+    if (!session || session.user.is_anonymous) return;
+    void primeNotificationPermission();
+  }, [session]);
 
   useEffect(() => {
     if (!session || session.user.is_anonymous) { setNeedsName(undefined); return; }
