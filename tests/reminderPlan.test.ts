@@ -25,6 +25,7 @@ function session(over: Partial<ClubSession> & { id: string }): ClubSession {
     shuttles: 0,
     paid_by: null,
     open_join: false,
+    repeat_weekly: false,
     max_players: null,
     ...over,
   };

@@ -80,6 +80,9 @@ const MIGRATIONS = [
   // Player skill rating, mirroring club_players.rating so matchmaking can
   // balance courts offline. Default matches the server column's default.
   `alter table club_players_cache add column rating integer not null default 1500;`,
+  // Weekly club nights (0050_recurring_sessions.sql). Integer flag, same
+  // reason as open_join, mapped back in sessionRepo's hydrate().
+  `alter table sessions_cache add column repeat_weekly integer not null default 0;`,
 ];
 
 let dbPromise: Promise<SQLiteDatabase> | null = null;

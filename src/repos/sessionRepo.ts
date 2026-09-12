@@ -34,6 +34,8 @@ export interface ClubSession {
   open_join: boolean;
   /** Cap on checked-in players, or null for unlimited. */
   max_players: number | null;
+  /** Clone this night into next week once it has been played. */
+  repeat_weekly: boolean;
 }
 
 export interface Attendance extends ClubPlayer {
@@ -85,7 +87,7 @@ export async function refreshSessions(): Promise<void> {
 
     const { data: sessions, error: sErr } = await supabase
       .from("sessions")
-      .select("id, club_id, starts_at, ends_at, location, courts, status, created_at, created_by, cost_total_cents, shuttles, paid_by, open_join, max_players")
+      .select("id, club_id, starts_at, ends_at, location, courts, status, created_at, created_by, cost_total_cents, shuttles, paid_by, open_join, max_players, repeat_weekly")
       .in("club_id", clubIds);
     if (sErr) return; // stay on cache
 
@@ -105,7 +107,7 @@ export async function refreshSessions(): Promise<void> {
         db, "sessions_cache",
         ["id", "club_id", "starts_at", "ends_at", "location", "courts",
          "status", "created_at", "created_by", "cost_total_cents", "shuttles",
-         "paid_by", "open_join", "max_players", "synced"],
+         "paid_by", "open_join", "max_players", "repeat_weekly", "synced"],
         (sessions ?? []).map((s) => [
           s.id as string, s.club_id as string, new Date(s.starts_at as string).getTime(),
           s.ends_at ? new Date(s.ends_at as string).getTime() : null,
@@ -114,7 +116,8 @@ export async function refreshSessions(): Promise<void> {
           (s.cost_total_cents as number) ?? 0, (s.shuttles as number) ?? 0,
           s.paid_by as string | null,
           (s.open_join as boolean) ? 1 : 0,
-          (s.max_players as number | null) ?? null, 1,
+          (s.max_players as number | null) ?? null,
+          (s.repeat_weekly as boolean) ? 1 : 0, 1,
         ]),
       );
       await insertMany(
@@ -146,8 +149,11 @@ export async function refreshSessions(): Promise<void> {
  * left live past the auto-finish window is *reported* as done without
  * persisting that (see sweepStaleLiveSessions for the persisting counterpart).
  */
-function hydrate(row: ClubSession & { open_join: number | boolean }, now: number): ClubSession {
-  const session = { ...row, open_join: !!row.open_join };
+function hydrate(
+  row: ClubSession & { open_join: number | boolean; repeat_weekly: number | boolean },
+  now: number,
+): ClubSession {
+  const session = { ...row, open_join: !!row.open_join, repeat_weekly: !!row.repeat_weekly };
   return isStaleLive(session, now) ? { ...session, status: "done" as const } : session;
 }
 
@@ -341,6 +347,25 @@ export async function setAttendance(
      values (?, ?, ?, 1)
      on conflict(session_id, club_player_id) do update set status = excluded.status, synced = 1`,
     sessionId, playerId, status
+  );
+}
+
+/**
+ * Organiser-only: repeat this night weekly.
+ *
+ * The flag lives on the occurrence, not on a template row — the cron
+ * materialiser (0050) clones whichever occurrence just finished, carrying the
+ * flag forward, so turning it off on any future occurrence ends the series.
+ */
+export async function setSessionRepeat(sessionId: string, repeat: boolean): Promise<void> {
+  if (!supabase) throw new Error("Sign in to change this session");
+  const { error } = await supabase.rpc("set_session_repeat", {
+    p_session_id: sessionId, p_repeat: repeat,
+  });
+  if (error) throw new Error(error.message);
+  const db = await getDb();
+  await db?.runAsync(
+    "update sessions_cache set repeat_weekly = ? where id = ?", repeat ? 1 : 0, sessionId
   );
 }
 

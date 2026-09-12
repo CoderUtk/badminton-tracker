@@ -1,6 +1,7 @@
 import React from "react";
 import SessionCost from "./SessionCost";
 import SessionOpenJoin from "./SessionOpenJoin";
+import SessionRepeat from "./SessionRepeat";
 import { type Attendance, type ClubSession } from "../repos/sessionRepo";
 
 /**
@@ -21,6 +22,7 @@ export default function SessionAdmin({
     <>
       <SessionCost session={session} attendance={attendance} canManage={canManage} onChanged={onChanged} />
       <SessionOpenJoin session={session} canManage={canManage} onChanged={onChanged} />
+      <SessionRepeat session={session} canManage={canManage} onChanged={onChanged} />
     </>
   );
 }

@@ -37,6 +37,7 @@ function session(
     shuttles: 0,
     paid_by: null,
     open_join: false,
+    repeat_weekly: false,
     max_players: null,
     ...overrides,
   };
