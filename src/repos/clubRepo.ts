@@ -173,6 +173,37 @@ export async function deleteClub(id: string): Promise<void> {
   await db?.runAsync("delete from club_players_cache where club_id = ?", id);
 }
 
+export type ClubRating = { clubId: string; clubName: string; rating: number };
+
+/** This player's rating in every club they belong to. Live query, not cached
+ *  like club_players_cache — rating changes server-side (the matches_apply_rating
+ *  trigger) and the profile screen has no offline requirement to preserve. */
+export async function listMyClubRatings(): Promise<ClubRating[]> {
+  if (!supabase) return [];
+  // Dynamic import, not top-level: profileRepo.ts pulls in expo-file-system,
+  // a native-only ESM module several jest suites that import clubRepo for
+  // unrelated reasons (addFriendToClub.test.ts, clubRoster.test.ts, etc.)
+  // cannot transform. A static import here broke 8 suites that never call
+  // this function.
+  const { getMyProfile } = await import("./profileRepo");
+  const me = await getMyProfile();
+  if (!me) return [];
+
+  const { data, error } = await supabase
+    .from("club_players")
+    .select("rating, clubs(id, name)")
+    .eq("profile_id", me.id);
+  if (error || !data) return [];
+
+  const out: ClubRating[] = [];
+  for (const row of data as { rating: number; clubs: { id: string; name: string } | { id: string; name: string }[] | null }[]) {
+    const club = Array.isArray(row.clubs) ? row.clubs[0] : row.clubs;
+    if (!club) continue;
+    out.push({ clubId: club.id, clubName: club.name, rating: row.rating });
+  }
+  return out;
+}
+
 export async function listPlayers(clubId: string): Promise<ClubPlayer[]> {
   const db = await getDb();
   if (!db) return [];

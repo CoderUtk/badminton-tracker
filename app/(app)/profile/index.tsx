@@ -10,6 +10,7 @@ import { validateName, validateUsername } from "../../../src/lib/validate";
 import { toast } from "../../../src/lib/toast";
 import { formatWinRate } from "../../../src/lib/winRate";
 import { getPlayerAnalytics, type PlayerAnalytics } from "../../../src/repos/statsRepo";
+import { listMyClubRatings, type ClubRating } from "../../../src/repos/clubRepo";
 import Icon from "../../../src/components/Icon";
 import FormScreen from "../../../src/components/FormScreen";
 import AchievementsSection from "../../../src/components/achievements/AchievementsSection";
@@ -29,6 +30,7 @@ export default function Profile() {
   const router = useRouter();
 
   const [a, setA] = useState<PlayerAnalytics | null>(null);
+  const [ratings, setRatings] = useState<ClubRating[]>([]);
   const [displayName, setDisplayName] = useState<string>("");
   const [savedName, setSavedName] = useState<string>("");
   const [remindersOn, setRemindersOn] = useState(false);
@@ -238,7 +240,10 @@ export default function Profile() {
   // profile's display name — not the raw auth metadata, which can diverge.
   const me = savedName || "Player";
 
-  const load = useCallback(() => { void getPlayerAnalytics(me).then(setA); }, [me]);
+  const load = useCallback(() => {
+    void getPlayerAnalytics(me).then(setA);
+    void listMyClubRatings().then(setRatings);
+  }, [me]);
   useFocusEffect(load);
   useEffect(load, [load]);
 
@@ -427,6 +432,14 @@ export default function Profile() {
         <Stat label="Win %" value={formatWinRate(a?.played ?? 0, a?.winPct ?? 0)} accent />
       </View>
 
+      {ratings.length > 0 && (
+        <View style={s.ratingGrid}>
+          {ratings.map((r) => (
+            <Stat key={r.clubId} label={`${r.clubName} rating`} value={r.rating} />
+          ))}
+        </View>
+      )}
+
       {/* Achievements */}
       {a && <AchievementsSection badges={badges} onPressBadge={setSelectedBadge} />}
 
@@ -614,6 +627,7 @@ const s = StyleSheet.create({
   name: { color: C.text, fontSize: 22, fontFamily: F.display, letterSpacing: 0.5 },
   sub: { color: C.text2, fontSize: 13, marginTop: 2, fontFamily: F.body },
   statGrid: { flexDirection: "row", gap: 8 },
+  ratingGrid: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
   statBox: { flex: 1, backgroundColor: C.card, borderRadius: 12, paddingVertical: 14, alignItems: "center", borderWidth: 1, borderColor: C.line },
   statNum: { color: C.text, fontSize: 24, fontFamily: F.display, fontVariant: ["tabular-nums"] },
   statLbl: { color: C.text2, fontSize: 11, fontFamily: F.medium, marginTop: 3, letterSpacing: 0.5 },
