@@ -14,6 +14,18 @@ const STATUS_COLOR: Record<ClubSession["status"], string> = {
   cancelled: C.red,
 };
 
+/**
+ * Human labels for the status pill. The raw enum was rendered uppercased, so a
+ * finished session read "DONE" and a scheduled one "SCHEDULED" — machine words
+ * for a pill a player scans at a glance.
+ */
+const STATUS_LABEL: Record<ClubSession["status"], string> = {
+  scheduled: "UPCOMING",
+  live: "LIVE NOW",
+  done: "PLAYED",
+  cancelled: "CANCELLED",
+};
+
 function dateLabel(timestamp: number) {
   const date = new Date(timestamp);
   const today = new Date();
@@ -83,7 +95,7 @@ export default function Sessions() {
                   )}
                   <View style={[s.statusPill, { backgroundColor: color + "22" }]}>
                     <View style={[s.statusDot, { backgroundColor: color }]} />
-                    <Text style={[s.status, { color }]}>{item.status.toUpperCase()}</Text>
+                    <Text style={[s.status, { color }]}>{STATUS_LABEL[item.status]}</Text>
                   </View>
                 </View>
               </View>

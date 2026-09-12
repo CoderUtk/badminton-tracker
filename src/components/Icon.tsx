@@ -13,16 +13,27 @@ import { C } from "../theme";
  * card, row, chip and button in the app. The label belongs on the pressable
  * that wraps the icon, never on the glyph.
  */
+/**
+ * MaterialCommunityIcons is only reached for glyphs Ionicons genuinely lacks —
+ * the shuttle, the shuffle, the scoreboard, the rotation arrows. Everything
+ * else was mixing two icon families on the same screen (an MCI trophy beside
+ * an Ionicons chevron), which read as two different apps at a glance.
+ */
 const MCI = new Set([
   "badminton",
-  "trophy",
-  "trophy-outline",
   "shuffle-variant",
-  "account-group",
-  "account-plus",
   "scoreboard-outline",
   "screen-rotation",
 ]);
+
+/**
+ * MCI-flavoured names kept at the call sites (19 of them) but drawn from
+ * Ionicons, so renaming stays a one-line change here rather than a sweep.
+ */
+const IONICON_ALIAS: Record<string, string> = {
+  "account-group": "people",
+  "account-plus": "person-add",
+};
 
 export type IconName =
   // Ionicons
@@ -59,5 +70,5 @@ export default function Icon({
   if (MCI.has(name)) {
     return <MaterialCommunityIcons name={name as never} size={size} color={color} {...a11y} />;
   }
-  return <Ionicons name={name as never} size={size} color={color} {...a11y} />;
+  return <Ionicons name={(IONICON_ALIAS[name] ?? name) as never} size={size} color={color} {...a11y} />;
 }

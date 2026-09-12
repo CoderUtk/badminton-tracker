@@ -319,14 +319,14 @@ export default function SessionDetail() {
                       const used = manualUsedIds.has(p.id);
                       const picked = manualPicks.some((x) => x.id === p.id);
                       return (
-                        <Pressable accessibilityRole="button"
+                        <Chip
                           key={p.id}
+                          label={p.name}
+                          isSelected={picked}
                           disabled={used}
-                          style={[s.playerChip, picked && s.playerChipOn, used && s.modeDisabled]}
                           onPress={() => pickManualPlayer(p)}
-                        >
-                          <Text style={[s.playerChipText, picked && s.playerChipTextOn]}>{p.name}</Text>
-                        </Pressable>
+                          style={s.playerChip}
+                        />
                       );
                     })}
                   </View>
@@ -490,11 +490,10 @@ const s = StyleSheet.create({
   manualCourtRow: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: C.cardHi, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
   manualCourtText: { flex: 1, color: C.text, fontSize: 13, fontFamily: F.semibold },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  playerChip: { minHeight: 36, paddingHorizontal: 12, justifyContent: "center", alignItems: "center", borderRadius: 18, backgroundColor: C.cardHi, borderWidth: 1, borderColor: C.line },
-  playerChipOn: selected,
-  playerChipText: { color: C.text, fontFamily: F.bold, fontSize: 13 },
-  playerChipTextOn: selectedText,
-  games: { gap: 8, marginVertical: 4 }, gameCard: { backgroundColor: "#211819", borderColor: "#5B2524", borderWidth: 1, padding: 14, borderRadius: 14, gap: 3 }, court: { color: C.red, fontSize: 11, fontFamily: F.bold, letterSpacing: 0.8 }, teams: { color: C.text, fontSize: 16, fontFamily: F.bold }, vs: { color: C.text2, fontSize: 13 }, scoreButton: { alignSelf: "flex-start", flexDirection: "row", gap: 6, marginTop: 7, paddingVertical: 9, paddingHorizontal: 13, borderRadius: 9, backgroundColor: C.red, alignItems: "center" }, scoreText: { color: C.text, fontFamily: F.bold, fontSize: 13 },
+  // Sizing, selected styling and accessibilityState live in Chip (these were
+  // 36dp tall with colour-only selection). Only the pill radius is kept.
+  playerChip: { borderRadius: 18, paddingHorizontal: 12 },
+  games: { gap: 8, marginVertical: 4 }, gameCard: { backgroundColor: C.card, borderColor: C.redDeep, borderWidth: 1, padding: 14, borderRadius: 14, gap: 3 }, court: { color: C.red, fontSize: 11, fontFamily: F.bold, letterSpacing: 0.8 }, teams: { color: C.text, fontSize: 16, fontFamily: F.bold }, vs: { color: C.text2, fontSize: 13 }, scoreButton: { alignSelf: "flex-start", flexDirection: "row", gap: 6, marginTop: 7, paddingVertical: 9, paddingHorizontal: 13, borderRadius: 9, backgroundColor: C.red, alignItems: "center" }, scoreText: { color: C.text, fontFamily: F.bold, fontSize: 13 },
   matchRow: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: C.card, borderRadius: 12, padding: 13, borderWidth: 1, borderColor: C.line }, matchTeams: { color: C.text, fontSize: 15, fontFamily: F.bold }, matchMeta: { color: C.text2, fontSize: 13, marginTop: 2 }, matchLive: { color: C.green, fontFamily: F.bold, fontSize: 12 }, matchDone: { color: C.text2, fontFamily: F.bold },
   playerRow: { minHeight: 66, paddingVertical: 9, flexDirection: "row", alignItems: "center", borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line, gap: 10 }, avatar: { height: 34, width: 34, borderRadius: 17, backgroundColor: C.cardHi, alignItems: "center", justifyContent: "center" }, avatarIn: { backgroundColor: C.red }, avatarText: { color: C.text, fontFamily: F.bold }, playerName: { flex: 1, color: C.text, fontSize: 16, fontFamily: F.bold }, attendanceActions: { flexDirection: "row", gap: space.sm },
   // Sizing, selected styling and accessibilityState all live in Chip. This

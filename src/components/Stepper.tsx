@@ -1,6 +1,6 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { C, F } from "../theme";
+import { C, F, MIN_TOUCH } from "../theme";
 
 export default function Stepper({
   value,
@@ -39,7 +39,8 @@ export default function Stepper({
 const s = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 16 },
   btn: {
-    width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center",
+    // 44 was the iOS minimum; Android's is 48 and this control ships on both.
+    width: MIN_TOUCH, height: MIN_TOUCH, borderRadius: MIN_TOUCH / 2, alignItems: "center", justifyContent: "center",
     backgroundColor: C.card, borderWidth: 1, borderColor: C.line,
   },
   btnDisabled: { opacity: 0.4, backgroundColor: C.bgElev },

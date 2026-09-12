@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, Text } from "react-native";
+import { PixelRatio, StyleSheet, Text } from "react-native";
 import CarvedCard from "./CarvedCard";
 import { C, F } from "../theme";
 
@@ -11,7 +11,7 @@ export default function StatTile({
 }) {
   return (
     <CarvedCard style={s.tile}>
-      <Text style={s.label}>{label}</Text>
+      <Text style={s.label} numberOfLines={2}>{label}</Text>
       <Text style={[s.value, { color: valueColor }]} numberOfLines={1}>{value}</Text>
     </CarvedCard>
   );
@@ -27,6 +27,10 @@ const s = StyleSheet.create({
   // ~7.5dp, confirmed on-device via the accessibility tree (Longest
   // Streak's value sat 15px/2x lower than Matches/Win Rate's) — 38
   // covers the measured 2-line content height with a small margin.
-  label: { color: C.text2, fontSize: 12, fontFamily: F.medium, letterSpacing: 0.3, minHeight: 38, textAlign: "center" },
+  // Scaled by the OS font scale: minHeight is in dp but the two lines it
+  // reserves space for are not, so at "Largest" text size a fixed 38 clipped
+  // the second line of "Longest Streak". Android relaunches the activity when
+  // the font scale changes, so reading it once at module load is enough.
+  label: { color: C.text2, fontSize: 12, fontFamily: F.medium, letterSpacing: 0.3, minHeight: 38 * PixelRatio.getFontScale(), textAlign: "center" },
   value: { fontSize: 22, fontFamily: F.display },
 });
