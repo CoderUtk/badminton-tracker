@@ -1,7 +1,8 @@
 import React, { useCallback, useState } from "react";
 import { FlatList, Platform, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter, Stack } from "expo-router";
-import { getGuestMatchIds } from "../../src/lib/guestMatches";
+import { getGuestMatchIds, getUpgradeDismissedAt, setUpgradeDismissedAt } from "../../src/lib/guestMatches";
+import { guestDaysLeft, isGuestExpiringSoon, shouldPromptUpgrade } from "../../src/lib/guestRetention";
 import { getMatch, listMatches, MatchRecord } from "../../src/repos/matchRepo";
 import type { TeamId } from "../../src/engine";
 import Icon from "../../src/components/Icon";
@@ -36,10 +37,29 @@ function TeamLine({ item, team }: { item: MatchRecord; team: TeamId }) {
   );
 }
 
+/** How long this match has before the guest purge takes it (0044). */
+function ExpiryLine({ createdAt, now }: { createdAt: number; now: number }) {
+  const days = guestDaysLeft(createdAt, now);
+  const soon = isGuestExpiringSoon(days);
+  // Only worth the line once it is close enough to act on. A month out it is
+  // noise on every card.
+  if (!soon) return null;
+  return (
+    <Text style={[s.expiry, days === 0 && s.expiryGone]}>
+      {days === 0 ? "Expired — sign up to keep it" : `Saved for ${days} more day${days === 1 ? "" : "s"}`}
+    </Text>
+  );
+}
+
 export default function GuestMatches() {
   const router = useRouter();
   const [matches, setMatches] = useState<MatchRecord[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [prompt, setPrompt] = useState(false);
+  // Read once per focus so every row in a render shares one clock; recomputing
+  // Date.now() per row makes two matches created a millisecond apart show
+  // different day counts at the boundary.
+  const [now, setNow] = useState(() => Date.now());
 
   useFocusEffect(
     useCallback(() => {
@@ -55,8 +75,11 @@ export default function GuestMatches() {
             : (await Promise.all((await getGuestMatchIds()).map((id) => getMatch(id)))).filter(
                 (m): m is MatchRecord => m !== null,
               );
+        const dismissedAt = await getUpgradeDismissedAt();
         if (live) {
           setMatches(rows);
+          setNow(Date.now());
+          setPrompt(shouldPromptUpgrade(rows.length, dismissedAt));
           setLoaded(true);
         }
       })();
@@ -91,6 +114,34 @@ export default function GuestMatches() {
         contentContainerStyle={s.list}
         data={matches}
         keyExtractor={(m) => m.id}
+        ListHeaderComponent={
+          prompt ? (
+            <View style={s.prompt}>
+              <Text style={s.promptTitle}>Don&apos;t lose these</Text>
+              <Text style={s.promptText}>
+                Guest matches are deleted automatically. An email and password keeps
+                every one of them — same history, nothing to re-enter.
+              </Text>
+              <View style={s.promptRow}>
+                <PressableScale accessibilityRole="button"
+                  style={s.promptCta}
+                  onPress={() => router.push("/guest/save")}
+                >
+                  <Text style={s.promptCtaText}>Save my matches</Text>
+                </PressableScale>
+                <PressableScale accessibilityRole="button"
+                  style={s.promptLater}
+                  onPress={() => {
+                    setPrompt(false);
+                    void setUpgradeDismissedAt(matches.length);
+                  }}
+                >
+                  <Text style={s.promptLaterText}>Not now</Text>
+                </PressableScale>
+              </View>
+            </View>
+          ) : null
+        }
         renderItem={({ item }) => (
           <PressableScale accessibilityRole="button"
             style={[s.card, item.status === "live" && s.cardLive]}
@@ -101,6 +152,7 @@ export default function GuestMatches() {
             <Text style={s.vs}>vs</Text>
             <TeamLine item={item} team="B" />
             {item.status === "live" && <Text style={s.liveBadge}>● LIVE — tap to resume</Text>}
+            <ExpiryLine createdAt={item.created_at} now={now} />
           </PressableScale>
         )}
       />
@@ -123,6 +175,22 @@ const s = StyleSheet.create({
   liveScore: { color: C.green, fontSize: 20, fontFamily: F.display, minWidth: 30, textAlign: "right", fontVariant: ["tabular-nums"] },
   vs: { color: C.text3, fontSize: 12 },
   liveBadge: { color: C.green, fontSize: 12, fontFamily: F.bold, marginTop: 4 },
+  expiry: { color: C.amber, fontSize: 12, fontFamily: F.medium, marginTop: 4 },
+  expiryGone: { color: C.red },
+  prompt: {
+    backgroundColor: C.card, borderRadius: 14, padding: 16, gap: 8,
+    borderWidth: 1, borderColor: C.red, marginBottom: 4,
+  },
+  promptTitle: { color: C.text, fontSize: 16, fontFamily: F.semibold },
+  promptText: { color: C.text2, fontSize: 13, fontFamily: F.body, lineHeight: 19 },
+  promptRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 4 },
+  promptCta: {
+    flex: 1, minHeight: 48, borderRadius: 12, backgroundColor: C.red,
+    alignItems: "center", justifyContent: "center",
+  },
+  promptCtaText: { color: C.text, fontSize: 15, fontFamily: F.semibold },
+  promptLater: { minHeight: 48, paddingHorizontal: 14, alignItems: "center", justifyContent: "center" },
+  promptLaterText: { color: C.text2, fontSize: 14, fontFamily: F.medium },
   emptyRoot: { flex: 1, alignItems: "center", justifyContent: "center", gap: 8, padding: 24 },
   emptyTitle: { color: C.text, fontSize: 20, marginTop: 4, fontFamily: F.display },
   emptyText: { color: C.text2, fontSize: 15, textAlign: "center", lineHeight: 22, marginBottom: 8 },

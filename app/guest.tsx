@@ -7,6 +7,7 @@ import { clearLastLineup } from "../src/lib/lastLineup";
 import Icon from "../src/components/Icon";
 import Logo from "../src/components/Logo";
 import PressableScale from "../src/components/PressableScale";
+import { GUEST_RETENTION_DAYS } from "../src/lib/guestRetention";
 import { C, F } from "../src/theme";
 
 const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.navalo.courtside";
@@ -64,11 +65,25 @@ export default function GuestHome() {
         <Icon name="chevron-forward" color={C.text2} size={20} />
       </PressableScale>
 
+      <PressableScale
+        accessibilityRole="button"
+        accessibilityLabel="Create an account and keep your matches"
+        style={s.save}
+        onPress={() => router.push("/guest/save")}
+      >
+        <Icon name="checkmark-circle" color={C.text} size={22} />
+        <View style={s.cardText}>
+          <Text style={s.saveTitle}>Save my matches</Text>
+          <Text style={s.saveSub}>
+            Guest matches are deleted after {GUEST_RETENTION_DAYS} days. Keep them, and
+            unlock clubs and stats.
+          </Text>
+        </View>
+      </PressableScale>
+
       <PressableScale accessibilityRole="button" style={s.signIn} onPress={signIn}>
         <Text style={s.signInText}>
-          {Platform.OS === "web"
-            ? "Get the app for clubs, tournaments, and more"
-            : "Sign in for clubs, tournaments, and more"}
+          {Platform.OS === "web" ? "Get the Android app" : "Already have an account? Sign in"}
         </Text>
       </PressableScale>
     </ScrollView>
@@ -88,6 +103,12 @@ const s = StyleSheet.create({
   cardText: { flex: 1, gap: 3 },
   cardTitle: { color: C.text, fontFamily: F.semibold, fontSize: 16 },
   cardSub: { color: C.text2, fontFamily: F.body, fontSize: 13, lineHeight: 18 },
+  save: {
+    flexDirection: "row", alignItems: "center", gap: 14, backgroundColor: C.red,
+    borderRadius: 16, padding: 16, marginTop: 4,
+  },
+  saveTitle: { color: C.text, fontFamily: F.semibold, fontSize: 16 },
+  saveSub: { color: C.text, fontFamily: F.body, fontSize: 13, lineHeight: 18, opacity: 0.85 },
   signIn: { alignItems: "center", paddingVertical: 14, marginTop: 4 },
   signInText: { color: C.accent, fontFamily: F.medium, fontSize: 14 },
 });
