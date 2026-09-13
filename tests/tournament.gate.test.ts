@@ -1,5 +1,6 @@
-import { settleGroups, srcToken } from "../src/tournament/formats/gate";
+import { settleGroups, settleByes, srcToken } from "../src/tournament/formats/gate";
 import { groupsKnockout } from "../src/tournament/formats/groupsKnockout";
+import { advanceWinner } from "../src/tournament/bracket";
 import type { BracketMatch, Entrant } from "../src/tournament/types";
 
 const ents = (n: number): Entrant[] => Array.from({ length: n }, (_, i) => ({
@@ -82,3 +83,61 @@ test("every filled entrant actually played in the group it came from", () => {
     expect(inGroup.has(f.entrantId)).toBe(true);
   }
 });
+
+// FIX ROUND 1, finding 1: without bye resolution, a knockout with unfilled
+// byes (e.g. 6 qualifiers into an 8-slot draw) stalls forever — the entrant
+// with no opponent never gets a winner, so the tree never advances past
+// round one. This is a full end-to-end playout: play every real match
+// (lower entrant number always wins), run the gate and the bye resolver
+// after every result, and check the tournament actually reaches "done".
+function playToDone(n: number, groupSize: number, advancePerGroup: number) {
+  let k = 0;
+  const entrants = ents(n);
+  let bracket = groupsKnockout.build({
+    entrants, tournamentId: "t1", gen: () => `m${++k}`, groupSize, advancePerGroup,
+  });
+
+  const applyFills = (b: BracketMatch[]): BracketMatch[] => {
+    const fills = settleGroups(b, entrants);
+    return fills.reduce((acc, f) => acc.map((m) => {
+      if (m.id !== f.matchId) return m;
+      return f.slot === "a" ? { ...m, entrantA: f.entrantId } : { ...m, entrantB: f.entrantId };
+    }), b);
+  };
+  const applyByes = (b: BracketMatch[]): BracketMatch[] => {
+    const wins = settleByes(b);
+    return wins.reduce((acc, w) => advanceWinner(acc, w.matchId, w.winnerEntrant), b);
+  };
+
+  let guard = 0;
+  for (;;) {
+    guard++;
+    if (guard > 500) throw new Error("playout did not terminate — bracket is stuck");
+
+    const status = groupsKnockout.status(bracket, entrants);
+    if (status.status === "done") return { bracket, entrants, champion: status.champion };
+
+    const playable = bracket.find((m) => m.entrantA && m.entrantB && !m.winnerEntrant);
+    const before = bracket;
+    if (playable) {
+      const winner = Number(playable.entrantA!.slice(1)) < Number(playable.entrantB!.slice(1))
+        ? playable.entrantA! : playable.entrantB!;
+      bracket = advanceWinner(bracket, playable.id, winner);
+    }
+    bracket = applyFills(bracket);
+    bracket = applyByes(bracket);
+
+    if (bracket === before) throw new Error("playout made no progress — bracket is stuck");
+  }
+}
+
+test.each([[12, 4, 2], [16, 4, 2]])(
+  "full playout of %i entrants (groupSize %i, advancePerGroup %i) reaches done",
+  (n, groupSize, advancePerGroup) => {
+    const { bracket, entrants, champion } = playToDone(n, groupSize, advancePerGroup);
+    expect(groupsKnockout.status(bracket, entrants)).toEqual({ status: "done", champion });
+    expect(champion).not.toBeNull();
+    const knockout = bracket.filter((m) => m.groupIdx === null);
+    expect(knockout.every((m) => m.winnerEntrant !== null)).toBe(true);
+  },
+);

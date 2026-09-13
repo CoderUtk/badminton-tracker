@@ -58,3 +58,50 @@ export function settleGroups(
   // Sorted so two devices emit the same array, not merely the same set.
   return fills.sort((x, y) => x.matchId.localeCompare(y.matchId) || x.slot.localeCompare(y.slot));
 }
+
+export type ByeWin = { matchId: string; winnerEntrant: string };
+
+/**
+ * Resolve knockout byes: a first-round slot whose source token was null from
+ * the start (no qualifier was ever assigned there — see groupsKnockout's
+ * seeding) never gets filled by settleGroups. Once the OTHER slot in that
+ * match is known, the present entrant has no opponent coming and must be
+ * declared the winner so the tree keeps moving; otherwise the bracket stalls
+ * on it forever (single elimination avoids this because buildBracket can
+ * resolve a bye at build time — here the qualifier isn't known until its
+ * group finishes, so this gate is the only place it can happen).
+ *
+ * Only the seeded first knockout round can be a genuine bye. A later round's
+ * empty slot is always fed by an undecided EARLIER knockout match, and that
+ * match is guaranteed to eventually produce a winner (by real play or by
+ * this same bye rule) — so a later round's empty slot is a WAIT, never a
+ * dead end, and auto-advancing it would hand someone a walkover against an
+ * opponent who is still playing.
+ *
+ * Every first-round match's bye eligibility depends only on its own srcA/
+ * srcB/entrantA/entrantB — not on any other match's result — so a single
+ * pass over the bracket already finds every bye ready to resolve, including
+ * two siblings that are both byes feeding the same next match. The caller
+ * applies each entry with `advanceWinner` (same as a played result), which
+ * both records the winner and routes it along the match's existing win edge
+ * — so a resolved bye's winner reaching the next round is exactly one more
+ * `settleByes` + `advanceWinner` cycle away, and calling this again after
+ * applying is a no-op (idempotent) because an already-decided match is
+ * skipped.
+ */
+export function settleByes(bracket: BracketMatch[]): ByeWin[] {
+  const knockout = bracket.filter((m) => m.groupIdx === null);
+  if (knockout.length === 0) return [];
+  const firstRound = Math.min(...knockout.map((m) => m.round));
+
+  const wins: ByeWin[] = [];
+  for (const m of knockout) {
+    if (m.round !== firstRound || m.winnerEntrant) continue;
+    const aReady = m.entrantA !== null;
+    const bReady = m.entrantB !== null;
+    if (aReady && !bReady && m.srcB === null) wins.push({ matchId: m.id, winnerEntrant: m.entrantA! });
+    else if (bReady && !aReady && m.srcA === null) wins.push({ matchId: m.id, winnerEntrant: m.entrantB! });
+  }
+  // Sorted so two devices emit the same array, not merely the same set.
+  return wins.sort((x, y) => x.matchId.localeCompare(y.matchId));
+}

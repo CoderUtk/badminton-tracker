@@ -2,7 +2,7 @@ import type { BracketMatch, BracketSize, Entrant, Slot } from "./types";
 
 // Standard single-elim seed order for a bracket of `size` (1-based seeds).
 // e.g. size 4 -> [1,4,2,3]; size 8 -> [1,8,4,5,2,7,3,6].
-function seedOrder(size: number): number[] {
+export function seedOrder(size: number): number[] {
   let rounds = [1, 2];
   while (rounds.length < size) {
     const n = rounds.length * 2;

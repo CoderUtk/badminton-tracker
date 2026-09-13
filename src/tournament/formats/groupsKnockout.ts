@@ -1,4 +1,5 @@
 import { circleRounds } from "./roundRobin";
+import { seedOrder } from "../bracket";
 import type { BracketMatch, Entrant } from "../types";
 import type { FormatModule, GenOpts, MatchScore, Standing } from "./types";
 import { recordStandings } from "./standings";
@@ -25,22 +26,6 @@ const nextPowerOfTwo = (n: number): number => {
   while (p < n) p *= 2;
   return p;
 };
-
-// Duplicated from bracket.ts's private `seedOrder` (that file is off-limits —
-// tests/tournament.singleElimRegression.test.ts pins it as ground truth for
-// the whole plan, so it is not touched or exported from here). Standard
-// single-elim seed order for a bracket of `size` slots (1-based seeds), e.g.
-// size 4 -> [1,4,2,3]; size 8 -> [1,8,4,5,2,7,3,6].
-function seedOrder(size: number): number[] {
-  let rounds = [1, 2];
-  while (rounds.length < size) {
-    const n = rounds.length * 2;
-    const next: number[] = [];
-    for (const s of rounds) { next.push(s); next.push(n + 1 - s); }
-    rounds = next;
-  }
-  return rounds;
-}
 
 /**
  * Build the ordered list of qualifier tokens to seed, best first: every
