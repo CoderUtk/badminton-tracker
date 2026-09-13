@@ -25,23 +25,25 @@ test("ranks by wins", () => {
 });
 
 test("head-to-head breaks a tie on wins", () => {
-  // e1, e2 and e3 are all 1-1 here: this is a full round-robin where each of
-  // three entrants beat exactly one of the others, which is unavoidably a
-  // rock-paper-scissors cycle (e2 > e1, e1 > e3, e3 > e2) — no ranking of a
-  // 3-cycle is "fair" pairwise, since head-to-head cannot be transitive here.
-  // What matters for this gate is not fairness but determinism: the same
-  // three results must fold to the same order every time, on every device,
-  // regardless of the order matches are supplied in (see the reordering test
-  // below). That holds — pin the actual, stable output rather than asserting
-  // a "correct" order that a genuine 3-way cycle cannot have.
+  // e1 and e2 are the pair under test: both end 1-1 (rate .5) and played each
+  // other directly, with e2 winning that match — e2 must outrank e1. e3 and
+  // e4 exist only to give e1 and e2 their compensating result without the two
+  // of them meeting a third time (which, with only 3 entrants, forces an
+  // unresolvable rock-paper-scissors cycle instead of a genuine tiebreak —
+  // see the cycle-specific tests below). e3 and e4 end up at clearly
+  // different, non-tied rates, so the whole order is fully determined:
+  // e4 (1-0) > e2 (1-1, beat e1) > e1 (1-1, lost to e2) > e3 (0-1).
   const s = recordStandings(
-    [played("m1", "e2", "e1", "e2"), played("m2", "e1", "e3", "e1"), played("m3", "e2", "e3", "e3")],
-    ents(3));
-  expect(s.map((x) => x.entrantId)).toEqual(["e3", "e2", "e1"]);
-  const reversed = recordStandings(
-    [played("m3", "e2", "e3", "e3"), played("m2", "e1", "e3", "e1"), played("m1", "e2", "e1", "e2")],
-    ents(3));
-  expect(reversed).toEqual(s);
+    [played("m1", "e2", "e1", "e2"), played("m2", "e1", "e3", "e1"), played("m3", "e4", "e2", "e4")],
+    ents(4));
+  expect(s.map((x) => x.entrantId)).toEqual(["e4", "e2", "e1", "e3"]);
+  const e1 = s.find((x) => x.entrantId === "e1")!;
+  const e2 = s.find((x) => x.entrantId === "e2")!;
+  expect(e1.wins).toBe(e2.wins);
+  expect(e1.losses).toBe(e2.losses);
+  expect(e2.rank).toBeLessThan(e1.rank);
+  expect(e1.tied).toBe(false);
+  expect(e2.tied).toBe(false);
 });
 
 test("game difference breaks a tie when head-to-head does not", () => {
@@ -80,21 +82,57 @@ test("the same input in any order gives the same output", () => {
   expect(a).toEqual(b);
 });
 
+// The head-to-head comparison used to be a pairwise "x beat y" test inside
+// the sort comparator. That is not transitive: e2 beat e1, e1 beat e3, e3
+// beat e2 is a genuine rock-paper-scissors cycle, and Array.prototype.sort's
+// result for a non-transitive comparator depends on the incoming order of
+// the array being sorted — here, the order entrants happen to be listed in.
+// Two offline devices with identical match results but a different entrant
+// fetch order would then compute different knockout draws, which is exactly
+// the fork this whole feature exists to prevent. Head-to-head must be folded
+// into a scalar per-entrant key before sorting so the comparator is
+// transitive and the result cannot depend on entrant order.
+test("a head-to-head cycle ranks identically regardless of entrant array order", () => {
+  const ms = [played("m1", "e2", "e1", "e2"), played("m2", "e1", "e3", "e1"), played("m3", "e3", "e2", "e3")];
+  const natural = ents(3);
+  const shuffled = [natural[2], natural[0], natural[1]]; // [e3, e1, e2]
+  const reversed = [...natural].reverse(); // [e3, e2, e1]
+
+  const a = recordStandings(ms, natural);
+  const b = recordStandings(ms, shuffled);
+  const c = recordStandings(ms, reversed);
+  expect(b).toEqual(a);
+  expect(c).toEqual(a);
+
+  // A genuine 3-way cycle sportingly separates no one: everyone is 1-1 with
+  // one win inside the tied group, so the order falls all the way through to
+  // seed, and the UI should present them as level.
+  expect(a.map((x) => x.entrantId)).toEqual(["e1", "e2", "e3"]); // seed order
+  expect(a.every((x) => x.tied)).toBe(true);
+});
+
 test("unplayed matches are ignored", () => {
   const pending = { ...played("m9", "e1", "e2", "e1"), winnerEntrant: null, matchId: null };
   const s = recordStandings([pending], ents(2));
   expect(s.every((x) => x.played === 0)).toBe(true);
 });
 
-// Defect fix: head-to-head IS a sporting tiebreak. Three entrants level on
-// wins (rate), game diff, and point diff, separated pairwise only by who beat
-// whom, must not be marked tied — a real result separated each pair.
+// Defect fix: head-to-head IS a sporting tiebreak. Two entrants level on
+// wins (rate), game diff, and point diff, separated only by who beat whom,
+// must not be marked tied — a real result separated them. (Same fixture as
+// "head-to-head breaks a tie on wins" above — deliberately not a cycle, so
+// head-to-head actually decides instead of degenerating to "everyone ties".)
 test("head-to-head separation is not marked tied", () => {
   const s = recordStandings(
-    [played("m1", "e2", "e1", "e2"), played("m2", "e1", "e3", "e1"), played("m3", "e2", "e3", "e3")],
-    ents(3));
-  expect(s.every((x) => x.wins === 1 && x.losses === 1)).toBe(true);
-  expect(s.every((x) => x.gameDiff === 0 && x.pointDiff === 0)).toBe(true);
-  expect(s.map((x) => x.rank)).toEqual([1, 2, 3]);
-  expect(s.every((x) => !x.tied)).toBe(true);
+    [played("m1", "e2", "e1", "e2"), played("m2", "e1", "e3", "e1"), played("m3", "e4", "e2", "e4")],
+    ents(4));
+  const e1 = s.find((x) => x.entrantId === "e1")!;
+  const e2 = s.find((x) => x.entrantId === "e2")!;
+  expect(e1.wins).toBe(e2.wins);
+  expect(e1.losses).toBe(e2.losses);
+  expect(e1.gameDiff).toBe(e2.gameDiff);
+  expect(e1.pointDiff).toBe(e2.pointDiff);
+  expect(e2.rank).toBeLessThan(e1.rank);
+  expect(e1.tied).toBe(false);
+  expect(e2.tied).toBe(false);
 });

@@ -17,6 +17,19 @@ type Acc = {
  * tiebreaks and the UI marks entrants split by them as level, but they
  * guarantee no tie reaches the caller.
  *
+ * Every key the comparator sorts on is a SCALAR property of one entrant, not
+ * a pairwise fact about a pair of entrants. That matters: `Array.prototype.
+ * sort`'s comparator must be transitive, and a pairwise "x beat y" test is
+ * not transitive whenever three entrants form a head-to-head cycle
+ * (e2 beat e1, e1 beat e3, e3 beat e2 — every real round-robin group can
+ * produce this). Fed a non-transitive comparator, `sort` still returns *a*
+ * permutation, but which one depends on the incoming order of `entrants` —
+ * exactly the kind of divergence two offline devices with the same match
+ * results must never produce. So head-to-head is folded into a scalar
+ * per-entrant count (wins against other members of the same win-rate group,
+ * the standard "mini-league" rule) before sorting, not compared pairwise
+ * inside the comparator.
+ *
  * `scores` is optional because BracketMatch carries only the winner — game and
  * point difference live in the matches table. Without it, those two keys are
  * zero for everyone and the order falls through to seed.
@@ -54,11 +67,34 @@ export function recordStandings(
   // raw wins would penalise the entrant with the longer schedule.
   const rate = (x: Acc) => (x.played === 0 ? 0 : x.wins / x.played);
 
-  const rows = [...acc.values()].sort((x, y) => {
+  // Mini-league head-to-head: for each entrant, count wins against OTHER
+  // entrants who share its exact win rate. This is the standard tournament
+  // tiebreak, it's a scalar (so it sorts transitively, unlike a pairwise
+  // "beat" test), and it degrades gracefully on a cycle — every entrant in a
+  // 3-cycle wins exactly one match within the group, so they tie on this key
+  // too and fall through to game diff, which is genuinely correct: a cycle
+  // does not sportingly separate anyone.
+  const allAcc = [...acc.values()];
+  const rateGroups = new Map<number, Acc[]>();
+  for (const x of allAcc) {
+    const r = rate(x);
+    const g = rateGroups.get(r);
+    if (g) g.push(x); else rateGroups.set(r, [x]);
+  }
+  const h2h = new Map<string, number>();
+  for (const group of rateGroups.values()) {
+    const ids = new Set(group.map((x) => x.entrantId));
+    for (const x of group) {
+      let wins = 0;
+      for (const beaten of beat.get(x.entrantId)!) if (ids.has(beaten)) wins++;
+      h2h.set(x.entrantId, wins);
+    }
+  }
+
+  const rows = allAcc.sort((x, y) => {
     if (rate(y) !== rate(x)) return rate(y) - rate(x);
-    const xBeatY = beat.get(x.entrantId)!.has(y.entrantId);
-    const yBeatX = beat.get(y.entrantId)!.has(x.entrantId);
-    if (xBeatY !== yBeatX) return xBeatY ? -1 : 1;
+    const hx = h2h.get(x.entrantId)!, hy = h2h.get(y.entrantId)!;
+    if (hy !== hx) return hy - hx;
     if (y.gameDiff !== x.gameDiff) return y.gameDiff - x.gameDiff;
     if (y.pointDiff !== x.pointDiff) return y.pointDiff - x.pointDiff;
     if (x.seed !== y.seed) return x.seed - y.seed;
@@ -66,20 +102,13 @@ export function recordStandings(
   });
 
   // `tied` must mean "no SPORTING tiebreak separated this row from its
-  // neighbour" — and head-to-head is a sporting tiebreak (it sits between win
-  // rate and game diff in the comparator above), so it must be checked here
-  // too. A plain `rate|gameDiff|pointDiff` key (the win-rate/game-diff/
-  // point-diff triple alone) would mark two entrants "tied" even when one
-  // beat the other head-to-head, which is exactly the kind of real result the
-  // UI must not present as level. Only seed and id — the two non-sporting
-  // keys — may mark a row tied.
-  const sportingTie = (x: Acc, y: Acc): boolean => {
-    if (rate(x) !== rate(y)) return false;
-    const xBeatY = beat.get(x.entrantId)!.has(y.entrantId);
-    const yBeatX = beat.get(y.entrantId)!.has(x.entrantId);
-    if (xBeatY !== yBeatX) return false;
-    return x.gameDiff === y.gameDiff && x.pointDiff === y.pointDiff;
-  };
+  // neighbour" — and head-to-head (now the scalar mini-league count above) is
+  // a sporting tiebreak, sitting between win rate and game diff in the
+  // comparator. Only seed and id — the two non-sporting keys — may mark a
+  // row tied.
+  const sportingTie = (x: Acc, y: Acc): boolean =>
+    rate(x) === rate(y) && h2h.get(x.entrantId) === h2h.get(y.entrantId) &&
+    x.gameDiff === y.gameDiff && x.pointDiff === y.pointDiff;
 
   return rows.map((x, i) => ({
     entrantId: x.entrantId, rank: i + 1,
