@@ -63,13 +63,20 @@ export default function TournamentView({
     // bracket with the edge genuinely missing looks different from one that
     // simply has no losses yet.
     if (!hasDoubleElimRouting(bracket)) return tree(bracket);
-    const { winners, losers } = splitDoubleElimRounds(bracket);
+    // The grand final is its own bucket, not the top of the losers bracket:
+    // doubleElim.build gives it the same "nowhere left to go" shape as an
+    // eliminated losers row (both winToMatchId and lossToMatchId null), so a
+    // round-number split alone would file the tournament's deciding match
+    // under LOSERS. See splitDoubleElimRounds's own comment.
+    const { winners, grandFinal, losers } = splitDoubleElimRounds(bracket);
     return (
       <View style={{ flex: 1 }}>
         <Text accessibilityRole="header" style={s.heading}>WINNERS</Text>
         <View style={s.bracketSlot}>{tree(winners)}</View>
         <Text accessibilityRole="header" style={s.heading}>LOSERS</Text>
         <View style={s.bracketSlot}>{tree(losers)}</View>
+        <Text accessibilityRole="header" style={s.heading}>GRAND FINAL</Text>
+        <View style={s.bracketSlot}>{tree(grandFinal)}</View>
       </View>
     );
   }

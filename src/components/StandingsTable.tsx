@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import CarvedCard from "./CarvedCard";
 import { C, F, radius } from "../theme";
-import { signedDiff } from "../tournament/tournamentView";
+import { signedDiff, tiedRowLabel } from "../tournament/tournamentView";
 import type { Standing } from "../tournament/formats/types";
 import type { Entrant } from "../tournament/types";
 
@@ -39,13 +39,19 @@ export default function StandingsTable({
       {standings.map((row) => {
         const name = nameOf.get(row.entrantId) ?? "?";
         const Row = onPressEntrant ? Pressable : View;
+        // A non-tied row has no explicit accessibilityLabel, so a screen
+        // reader aggregates its child Text nodes. React Native's explicit
+        // accessibilityLabel REPLACES that aggregation rather than adding to
+        // it — see tiedRowLabel's own comment for why a tied row's label has
+        // to restate the record instead of just naming the tie.
+        const label = row.tied ? tiedRowLabel(row, name) : undefined;
         return (
           <Row
             key={row.entrantId}
             style={s.row}
             onPress={onPressEntrant ? () => onPressEntrant(row.entrantId) : undefined}
             accessibilityRole={onPressEntrant ? "button" : undefined}
-            accessibilityLabel={row.tied ? `${row.rank}, ${name}, level with the next player` : undefined}
+            accessibilityLabel={label}
           >
             <Text style={[s.cell, s.rankCol]}>{row.rank}</Text>
             <View style={s.nameCol}>
