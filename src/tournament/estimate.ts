@@ -30,6 +30,15 @@ export function formatEstimate(
   return { matches, minutes, long: minutes > LONG_THRESHOLD_MINUTES };
 }
 
+/** "1 court" / "4 courts", "1 match" / "7 matches" — both the estimate line
+ *  and the long-format warning name a count, and courts=1 is a real,
+ *  supported minimum (MIN_COURTS in the create screen), not a theoretical
+ *  input. `pluralForm` covers irregular plurals ("match" -> "matches");
+ *  it defaults to the regular `${singular}s`. */
+function plural(n: number, singular: string, pluralForm = `${singular}s`): string {
+  return `${n} ${n === 1 ? singular : pluralForm}`;
+}
+
 export function formatDuration(minutes: number): string {
   if (minutes < 60) return `~${minutes}m`;
   const h = Math.floor(minutes / 60);
@@ -83,7 +92,7 @@ export function formatRows(
           : cheapest;
       warning = preferred && preferred.mod.id !== mod.id
         ? `Long for one night — ${preferred.mod.label} finishes in ${formatDuration(preferred.minutes)}.`
-        : `Long for one night — even the fastest format runs long on ${courts} courts.`;
+        : `Long for one night — even the fastest format runs long on ${plural(courts, "court")}.`;
     }
     return {
       id: mod.id,
@@ -92,7 +101,7 @@ export function formatRows(
       matches,
       minutes,
       long,
-      estimateText: `≈ ${matches} matches · ${formatDuration(minutes)} on ${courts} courts`,
+      estimateText: `≈ ${plural(matches, "match", "matches")} · ${formatDuration(minutes)} on ${plural(courts, "court")}`,
       warning,
     };
   });

@@ -46,6 +46,24 @@ test("the estimate text changes with entrant count and with court count", () => 
   // "matches", "courts" swapped for "games", or fields reordered.
   const ko8 = formatRows(8, 3, 4).find((r) => r.id === "single_elim")!;
   expect(ko8.estimateText).toBe("≈ 7 matches · ~53m on 4 courts");
+
+  // courts=1 is a real, supported minimum (MIN_COURTS in the create screen),
+  // not a theoretical input — pins the singular "1 court", not "1 courts".
+  const oneCourt = formatRows(8, 3, 1).find((r) => r.id === "single_elim")!;
+  expect(oneCourt.estimateText).toBe("≈ 7 matches · ~3h30 on 1 court");
+});
+
+test("a match count of exactly 1 is singular-aware too — reachable via round-robin with 2 entrants", () => {
+  // round_robin.matchCount(entrants) = entrants*(entrants-1)/2, which is 1
+  // at entrants=2 (below round-robin's own 3-player minimum, but the picker
+  // renders live estimates for whatever the entrants tab currently holds,
+  // including counts below the format's minimum). single_elim and
+  // double_elim floor at drawSizeFor's smallest bracket (4), so their fewest
+  // possible match count is 3 and 6 respectively — "1 match(es)" is
+  // unreachable there.
+  const rr2 = formatRows(2, 3, 4).find((r) => r.id === "round_robin")!;
+  expect(rr2.matches).toBe(1);
+  expect(rr2.estimateText).toBe("≈ 1 match · ~8m on 4 courts");
 });
 
 test("when every format is long, every row still gets a warning naming the limit, not a cheaper one", () => {
@@ -54,7 +72,7 @@ test("when every format is long, every row still gets a warning naming the limit
   for (const r of rows) {
     expect(r.warning).not.toBeNull();
     expect(r.warning).toMatch(/Long for one night/);
-    expect(r.warning).toBe("Long for one night — even the fastest format runs long on 1 courts.");
+    expect(r.warning).toBe("Long for one night — even the fastest format runs long on 1 court.");
   }
 });
 
