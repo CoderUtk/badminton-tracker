@@ -3,6 +3,7 @@ import { StyleSheet, Text, TextInput, View } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import FormScreen from "../../src/components/FormScreen";
 import PressableScale from "../../src/components/PressableScale";
+import { useScreenInsets } from "../../src/hooks/useScreenInsets";
 import { upgradeGuestAccount, UPGRADE_CONFIRM_HINT } from "../../src/repos/guestUpgradeRepo";
 import { GUEST_RETENTION_DAYS } from "../../src/lib/guestRetention";
 import { toast } from "../../src/lib/toast";
@@ -16,6 +17,7 @@ import { C, F, MIN_TOUCH, radius } from "../../src/theme";
  */
 export default function SaveGuestAccount() {
   const router = useRouter();
+  const { ctaPadding } = useScreenInsets();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -40,7 +42,7 @@ export default function SaveGuestAccount() {
   };
 
   return (
-    <FormScreen>
+    <FormScreen contentContainerStyle={[s.scroll, { paddingBottom: ctaPadding }]}>
       <Stack.Screen options={{ title: "Save my matches" }} />
       <View style={s.body}>
         <Text style={s.headline}>Keep your matches</Text>
@@ -92,7 +94,11 @@ export default function SaveGuestAccount() {
 }
 
 const s = StyleSheet.create({
-  body: { gap: 14, padding: 22 },
+  // Centred like guest/spectate.tsx rather than top-aligned: this stack's
+  // header is transparent and FormScreen's scroll content starts at y=0, so a
+  // top-aligned hero renders underneath the header and the status bar.
+  scroll: { flexGrow: 1, justifyContent: "center", padding: 22 },
+  body: { gap: 14 },
   headline: { color: C.text, fontFamily: F.display, fontSize: 24 },
   sub: { color: C.text2, fontFamily: F.body, fontSize: 14, lineHeight: 20 },
   input: {
