@@ -378,9 +378,12 @@ knowledge. A new `TournamentView` picks by format:
 | `groups_knockout` | `StandingsTable` per group, then `BracketView` once the gate fires |
 
 `StandingsTable` is new: rank, name, W–L, game difference, one tap through to
-the fixture. Knockout slots awaiting the gate show `"1st, Group B"`;
-`src/lib/entrantLabel.ts` already renders this kind of placeholder for bracket
-slots, so it extends rather than duplicates.
+the fixture. Knockout slots awaiting the gate show `"1st, Group B"` rather than
+an empty cell. That placeholder belongs in `src/tournament/bracketLabel.ts`,
+whose `bracketCellLabel` already handles the empty-slot case (returning
+`"Empty match slot"`) and is deliberately a plain `.ts` module so it is unit
+testable — `src/lib/entrantLabel.ts` is only a count formatter and is not
+involved.
 
 `app/(app)/tournaments/[id].tsx:218` calls `bracketStatus(bracket)` for the
 champion; that becomes `FORMATS[format].status(bracket)`. Same shape, so the
