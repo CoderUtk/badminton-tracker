@@ -53,9 +53,11 @@ export type FormatRow = {
  * component (see bracketLabel.ts's header comment) so the decidable logic is
  * unit-testable under this project's Jest setup.
  *
- * A row flagged `long` names the cheapest non-long format by its own
- * estimate, so the host is pointed at a format that actually fits the night
- * rather than just told "this one doesn't".
+ * A row flagged `long` names a cheaper non-long format by its own estimate,
+ * so the host is pointed at a format that actually fits the night rather
+ * than just told "this one doesn't". Every long row gets a warning — even
+ * when no format fits, since that (64 entrants on 1 court, say) is the exact
+ * situation this feature exists to surface, not one where it goes quiet.
  */
 export function formatRows(
   entrants: number, bestOf: number, courts: number,
@@ -67,17 +69,31 @@ export function formatRows(
   });
 
   const cheapest = rows.filter((r) => !r.long).sort((a, b) => a.minutes - b.minutes)[0] ?? null;
+  const groupsKnockoutRow = rows.find((r) => r.mod.id === "groups_knockout") ?? null;
 
-  return rows.map(({ mod, matches, minutes, long }) => ({
-    id: mod.id,
-    label: mod.label,
-    blurb: mod.blurb,
-    matches,
-    minutes,
-    long,
-    estimateText: `≈ ${matches} matches · ${formatDuration(minutes)} on ${courts} courts`,
-    warning: long && cheapest && cheapest.mod.id !== mod.id
-      ? `Long for one night — ${cheapest.mod.label} finishes in about ${formatDuration(cheapest.minutes)}.`
-      : null,
-  }));
+  return rows.map(({ mod, matches, minutes, long }) => {
+    let warning: string | null = null;
+    if (long) {
+      // A round-robin host chose it to avoid a one-loss exit. Pointing them
+      // straight at Knockout throws that away; Groups → knockout keeps it
+      // while still fitting the night, so prefer it when it qualifies.
+      const preferred =
+        mod.id === "round_robin" && groupsKnockoutRow && !groupsKnockoutRow.long
+          ? groupsKnockoutRow
+          : cheapest;
+      warning = preferred && preferred.mod.id !== mod.id
+        ? `Long for one night — ${preferred.mod.label} finishes in ${formatDuration(preferred.minutes)}.`
+        : `Long for one night — even the fastest format runs long on ${courts} courts.`;
+    }
+    return {
+      id: mod.id,
+      label: mod.label,
+      blurb: mod.blurb,
+      matches,
+      minutes,
+      long,
+      estimateText: `≈ ${matches} matches · ${formatDuration(minutes)} on ${courts} courts`,
+      warning,
+    };
+  });
 }

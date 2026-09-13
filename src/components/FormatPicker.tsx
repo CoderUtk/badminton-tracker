@@ -47,7 +47,7 @@ export default function FormatPicker({
           >
             <Text style={[s.label, on && selectedText]}>{row.label}</Text>
             <Text style={s.blurb}>{row.blurb}</Text>
-            <Text style={s.estimate}>{row.estimateText}</Text>
+            <Text style={[s.estimate, row.long && s.estimateLong]}>{row.estimateText}</Text>
             {row.warning ? <Text style={s.warning}>{row.warning}</Text> : null}
           </Pressable>
         );
@@ -59,7 +59,9 @@ export default function FormatPicker({
           <View style={s.segRow}>
             {GROUP_SIZES.map((n) => (
               <Pressable
-                key={n} accessibilityRole="button"
+                key={n} accessibilityRole="radio"
+                accessibilityState={{ selected: groupSize === n }}
+                accessibilityLabel={`Group size ${n}`}
                 onPress={() => onGroupSize(n)}
                 style={({ pressed }) => [s.segBtn, pressed && press, groupSize === n && s.segOn]}
               >
@@ -71,7 +73,9 @@ export default function FormatPicker({
           <View style={s.segRow}>
             {ADVANCE_OPTIONS.map((n) => (
               <Pressable
-                key={n} accessibilityRole="button"
+                key={n} accessibilityRole="radio"
+                accessibilityState={{ selected: advancePerGroup === n }}
+                accessibilityLabel={`Top ${n} advance`}
                 onPress={() => onAdvance(n)}
                 style={({ pressed }) => [s.segBtn, pressed && press, advancePerGroup === n && s.segOn]}
               >
@@ -94,6 +98,7 @@ const s = StyleSheet.create({
   label: { color: C.text2, fontFamily: F.semibold, fontSize: 15 },
   blurb: { color: C.text2, fontFamily: F.body, fontSize: 13 },
   estimate: { color: C.text3, fontFamily: F.body, fontSize: 12.5 },
+  estimateLong: { color: C.amber, fontFamily: F.semibold },
   warning: { color: C.amber, fontFamily: F.body, fontSize: 12.5 },
   segRow: { flexDirection: "row", gap: 8 },
   segBtn: { flex: 1, alignItems: "center", paddingVertical: 11, backgroundColor: C.card, borderRadius: 10, borderWidth: 1, borderColor: C.line },
