@@ -549,10 +549,15 @@ export default function NewMatch() {
         </View>
         )}
 
+        {/* Says WHY the CTA below is dead. Both buttons are disabled until
+            every player is named, and a greyed-out button with no explanation
+            reads as a broken app — it was reported as exactly that. */}
         <Text style={s.hint} numberOfLines={1}>
-          {mode === "log"
-            ? "Enter the final score of each game played."
-            : `First to ${Math.floor(bestOf / 2) + 1} ${bestOf === 1 ? "game" : "games"} · best of ${bestOf}`}
+          {!filled
+            ? "Name every player to continue."
+            : mode === "log"
+              ? "Enter the final score of each game played."
+              : `First to ${Math.floor(bestOf / 2) + 1} ${bestOf === 1 ? "game" : "games"} · best of ${bestOf}`}
         </Text>
 
         {mode === "log" ? (
@@ -560,12 +565,21 @@ export default function NewMatch() {
             busy={starting}
             disabled={!filled || !loggedGames}
             style={[s.cta, (!filled || !loggedGames) && { opacity: 0.5 }]}
+            accessibilityHint={
+              !filled ? "Name every player first" : !loggedGames ? "Enter a score first" : undefined
+            }
             onPress={saveResult}
           >
             <Text style={s.ctaText}>Save result</Text>
           </BusyButton>
         ) : (
-          <BusyButton busy={starting} disabled={!filled} style={[s.cta, !filled && { opacity: 0.5 }]} onPress={start}>
+          <BusyButton
+            busy={starting}
+            disabled={!filled}
+            style={[s.cta, !filled && { opacity: 0.5 }]}
+            accessibilityHint={!filled ? "Name every player first" : undefined}
+            onPress={start}
+          >
             <Text style={s.ctaText}>Start scoring</Text>
           </BusyButton>
         )}

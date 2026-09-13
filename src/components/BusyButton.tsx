@@ -16,6 +16,8 @@ export default function BusyButton({
   onPress,
   style,
   indicatorColor = C.text,
+  accessibilityHint,
+  accessibilityLabel,
   children,
 }: {
   busy: boolean;
@@ -23,10 +25,21 @@ export default function BusyButton({
   onPress: () => void;
   style?: StyleProp<ViewStyle>;
   indicatorColor?: string;
+  /** Why the button is inert, for callers that disable it conditionally. */
+  accessibilityHint?: string;
+  accessibilityLabel?: string;
   children: React.ReactNode;
 }) {
   return (
-    <PressableScale accessibilityRole="button" style={style} disabled={busy || disabled} onPress={onPress}>
+    <PressableScale
+      accessibilityRole="button"
+      accessibilityHint={accessibilityHint}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ disabled: busy || disabled, busy }}
+      style={style}
+      disabled={busy || disabled}
+      onPress={onPress}
+    >
       {busy ? <ActivityIndicator color={indicatorColor} /> : children}
     </PressableScale>
   );

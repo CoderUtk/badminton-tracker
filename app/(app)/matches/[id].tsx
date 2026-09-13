@@ -139,7 +139,7 @@ export default function MatchDetail() {
               ? `Biggest lead ${momentum.biggestLead.points} (${teamName(momentum.biggestLead.side)})`
               : "Level throughout"}
             {momentum.longestRun ? ` · Longest run ${momentum.longestRun.points}` : ""}
-            {` · ${leadChanges(events)} lead changes`}
+            {` · ${leadChanges(events)} lead change${leadChanges(events) === 1 ? "" : "s"}`}
           </Text>
         </View>
       )}
