@@ -1,6 +1,7 @@
 import type { FormatId } from "../types";
 import type { FormatModule } from "./types";
 import { singleElim } from "./singleElim";
+import { doubleElim } from "./doubleElim";
 import { roundRobin } from "./roundRobin";
 
 /** The only lookup table. The picker renders Object.values(FORMATS); adding a
@@ -8,6 +9,7 @@ import { roundRobin } from "./roundRobin";
  *  the picker shows, so Knockout stays first and remains the default. */
 export const FORMATS: Record<FormatId, FormatModule> = {
   single_elim: singleElim,
+  double_elim: doubleElim,
   round_robin: roundRobin,
 } as Record<FormatId, FormatModule>;
 
