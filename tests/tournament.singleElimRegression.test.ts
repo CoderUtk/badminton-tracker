@@ -58,6 +58,26 @@ describe.each(CASES)("single_elim with %i entrants in a %i draw", (n, size) => {
   });
 });
 
+// A client migration adds the routing columns as NULL to existing cached
+// rows, and the app paints from cache before any network call — so right
+// after upgrading, an in-progress bracket can have every winToMatchId null.
+// Without the round/index fallback, `.find(winToMatchId === null)` picks
+// bracket[0] (a round-1 row) and — since it already has a winner — falsely
+// reports a round-1 winner as tournament champion.
+test("an un-stamped bracket (every winToMatchId null) never names a round-1 winner champion", () => {
+  const ents = entrantsOf(4);
+  const next = singleElim.build({ entrants: ents, tournamentId: "t1", gen: counter() });
+  const unstamped = next.map((m) => ({
+    ...m,
+    winToMatchId: null,
+    // Round 1 has a decided winner (as if the client just upgraded mid-tournament).
+    winnerEntrant: m.round === 1 && m.index === 0 ? m.entrantA : m.winnerEntrant,
+  }));
+  const st = singleElim.status(unstamped);
+  expect(st.status).not.toBe("done");
+  expect(st.champion).toBeNull();
+});
+
 test("byes resolve exactly as they did — 5 entrants in an 8 draw", () => {
   const ents = entrantsOf(5);
   const legacy = buildBracket(ents, 8, "t1", counter());

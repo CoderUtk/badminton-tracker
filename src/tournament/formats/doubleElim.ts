@@ -112,7 +112,16 @@ export const doubleElim: FormatModule = {
   // irrelevant here, but the param is accepted to satisfy FormatModule.
   status: (bracket, _entrants?: Entrant[]) => {
     if (bracket.length === 0) return { status: "pending", champion: null };
-    const final = bracket.find((m) => m.winToMatchId === null)!;
+    // Same reachable false-champion state as singleElim.status (see its
+    // comment): a client migration can leave every row's winToMatchId null
+    // in the offline-first cache, and `bracket.find(winToMatchId === null)`
+    // would then pick bracket[0] instead of the grand final. Fall back to the
+    // round/index rule — build() always places the grand final at the
+    // highest round, index 0 — when no row carries a win edge at all.
+    const hasRouting = bracket.some((m) => m.winToMatchId !== null);
+    const final = hasRouting
+      ? bracket.find((m) => m.winToMatchId === null)!
+      : bracket.reduce((max, m) => (m.round > max.round ? m : max));
     if (final.winnerEntrant) return { status: "done", champion: final.winnerEntrant };
     const anyPlayed = bracket.some((m) => m.matchId || (m.winnerEntrant && m.round === 1));
     return { status: anyPlayed ? "live" : "pending", champion: null };

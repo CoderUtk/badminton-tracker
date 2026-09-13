@@ -100,6 +100,22 @@ function play(n: number) {
   return { b, losses };
 }
 
+// Same reachable false-champion state as singleElim (see its test): a client
+// migration can leave every row's winToMatchId null in the offline-first
+// cache. Without the round/index fallback, `.find(winToMatchId === null)`
+// would pick bracket[0] instead of the grand final.
+test("an un-stamped bracket (every winToMatchId null) never names a round-1 winner champion", () => {
+  const b = build(4);
+  const unstamped = b.map((m) => ({
+    ...m,
+    winToMatchId: null,
+    winnerEntrant: m.round === 1 && m.index === 0 ? m.entrantA : m.winnerEntrant,
+  }));
+  const st = doubleElim.status(unstamped);
+  expect(st.status).not.toBe("done");
+  expect(st.champion).toBeNull();
+});
+
 test.each([4, 8, 16])("a %i-entrant draw plays out to one champion", (n) => {
   const { b, losses } = play(n);
   const st = doubleElim.status(b);

@@ -32,7 +32,19 @@ export const singleElim: FormatModule = {
   // irrelevant here, but the param is accepted to satisfy FormatModule.
   status: (bracket, _entrants?: Entrant[]) => {
     if (bracket.length === 0) return { status: "pending", champion: null };
-    const final = bracket.find((m) => m.winToMatchId === null)!;
+    // A client migration adds the routing columns as NULL to existing cached
+    // rows, and the app paints from cache before any network call — so right
+    // after upgrading, every row's winToMatchId can be null. In that state
+    // `bracket.find(winToMatchId === null)` would pick bracket[0] (often a
+    // round-1 row) rather than the actual final, and — if that row happens to
+    // have a winner already — falsely declare a round-1 winner "done" with a
+    // champion card. hasDoubleElimRouting-style: key the decision on whether
+    // the data is present at all, and fall back to the round/index rule (the
+    // pre-routing `bracketStatus` behaviour) when it isn't.
+    const hasRouting = bracket.some((m) => m.winToMatchId !== null);
+    const final = hasRouting
+      ? bracket.find((m) => m.winToMatchId === null)!
+      : bracket.reduce((max, m) => (m.round > max.round ? m : max));
     if (final.winnerEntrant) return { status: "done", champion: final.winnerEntrant };
     const anyPlayed = bracket.some((m) => m.matchId || (m.winnerEntrant && m.round === 1));
     return { status: anyPlayed ? "live" : "pending", champion: null };

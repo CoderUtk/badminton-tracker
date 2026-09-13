@@ -36,6 +36,21 @@ test("the backfill only touches rows that have no edge yet", () => {
   expect(backfill).toMatch(/p\.idx\s*=\s*m\.idx \/ 2/);
 });
 
+// The (tournament_id, round, idx) join key the backfill uses is only unique
+// for a tree bracket: groupsKnockout.build numbers each group's matches from
+// round 1 with a per-group index, so re-running this on a tournament with
+// group brackets would match multiple parent rows and stamp an arbitrary win
+// edge onto a live group match. Scoping to single_elim shrinks the lock
+// footprint too.
+test("the module-level backfill is scoped to single_elim tournaments", () => {
+  const backfill = sql.slice(
+    sql.indexOf("update public.bracket_matches"),
+    sql.indexOf("function public.finish_bracket_match"),
+  );
+  expect(backfill).toMatch(/join public\.tournaments t on t\.id = m\.tournament_id/);
+  expect(backfill).toMatch(/coalesce\(t\.format, 'single_elim'\) = 'single_elim'/);
+});
+
 test("finish_bracket_match follows edges and no longer does tree math", () => {
   const fn = sql.slice(sql.indexOf("function public.finish_bracket_match"),
                        sql.indexOf("function public.start_tournament"));
@@ -76,6 +91,46 @@ test("start_tournament keeps the single_elim size check exactly", () => {
 test("start_tournament validates routing structurally", () => {
   const fn = sql.slice(sql.indexOf("function public.start_tournament"));
   expect(fn).toMatch(/Bracket routing references a match outside this tournament/);
+});
+
+// A 1.6.x client's bracketMatchToRow emits no routing keys at all, so every
+// edge in its payload inserts as NULL. That payload passes every existing
+// check (format is single_elim, length matches v_draw - 1, entrants check
+// out, and the routing-graph validation only rejects a target OUTSIDE the
+// payload — zero edges pass trivially), so without this the bracket is
+// permanently dead: finish_bracket_match reads v_win_to as NULL forever.
+test("start_tournament backfills single_elim tree edges after insert, for old clients", () => {
+  const fn = sql.slice(sql.indexOf("function public.start_tournament"));
+  const afterInsert = fn.slice(fn.indexOf("from jsonb_array_elements(p_bracket) e;"));
+  expect(afterInsert).toMatch(/if v_format = 'single_elim' then/);
+  expect(afterInsert).toMatch(/update bracket_matches m set/);
+  expect(afterInsert).toMatch(/m\.tournament_id = p_tournament_id/);
+  expect(afterInsert).toMatch(/m\.win_to_match_id is null/);
+});
+
+// startBlocker/minPlayers on the client (src/tournament/draw.ts) allows a
+// 3-player singles round-robin; the server must agree or the Start button is
+// enabled for a start the server refuses.
+test("start_tournament's minimum-player floor is format-aware and matches startBlocker", () => {
+  const fn = sql.slice(sql.indexOf("function public.start_tournament"));
+  expect(fn).toMatch(/v_format = 'round_robin'/);
+  expect(fn).toMatch(/v_min := case when v_type = 'doubles' then 6 else 3 end/);
+  expect(fn).toMatch(/v_format = 'groups_knockout'/);
+  expect(fn).toMatch(/v_min := case when v_type = 'doubles' then 12 else 6 end/);
+  // single_elim / double_elim keep today's exact values: 4 singles, 6 doubles.
+  expect(fn).toMatch(/v_min := case when v_type = 'doubles' then 6 else 4 end/);
+});
+
+// `size` means "knockout draw size" everywhere else. For groups_knockout that
+// is group_count * advance_per_group rounded up to a power of two, NOT
+// nextPowerOfTwo(entrant_count) — 12 entrants in 3 groups of 4 advancing 2 is
+// size 8, not 16.
+test("groups_knockout's size is the knockout draw size, not the entrant draw", () => {
+  const fn = sql.slice(sql.indexOf("function public.start_tournament"));
+  const branch = fn.slice(fn.indexOf("elsif v_format = 'groups_knockout'"), fn.indexOf("else\n    raise exception 'Unknown"));
+  expect(branch).toMatch(/coalesce\(group_count, 1\), coalesce\(advance_per_group, 2\)/);
+  expect(branch).toMatch(/v_ko_slots < v_group_count \* v_advance/);
+  expect(branch).toMatch(/v_size := v_ko_slots/);
 });
 
 // The public spectator link (no membership required) needs the tournament's

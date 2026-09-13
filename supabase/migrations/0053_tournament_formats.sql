@@ -29,11 +29,22 @@ alter table public.tournaments
 -- Backfill: describe the routing existing tournaments were already doing, so
 -- live brackets keep advancing mid-flight. Finals get null edges, which is
 -- exactly right — a null win edge is now what "this ends the tournament" means.
+--
+-- Scoped to single_elim (via the tournaments join) because this join key —
+-- (tournament_id, round+1, idx/2) — is only unique for a tree bracket. There
+-- is no unique constraint on (tournament_id, round, idx): groupsKnockout.build
+-- numbers each group's matches from round 1 with a per-group index, so with
+-- three groups (round 1, idx 0) exists three times in one tournament. Without
+-- this scope, re-running this statement after a groups_knockout bracket
+-- exists would match multiple parent rows for one child and let Postgres pick
+-- arbitrarily — a fabricated win edge stamped onto a live group match.
 update public.bracket_matches m set
   win_to_match_id = p.id,
   win_to_slot     = case when m.idx % 2 = 0 then 'a' else 'b' end
 from public.bracket_matches p
+join public.tournaments t on t.id = m.tournament_id
 where p.tournament_id = m.tournament_id
+  and coalesce(t.format, 'single_elim') = 'single_elim'
   and p.round = m.round + 1
   and p.idx   = m.idx / 2
   and m.win_to_match_id is null;
@@ -166,6 +177,10 @@ declare
   v_players int;
   v_draw int;
   v_size int;
+  v_min int;
+  v_group_count int;
+  v_advance int;
+  v_ko_slots int;
 begin
   select club_id, status, match_type, coalesce(format, 'single_elim')
     into v_club, v_status, v_type, v_format
@@ -188,11 +203,20 @@ begin
   where tournament_id = p_tournament_id;
 
   v_players := v_entrants * (case when v_type = 'doubles' then 2 else 1 end);
-  if v_type = 'doubles' and v_players < 6 then
-    raise exception 'Add at least 6 players to start';
+
+  -- Per-format floors, kept in step with startBlocker/minPlayers on the
+  -- client (src/tournament/draw.ts, src/tournament/formats/*.ts) so the
+  -- Start button and this guard never disagree. single_elim and double_elim
+  -- keep exactly today's values (4 singles / 6 doubles) — unchanged.
+  if v_format = 'round_robin' then
+    v_min := case when v_type = 'doubles' then 6 else 3 end;
+  elsif v_format = 'groups_knockout' then
+    v_min := case when v_type = 'doubles' then 12 else 6 end;
+  else
+    v_min := case when v_type = 'doubles' then 6 else 4 end;
   end if;
-  if v_type <> 'doubles' and v_players < 4 then
-    raise exception 'Add at least 4 players to start';
+  if v_players < v_min then
+    raise exception 'Add at least % players to start', v_min;
   end if;
   if v_entrants > 64 then
     raise exception 'A tournament holds at most 64 entrants';
@@ -225,7 +249,16 @@ begin
        or jsonb_array_length(p_bracket) > v_entrants * v_entrants then
       raise exception 'Bracket does not match the draw size';
     end if;
-    v_size := v_draw;
+    -- size means "knockout draw size" everywhere else, and for this format
+    -- that is NOT the entrant-count draw (v_draw): it's group_count *
+    -- advance_per_group, rounded up to a power of two. 12 entrants in 3
+    -- groups of 4 advancing 2 is size 8, not nextPowerOfTwo(12) = 16.
+    select coalesce(group_count, 1), coalesce(advance_per_group, 2)
+      into v_group_count, v_advance
+    from tournaments where id = p_tournament_id;
+    v_ko_slots := 1;
+    while v_ko_slots < v_group_count * v_advance loop v_ko_slots := v_ko_slots * 2; end loop;
+    v_size := v_ko_slots;
   else
     raise exception 'Unknown tournament format';
   end if;
@@ -270,6 +303,28 @@ begin
     (e->>'loss_to_match_id')::uuid, e->>'loss_to_slot',
     (e->>'group_idx')::int, e->>'src_a', e->>'src_b'
   from jsonb_array_elements(p_bracket) e;
+
+  -- Pre-0053 (1.6.x) clients emit a payload with no routing keys at all, so
+  -- every edge above inserts as NULL. That payload still passes every check
+  -- above (format is single_elim, length matches v_draw - 1, entrants check
+  -- out, and the routing-graph validation only rejects a target OUTSIDE the
+  -- payload — zero edges pass that trivially). Left alone, finish_bracket_match
+  -- would read v_win_to as NULL forever and the bracket would never advance.
+  -- This is exactly the module-level backfill statement above, reused here and
+  -- scoped to this tournament and to single_elim (the only format an old
+  -- client can ever produce) so old and new clients converge on the same
+  -- tree-derived graph. Idempotent: it only touches rows still missing an edge.
+  if v_format = 'single_elim' then
+    update bracket_matches m set
+      win_to_match_id = p.id,
+      win_to_slot     = case when m.idx % 2 = 0 then 'a' else 'b' end
+    from bracket_matches p
+    where p.tournament_id = m.tournament_id
+      and m.tournament_id = p_tournament_id
+      and p.round = m.round + 1
+      and p.idx   = m.idx / 2
+      and m.win_to_match_id is null;
+  end if;
 
   update tournaments set size = v_size, status = 'live' where id = p_tournament_id;
 end;

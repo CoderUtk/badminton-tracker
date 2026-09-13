@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import CarvedCard from "./CarvedCard";
 import { C, F, radius } from "../theme";
-import { signedDiff, tiedRowLabel } from "../tournament/tournamentView";
+import { tiedRowLabel } from "../tournament/tournamentView";
 import type { Standing } from "../tournament/formats/types";
 import type { Entrant } from "../tournament/types";
 
@@ -34,7 +34,6 @@ export default function StandingsTable({
         <Text style={[s.headCell, s.rankCol]}>#</Text>
         <Text style={[s.headCell, s.nameCol]}>PLAYER</Text>
         <Text style={[s.headCell, s.recordCol]}>{"W–L"}</Text>
-        <Text style={[s.headCell, s.diffCol]}>{"+/−"}</Text>
       </View>
       {standings.map((row) => {
         const name = nameOf.get(row.entrantId) ?? "?";
@@ -59,7 +58,6 @@ export default function StandingsTable({
               {row.tied ? <Text style={s.levelTag}>LEVEL</Text> : null}
             </View>
             <Text style={[s.cell, s.recordCol]}>{row.wins}{"–"}{row.losses}</Text>
-            <Text style={[s.cell, s.diffCol]}>{signedDiff(row.gameDiff)}</Text>
           </Row>
         );
       })}
@@ -84,7 +82,6 @@ const s = StyleSheet.create({
   nameCol: { flex: 1, flexDirection: "row", alignItems: "center", gap: 6 },
   nameText: { flexShrink: 1 },
   recordCol: { width: 48, textAlign: "right" },
-  diffCol: { width: 40, textAlign: "right" },
   levelTag: {
     color: C.amber, fontFamily: F.semibold, fontSize: 9, letterSpacing: 0.5,
     backgroundColor: C.cardHi, borderRadius: 4, paddingHorizontal: 4, paddingVertical: 1,

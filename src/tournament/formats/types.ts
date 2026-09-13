@@ -18,7 +18,15 @@ export type GenOpts = {
 
 /** One finished match's score, keyed by BracketMatch.matchId. Absent when the
  *  match has no recorded score, which makes game and point difference
- *  unavailable and pushes standings onto the later tiebreaks. */
+ *  unavailable and pushes standings onto the later tiebreaks.
+ *
+ *  No caller passes this yet — wiring it in is real work (fetching scores
+ *  into every standings/gate call site) that belongs in its own change, and
+ *  wiring it display-only would still require threading a per-device score
+ *  input into the offline seeding gate this design's determinism rests on.
+ *  Until then, gameDiff and pointDiff are always zero and the tiebreak chain
+ *  effectively runs win rate → mini-league head-to-head → seed. See
+ *  StandingsTable, which does not render a column for either. */
 export type MatchScore = { gamesA: number; gamesB: number; pointsA: number; pointsB: number };
 
 export type Standing = {

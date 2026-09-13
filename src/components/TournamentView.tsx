@@ -1,6 +1,7 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import BracketView, { type BracketLiveScore } from "./BracketView";
+import FixtureList from "./FixtureList";
 import StandingsTable from "./StandingsTable";
 import { formatOrDefault } from "../tournament/formats";
 import { groupLabel, groupOrder, hasDoubleElimRouting, splitDoubleElimRounds } from "../tournament/tournamentView";
@@ -31,7 +32,14 @@ export default function TournamentView({
   );
 
   if (format === "round_robin") {
-    return <StandingsTable standings={mod.standings(bracket, entrants)} entrants={entrants} />;
+    return (
+      <View>
+        <StandingsTable standings={mod.standings(bracket, entrants)} entrants={entrants} />
+        <View style={s.section}>
+          <FixtureList matches={bracket} entrants={entrants} onCellPress={onCellPress} />
+        </View>
+      </View>
+    );
   }
 
   if (format === "groups_knockout") {
@@ -46,6 +54,7 @@ export default function TournamentView({
             <View key={g} style={s.section}>
               <Text accessibilityRole="header" style={s.heading}>{groupLabel(g)}</Text>
               <StandingsTable standings={mod.standings(rows, inGroup)} entrants={inGroup} />
+              <FixtureList matches={rows} entrants={inGroup} onCellPress={onCellPress} />
             </View>
           );
         })}
