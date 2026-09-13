@@ -1,4 +1,6 @@
-import { groupLabel, groupOrder, signedDiff, splitDoubleElimRounds } from "../src/tournament/tournamentView";
+import {
+  groupLabel, groupOrder, hasDoubleElimRouting, signedDiff, splitDoubleElimRounds,
+} from "../src/tournament/tournamentView";
 import { doubleElim } from "../src/tournament/formats/doubleElim";
 import { drawSizeFor } from "../src/tournament/draw";
 import type { BracketMatch, Entrant } from "../src/tournament/types";
@@ -34,6 +36,21 @@ describe("groupOrder / groupLabel", () => {
   test("letters follow index: 0 -> A, 1 -> B", () => {
     expect(groupLabel(0)).toBe("GROUP A");
     expect(groupLabel(1)).toBe("GROUP B");
+  });
+});
+
+describe("hasDoubleElimRouting", () => {
+  test("a real double-elim bracket has it", () => {
+    expect(hasDoubleElimRouting(buildDouble(8))).toBe(true);
+  });
+
+  test("a payload with the loss edge stripped (e.g. the spectator RPC) does not", () => {
+    const stripped = buildDouble(8).map((m) => ({ ...m, lossToMatchId: null }));
+    expect(hasDoubleElimRouting(stripped)).toBe(false);
+  });
+
+  test("empty bracket does not", () => {
+    expect(hasDoubleElimRouting([])).toBe(false);
   });
 });
 

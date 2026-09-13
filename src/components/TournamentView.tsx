@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 import BracketView, { type BracketLiveScore } from "./BracketView";
 import StandingsTable from "./StandingsTable";
 import { formatOrDefault } from "../tournament/formats";
-import { groupLabel, groupOrder, splitDoubleElimRounds } from "../tournament/tournamentView";
+import { groupLabel, groupOrder, hasDoubleElimRouting, splitDoubleElimRounds } from "../tournament/tournamentView";
 import { C, F } from "../theme";
 import type { BracketMatch, Entrant, FormatId } from "../tournament/types";
 
@@ -55,6 +55,14 @@ export default function TournamentView({
   }
 
   if (format === "double_elim") {
+    // Without the loss-routing edge (e.g. the spectator payload, which
+    // doesn't select it) there is nothing to split winners from losers on,
+    // and guessing a boundary would render the exact "visually wrong
+    // bracket" this format-aware view exists to avoid — fall back to one
+    // flat tree instead. See hasDoubleElimRouting's own comment for why a
+    // bracket with the edge genuinely missing looks different from one that
+    // simply has no losses yet.
+    if (!hasDoubleElimRouting(bracket)) return tree(bracket);
     const { winners, losers } = splitDoubleElimRounds(bracket);
     return (
       <View style={{ flex: 1 }}>

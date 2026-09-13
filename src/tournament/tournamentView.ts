@@ -41,6 +41,19 @@ export function groupLabel(groupIdx: number): string {
  * by construction (see doubleElim.build) — there is no separate "losers
  * round 1" numbering to reconcile against.
  */
+/**
+ * True when this bracket actually carries the loss-routing edge a
+ * double-elimination split needs. Every real winners-bracket row gets a
+ * non-null lossToMatchId the moment the bracket is built (see
+ * doubleElim.build) — it never depends on a match having been played — so a
+ * bracket where every row's lossToMatchId is null did not come with that
+ * column at all (e.g. the spectator payload, which doesn't select it) rather
+ * than being a genuine double-elim bracket with no losers side yet.
+ */
+export function hasDoubleElimRouting(bracket: BracketMatch[]): boolean {
+  return bracket.some((m) => m.lossToMatchId !== null);
+}
+
 export function splitDoubleElimRounds(
   bracket: BracketMatch[]
 ): { winners: BracketMatch[]; losers: BracketMatch[] } {

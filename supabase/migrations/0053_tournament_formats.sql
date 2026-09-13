@@ -274,3 +274,57 @@ begin
   update tournaments set size = v_size, status = 'live' where id = p_tournament_id;
 end;
 $$;
+
+-- Replaces 0021's version, adding one column: the public spectator link
+-- (no membership required) is going format-aware next, and it cannot pick a
+-- renderer without knowing the tournament's format. Every existing column,
+-- the live-score behaviour and the function's signature carry over unchanged
+-- — this is not a rewrite. drop-then-create because 0021's own comment notes
+-- create-or-replace rejects a changed return type.
+drop function if exists public.tournament_spectator_view(uuid);
+
+create function public.tournament_spectator_view(p_tournament_id uuid)
+returns table (
+  name text,
+  status text,
+  format text,
+  round int,
+  idx int,
+  match_id uuid,
+  entrant_a uuid,
+  entrant_b uuid,
+  winner_entrant uuid,
+  entrant_a_name text,
+  entrant_b_name text,
+  court text,
+  match_status text,
+  score_summary jsonb
+)
+language sql security definer stable set search_path = public as $$
+  select
+    t.name,
+    t.status,
+    coalesce(t.format, 'single_elim'),
+    b.round,
+    b.idx,
+    b.match_id,
+    b.entrant_a,
+    b.entrant_b,
+    b.winner_entrant,
+    pa.name as entrant_a_name,
+    pb.name as entrant_b_name,
+    b.court,
+    m.status as match_status,
+    m.score_summary
+  from tournaments t
+  left join bracket_matches b on b.tournament_id = t.id
+  left join tournament_entrants ea on ea.id = b.entrant_a
+  left join club_players pa on pa.id = ea.club_player_id
+  left join tournament_entrants eb on eb.id = b.entrant_b
+  left join club_players pb on pb.id = eb.club_player_id
+  left join matches m on m.id = b.match_id
+  where t.id = p_tournament_id
+  order by b.round, b.idx;
+$$;
+
+grant execute on function public.tournament_spectator_view(uuid) to authenticated;

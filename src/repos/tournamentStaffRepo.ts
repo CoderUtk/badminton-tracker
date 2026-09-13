@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabase";
+import type { FormatId } from "../tournament/types";
 
 export type TournamentPreview = { id: string; name: string; maxEntrants: number; entrantCount: number };
 export type RequestOutcome = "member" | "pending" | "denied";
@@ -51,7 +52,7 @@ export type SpectatorBracketCell = {
   court: string | null; matchStatus: string | null;
   scoreSummary: { games: { A: number; B: number }[]; current?: { A: number; B: number } } | null;
 };
-export type SpectatorView = { name: string; status: string; cells: SpectatorBracketCell[] };
+export type SpectatorView = { name: string; status: string; format: FormatId; cells: SpectatorBracketCell[] };
 
 /** Read-only bracket for the spectator join link. No membership required. */
 export async function getTournamentSpectatorView(tournamentId: string): Promise<SpectatorView | null> {
@@ -59,7 +60,8 @@ export async function getTournamentSpectatorView(tournamentId: string): Promise<
   const { data, error } = await supabase.rpc("tournament_spectator_view", { p_tournament_id: tournamentId });
   if (error) throw new Error(error.message);
   const rows = (data as {
-    name: string; status: string; round: number | null; idx: number | null; match_id: string | null;
+    name: string; status: string; format: string | null;
+    round: number | null; idx: number | null; match_id: string | null;
     entrant_a: string | null; entrant_b: string | null; winner_entrant: string | null;
     entrant_a_name: string | null; entrant_b_name: string | null;
     court: string | null; match_status: string | null;
@@ -69,6 +71,10 @@ export async function getTournamentSpectatorView(tournamentId: string): Promise<
   return {
     name: rows[0].name,
     status: rows[0].status,
+    // Absent (server hasn't had 0053 applied yet) or unrecognised both fall
+    // back to single_elim — same "old row, old format" reasoning
+    // toTournamentRow uses in tournamentRepo.ts.
+    format: (rows[0].format as FormatId) ?? "single_elim",
     // A tournament with no bracket yet still returns one row (left join),
     // with round/idx null — that's "not started", not "not found".
     cells: rows[0].round == null ? [] : rows.map((r) => ({

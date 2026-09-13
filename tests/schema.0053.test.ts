@@ -77,3 +77,38 @@ test("start_tournament validates routing structurally", () => {
   const fn = sql.slice(sql.indexOf("function public.start_tournament"));
   expect(fn).toMatch(/Bracket routing references a match outside this tournament/);
 });
+
+// The public spectator link (no membership required) needs the tournament's
+// format to pick a renderer. 0053 replaces 0021's function to add it — this
+// checks the replacement adds exactly that column without disturbing 0021's
+// live-score columns or the function's signature.
+describe("tournament_spectator_view gains format", () => {
+  const fn = sql.slice(sql.indexOf("function public.tournament_spectator_view"));
+
+  test("drops before creating, since the return type changes", () => {
+    expect(sql).toMatch(/drop function if exists public\.tournament_spectator_view\(uuid\)/);
+  });
+
+  test("returns format, defaulted for a pre-0053 row", () => {
+    expect(fn).toMatch(/format\s+text,/);
+    expect(fn).toMatch(/coalesce\(t\.format, 'single_elim'\)/);
+  });
+
+  test("every 0021 column survives: court and the live score", () => {
+    expect(fn).toMatch(/court\s+text,/);
+    expect(fn).toMatch(/match_status\s+text,/);
+    expect(fn).toMatch(/score_summary\s+jsonb/);
+    expect(fn).toMatch(/m\.status as match_status/);
+    expect(fn).toMatch(/m\.score_summary/);
+    expect(fn).toMatch(/left join matches m on m\.id = b\.match_id/);
+  });
+
+  test("signature and security model are unchanged", () => {
+    expect(fn).toMatch(/tournament_spectator_view\(p_tournament_id uuid\)/);
+    expect(fn).toMatch(/security definer stable set search_path = public/);
+  });
+
+  test("still grants execute to authenticated", () => {
+    expect(fn).toMatch(/grant execute on function public\.tournament_spectator_view\(uuid\) to authenticated/);
+  });
+});

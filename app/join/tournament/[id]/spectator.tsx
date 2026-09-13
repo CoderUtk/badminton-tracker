@@ -5,6 +5,7 @@ import { getTournamentSpectatorView, type SpectatorView } from "../../../../src/
 import type { BracketMatch, Entrant } from "../../../../src/tournament/types";
 import type { BracketLiveScore } from "../../../../src/components/BracketView";
 import TournamentView from "../../../../src/components/TournamentView";
+import { formatOrDefault } from "../../../../src/tournament/formats";
 import { toast } from "../../../../src/lib/toast";
 import Logo from "../../../../src/components/Logo";
 import OpenInAppBanner from "../../../../src/components/OpenInAppBanner";
@@ -104,19 +105,16 @@ export default function JoinTournamentSpectator() {
         <Text style={s.sub}>This tournament hasn't started yet.</Text>
       ) : (
         <ScrollView contentContainerStyle={s.bracketWrap}>
-          {/* tournament_spectator_view (0017/0021) doesn't select format,
-              group_idx, src_a or src_b, so every cell above is built with
-              groupIdx/srcA/srcB hardcoded null — there is no real per-format
-              data to hand TournamentView yet. Passing "single_elim" renders
-              exactly today's flat tree for every format, which is correct
-              for single/double elimination's flattened view but not
-              format-aware for round-robin or groups→knockout. Making the
-              spectator link fully format-aware needs a new migration
-              extending that RPC plus SpectatorBracketCell/SpectatorView in
-              tournamentStaffRepo.ts (out of Task 12's scope: that file is
-              under src/repos/). */}
+          {/* tournament_spectator_view (0053) now returns the tournament's
+              format, but still doesn't select group_idx, src_a or src_b, so
+              every cell above still carries groupIdx/srcA/srcB hardcoded
+              null. That's enough for round_robin (its standings only need
+              round/idx/entrantA/entrantB/winnerEntrant, all present) but not
+              for groups→knockout's per-group tables; TournamentView falls
+              back to a flat tree there, matching today's behaviour rather
+              than guessing group membership it doesn't have. */}
           <TournamentView
-            format="single_elim"
+            format={formatOrDefault(view.format).id}
             bracket={bracket}
             entrants={[...entrantMap.values()]}
             liveScores={liveScores}

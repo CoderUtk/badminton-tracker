@@ -9,7 +9,7 @@ test("maps bracket cells from the RPC response", async () => {
   rpc.mockResolvedValue({
     data: [
       {
-        name: "Smash Cup", status: "live", round: 1, idx: 0, match_id: "m-1",
+        name: "Smash Cup", status: "live", format: "round_robin", round: 1, idx: 0, match_id: "m-1",
         entrant_a: "e1", entrant_b: "e2", winner_entrant: null,
         entrant_a_name: "Ann", entrant_b_name: "Bo",
         court: null, match_status: null, score_summary: null,
@@ -24,6 +24,7 @@ test("maps bracket cells from the RPC response", async () => {
   expect(view).toEqual({
     name: "Smash Cup",
     status: "live",
+    format: "round_robin",
     cells: [
       {
         round: 1, idx: 0, matchId: "m-1",
@@ -35,11 +36,46 @@ test("maps bracket cells from the RPC response", async () => {
   });
 });
 
-test("carries court and live score through for a match in progress", async () => {
+test("a server without 0053 applied yet (no format column) defaults to single_elim", async () => {
   rpc.mockResolvedValue({
     data: [
       {
         name: "Smash Cup", status: "live", round: 1, idx: 0, match_id: "m-1",
+        entrant_a: "e1", entrant_b: "e2", winner_entrant: null,
+        entrant_a_name: "Ann", entrant_b_name: "Bo",
+        court: null, match_status: null, score_summary: null,
+        // no `format` key at all — mirrors an RPC response from before 0053.
+      },
+    ],
+    error: null,
+  });
+
+  const view = await getTournamentSpectatorView("t-1");
+  expect(view?.format).toBe("single_elim");
+});
+
+test("a null format (0053 applied, tournament row predates it) also defaults to single_elim", async () => {
+  rpc.mockResolvedValue({
+    data: [
+      {
+        name: "Smash Cup", status: "live", format: null, round: 1, idx: 0, match_id: "m-1",
+        entrant_a: "e1", entrant_b: "e2", winner_entrant: null,
+        entrant_a_name: "Ann", entrant_b_name: "Bo",
+        court: null, match_status: null, score_summary: null,
+      },
+    ],
+    error: null,
+  });
+
+  const view = await getTournamentSpectatorView("t-1");
+  expect(view?.format).toBe("single_elim");
+});
+
+test("carries court and live score through for a match in progress", async () => {
+  rpc.mockResolvedValue({
+    data: [
+      {
+        name: "Smash Cup", status: "live", format: "single_elim", round: 1, idx: 0, match_id: "m-1",
         entrant_a: "e1", entrant_b: "e2", winner_entrant: null,
         entrant_a_name: "Ann", entrant_b_name: "Bo",
         court: "2", match_status: "live",
@@ -63,7 +99,7 @@ test("carries court and live score through for a match in progress", async () =>
 test("returns an empty cell list for a tournament with no bracket yet", async () => {
   rpc.mockResolvedValue({
     data: [{
-      name: "Smash Cup", status: "draft", round: null, idx: null, match_id: null,
+      name: "Smash Cup", status: "draft", format: "groups_knockout", round: null, idx: null, match_id: null,
       entrant_a: null, entrant_b: null, winner_entrant: null,
       entrant_a_name: null, entrant_b_name: null,
       court: null, match_status: null, score_summary: null,
@@ -71,7 +107,9 @@ test("returns an empty cell list for a tournament with no bracket yet", async ()
     error: null,
   });
 
-  expect(await getTournamentSpectatorView("t-1")).toEqual({ name: "Smash Cup", status: "draft", cells: [] });
+  expect(await getTournamentSpectatorView("t-1")).toEqual({
+    name: "Smash Cup", status: "draft", format: "groups_knockout", cells: [],
+  });
 });
 
 test("returns null when the tournament doesn't exist", async () => {
