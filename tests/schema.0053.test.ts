@@ -55,6 +55,13 @@ test("a slot already holding the same entrant is success, a different one is not
   expect(fn).toMatch(/Slot already filled by a different entrant/);
 });
 
+test("an invalid or missing slot value in a fill is rejected, not defaulted to b", () => {
+  const fn = sql.slice(sql.indexOf("function public.finish_bracket_match"),
+                       sql.indexOf("function public.start_tournament"));
+  expect(fn).toMatch(/coalesce\(v_fill->>'slot', ''\)\s+not in \('a','b'\)/);
+  expect(fn).toMatch(/Slot fill has an invalid slot/);
+});
+
 test("start_tournament keeps the single_elim size check exactly", () => {
   const fn = sql.slice(sql.indexOf("function public.start_tournament"));
   expect(fn).toMatch(/v_draw - 1/);

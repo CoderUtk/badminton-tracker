@@ -112,6 +112,9 @@ begin
                    where id = (v_fill->>'matchId')::uuid and tournament_id = v_tournament_id) then
       raise exception 'Slot fill references a match outside this tournament';
     end if;
+    if coalesce(v_fill->>'slot', '') not in ('a','b') then
+      raise exception 'Slot fill has an invalid slot';
+    end if;
 
     if v_fill->>'slot' = 'a' then
       select entrant_a into v_current from bracket_matches where id = (v_fill->>'matchId')::uuid;
