@@ -49,6 +49,14 @@ where p.tournament_id = m.tournament_id
   and p.idx   = m.idx / 2
   and m.win_to_match_id is null;
 
+-- `create or replace` cannot replace a function whose signature changed:
+-- adding p_slot_fills makes this an OVERLOAD, leaving 0006's two-argument
+-- version live. A two-arg call then resolves to neither ("function ... is
+-- not unique"), which would break scoring for every client still on 1.6.x.
+-- Dropping it first means a two-arg call binds to the new function and
+-- takes the default.
+drop function if exists public.finish_bracket_match(uuid, uuid);
+
 -- Replaces 0006's version. Every authorisation and validation guard there is
 -- carried over unchanged; only the advance changed.
 create or replace function public.finish_bracket_match(

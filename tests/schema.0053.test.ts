@@ -51,6 +51,19 @@ test("the module-level backfill is scoped to single_elim tournaments", () => {
   expect(backfill).toMatch(/coalesce\(t\.format, 'single_elim'\) = 'single_elim'/);
 });
 
+// create-or-replace cannot change a function's signature: adding p_slot_fills
+// makes 0006's two-argument version an overload instead of replacing it, so a
+// two-arg call (every client on 1.6.x) becomes ambiguous ("is not unique") and
+// scoring breaks for everyone still on that version. The old two-arg version
+// must be dropped before the new one is created.
+test("drops the old two-argument finish_bracket_match before creating the new one", () => {
+  const dropIdx = sql.indexOf("drop function if exists public.finish_bracket_match(uuid, uuid)");
+  const createIdx = sql.indexOf("create or replace function public.finish_bracket_match");
+  expect(dropIdx).toBeGreaterThan(-1);
+  expect(createIdx).toBeGreaterThan(-1);
+  expect(dropIdx).toBeLessThan(createIdx);
+});
+
 test("finish_bracket_match follows edges and no longer does tree math", () => {
   const fn = sql.slice(sql.indexOf("function public.finish_bracket_match"),
                        sql.indexOf("function public.start_tournament"));
