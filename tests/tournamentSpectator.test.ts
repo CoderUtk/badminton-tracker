@@ -5,14 +5,15 @@ import { getTournamentSpectatorView } from "../src/repos/tournamentStaffRepo";
 
 beforeEach(() => rpc.mockReset());
 
-test("maps bracket cells from the RPC response", async () => {
+test("maps bracket cells from the RPC response, including group routing", async () => {
   rpc.mockResolvedValue({
     data: [
       {
-        name: "Smash Cup", status: "live", format: "round_robin", round: 1, idx: 0, match_id: "m-1",
+        name: "Smash Cup", status: "live", format: "groups_knockout", round: 1, idx: 0, match_id: "m-1",
         entrant_a: "e1", entrant_b: "e2", winner_entrant: null,
         entrant_a_name: "Ann", entrant_b_name: "Bo",
         court: null, match_status: null, score_summary: null,
+        group_idx: 1, src_a: null, src_b: null,
       },
     ],
     error: null,
@@ -24,19 +25,38 @@ test("maps bracket cells from the RPC response", async () => {
   expect(view).toEqual({
     name: "Smash Cup",
     status: "live",
-    format: "round_robin",
+    format: "groups_knockout",
     cells: [
       {
         round: 1, idx: 0, matchId: "m-1",
         entrantA: "e1", entrantB: "e2", winnerEntrant: null,
         entrantAName: "Ann", entrantBName: "Bo",
         court: null, matchStatus: null, scoreSummary: null,
+        groupIdx: 1, srcA: null, srcB: null,
       },
     ],
   });
 });
 
-test("a server without 0053 applied yet (no format column) defaults to single_elim", async () => {
+test("maps a knockout slot's src tokens through, so an unfilled slot can name its seed", async () => {
+  rpc.mockResolvedValue({
+    data: [
+      {
+        name: "Smash Cup", status: "live", format: "groups_knockout", round: 3, idx: 0, match_id: null,
+        entrant_a: null, entrant_b: null, winner_entrant: null,
+        entrant_a_name: null, entrant_b_name: null,
+        court: null, match_status: null, score_summary: null,
+        group_idx: null, src_a: "G0#1", src_b: "G1#1",
+      },
+    ],
+    error: null,
+  });
+
+  const view = await getTournamentSpectatorView("t-1");
+  expect(view?.cells[0]).toMatchObject({ groupIdx: null, srcA: "G0#1", srcB: "G1#1" });
+});
+
+test("a server without 0053 applied yet (no format or group columns) defaults them all", async () => {
   rpc.mockResolvedValue({
     data: [
       {
@@ -44,7 +64,8 @@ test("a server without 0053 applied yet (no format column) defaults to single_el
         entrant_a: "e1", entrant_b: "e2", winner_entrant: null,
         entrant_a_name: "Ann", entrant_b_name: "Bo",
         court: null, match_status: null, score_summary: null,
-        // no `format` key at all — mirrors an RPC response from before 0053.
+        // no `format`, `group_idx`, `src_a` or `src_b` keys at all — mirrors
+        // an RPC response from before 0053.
       },
     ],
     error: null,
@@ -52,6 +73,7 @@ test("a server without 0053 applied yet (no format column) defaults to single_el
 
   const view = await getTournamentSpectatorView("t-1");
   expect(view?.format).toBe("single_elim");
+  expect(view?.cells[0]).toMatchObject({ groupIdx: null, srcA: null, srcB: null });
 });
 
 test("a null format (0053 applied, tournament row predates it) also defaults to single_elim", async () => {
@@ -80,6 +102,7 @@ test("carries court and live score through for a match in progress", async () =>
         entrant_a_name: "Ann", entrant_b_name: "Bo",
         court: "2", match_status: "live",
         score_summary: { games: [], current: { A: 11, B: 7 } },
+        group_idx: null, src_a: null, src_b: null,
       },
     ],
     error: null,
@@ -93,6 +116,7 @@ test("carries court and live score through for a match in progress", async () =>
     entrantAName: "Ann", entrantBName: "Bo",
     court: "2", matchStatus: "live",
     scoreSummary: { games: [], current: { A: 11, B: 7 } },
+    groupIdx: null, srcA: null, srcB: null,
   });
 });
 

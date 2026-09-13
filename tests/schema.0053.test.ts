@@ -82,7 +82,7 @@ test("start_tournament validates routing structurally", () => {
 // format to pick a renderer. 0053 replaces 0021's function to add it — this
 // checks the replacement adds exactly that column without disturbing 0021's
 // live-score columns or the function's signature.
-describe("tournament_spectator_view gains format", () => {
+describe("tournament_spectator_view gains format and group routing columns", () => {
   const fn = sql.slice(sql.indexOf("function public.tournament_spectator_view"));
 
   test("drops before creating, since the return type changes", () => {
@@ -92,6 +92,18 @@ describe("tournament_spectator_view gains format", () => {
   test("returns format, defaulted for a pre-0053 row", () => {
     expect(fn).toMatch(/format\s+text,/);
     expect(fn).toMatch(/coalesce\(t\.format, 'single_elim'\)/);
+  });
+
+  // Without these a spectator watching a groups → knockout tournament sees
+  // every group-stage match drawn through the knockout tree renderer — wrong
+  // information about what's happening on court, not a cosmetic shortfall.
+  test("returns group_idx, src_a and src_b so the spectator can tell a group match from a knockout one", () => {
+    expect(fn).toMatch(/group_idx\s+int,/);
+    expect(fn).toMatch(/src_a\s+text,/);
+    expect(fn).toMatch(/src_b\s+text/);
+    expect(fn).toMatch(/b\.group_idx,/);
+    expect(fn).toMatch(/b\.src_a,/);
+    expect(fn).toMatch(/b\.src_b/);
   });
 
   test("every 0021 column survives: court and the live score", () => {

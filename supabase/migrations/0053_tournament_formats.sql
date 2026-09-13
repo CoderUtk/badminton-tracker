@@ -275,12 +275,16 @@ begin
 end;
 $$;
 
--- Replaces 0021's version, adding one column: the public spectator link
--- (no membership required) is going format-aware next, and it cannot pick a
--- renderer without knowing the tournament's format. Every existing column,
--- the live-score behaviour and the function's signature carry over unchanged
--- — this is not a rewrite. drop-then-create because 0021's own comment notes
--- create-or-replace rejects a changed return type.
+-- Replaces 0021's version, adding format plus the three group-stage routing
+-- columns: without group_idx, the spectator link's groups→knockout view
+-- cannot tell a group-stage match from a knockout one and draws the whole
+-- group stage through the knockout tree renderer, presenting live group
+-- matches as if they were elimination rounds. src_a/src_b are carried
+-- alongside it so an unfilled knockout slot names the group seed it is
+-- waiting on (see srcSlotLabel) instead of rendering blank. Every existing
+-- column, the live-score behaviour and the function's signature carry over
+-- unchanged — this is not a rewrite. drop-then-create because 0021's own
+-- comment notes create-or-replace rejects a changed return type.
 drop function if exists public.tournament_spectator_view(uuid);
 
 create function public.tournament_spectator_view(p_tournament_id uuid)
@@ -298,7 +302,10 @@ returns table (
   entrant_b_name text,
   court text,
   match_status text,
-  score_summary jsonb
+  score_summary jsonb,
+  group_idx int,
+  src_a text,
+  src_b text
 )
 language sql security definer stable set search_path = public as $$
   select
@@ -315,7 +322,10 @@ language sql security definer stable set search_path = public as $$
     pb.name as entrant_b_name,
     b.court,
     m.status as match_status,
-    m.score_summary
+    m.score_summary,
+    b.group_idx,
+    b.src_a,
+    b.src_b
   from tournaments t
   left join bracket_matches b on b.tournament_id = t.id
   left join tournament_entrants ea on ea.id = b.entrant_a

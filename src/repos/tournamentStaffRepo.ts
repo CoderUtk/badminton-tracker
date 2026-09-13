@@ -51,6 +51,7 @@ export type SpectatorBracketCell = {
   entrantAName: string | null; entrantBName: string | null;
   court: string | null; matchStatus: string | null;
   scoreSummary: { games: { A: number; B: number }[]; current?: { A: number; B: number } } | null;
+  groupIdx: number | null; srcA: string | null; srcB: string | null;
 };
 export type SpectatorView = { name: string; status: string; format: FormatId; cells: SpectatorBracketCell[] };
 
@@ -66,6 +67,7 @@ export async function getTournamentSpectatorView(tournamentId: string): Promise<
     entrant_a_name: string | null; entrant_b_name: string | null;
     court: string | null; match_status: string | null;
     score_summary: SpectatorBracketCell["scoreSummary"];
+    group_idx: number | null; src_a: string | null; src_b: string | null;
   }[] | null) ?? [];
   if (rows.length === 0) return null;
   return {
@@ -82,6 +84,8 @@ export async function getTournamentSpectatorView(tournamentId: string): Promise<
       entrantA: r.entrant_a, entrantB: r.entrant_b, winnerEntrant: r.winner_entrant,
       entrantAName: r.entrant_a_name, entrantBName: r.entrant_b_name,
       court: r.court, matchStatus: r.match_status, scoreSummary: r.score_summary,
+      // Absent on a pre-0053 server, same fallback as `format` above.
+      groupIdx: r.group_idx ?? null, srcA: r.src_a ?? null, srcB: r.src_b ?? null,
     })),
   };
 }

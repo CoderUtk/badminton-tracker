@@ -60,13 +60,18 @@ export default function JoinTournamentSpectator() {
     );
   }
 
+  // tournament_spectator_view (0053) doesn't select win_to_match_id or
+  // loss_to_match_id — a read-only view has no use for routing edges it will
+  // never follow — so those stay null here. TournamentView's double-elim
+  // branch (hasDoubleElimRouting) already treats a bracket with those edges
+  // uniformly null as "no routing data" and falls back to a flat tree.
   const bracket: BracketMatch[] = view.cells.map((c) => ({
     id: `${c.round}:${c.idx}`, tournamentId: id!, round: c.round, index: c.idx,
     matchId: c.matchId, entrantA: c.entrantA, entrantB: c.entrantB,
     winnerEntrant: c.winnerEntrant, court: c.court, scoredBy: null,
     winToMatchId: null, winToSlot: null,
     lossToMatchId: null, lossToSlot: null,
-    groupIdx: null, srcA: null, srcB: null,
+    groupIdx: c.groupIdx, srcA: c.srcA, srcB: c.srcB,
   }));
 
   const liveScores = new Map<string, BracketLiveScore>();
@@ -105,14 +110,6 @@ export default function JoinTournamentSpectator() {
         <Text style={s.sub}>This tournament hasn't started yet.</Text>
       ) : (
         <ScrollView contentContainerStyle={s.bracketWrap}>
-          {/* tournament_spectator_view (0053) now returns the tournament's
-              format, but still doesn't select group_idx, src_a or src_b, so
-              every cell above still carries groupIdx/srcA/srcB hardcoded
-              null. That's enough for round_robin (its standings only need
-              round/idx/entrantA/entrantB/winnerEntrant, all present) but not
-              for groups→knockout's per-group tables; TournamentView falls
-              back to a flat tree there, matching today's behaviour rather
-              than guessing group membership it doesn't have. */}
           <TournamentView
             format={formatOrDefault(view.format).id}
             bracket={bracket}
