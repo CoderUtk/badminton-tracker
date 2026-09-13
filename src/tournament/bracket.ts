@@ -1,4 +1,4 @@
-import type { BracketMatch, BracketSize, Entrant } from "./types";
+import type { BracketMatch, BracketSize, Entrant, Slot } from "./types";
 
 // Standard single-elim seed order for a bracket of `size` (1-based seeds).
 // e.g. size 4 -> [1,4,2,3]; size 8 -> [1,8,4,5,2,7,3,6].
@@ -65,16 +65,32 @@ function applyInto(round: BracketMatch[], childIndexFrom: number, winner: string
   else target.entrantB = winner;
 }
 
-export function advanceWinner(bracket: BracketMatch[], bracketMatchId: string, winnerEntrant: string): BracketMatch[] {
+function route(bracket: BracketMatch[], targetId: string | null, slot: Slot | null, entrantId: string | null): void {
+  if (!targetId || !slot || !entrantId) return;
+  const target = bracket.find((m) => m.id === targetId);
+  if (!target) return;
+  if (slot === "a") target.entrantA = entrantId;
+  else target.entrantB = entrantId;
+}
+
+/**
+ * Record a winner and route both entrants along this match's edges.
+ *
+ * Formerly computed the parent as (round + 1, floor(index / 2)). That math only
+ * described single elimination; now the row says where its winner and loser go,
+ * so one function serves every format and the server follows the same graph
+ * instead of re-deriving it.
+ */
+export function advanceWinner(
+  bracket: BracketMatch[], bracketMatchId: string, winnerEntrant: string,
+): BracketMatch[] {
   const copy = bracket.map((m) => ({ ...m }));
   const m = copy.find((x) => x.id === bracketMatchId);
   if (!m) return bracket;
   m.winnerEntrant = winnerEntrant;
-  const child = copy.find((x) => x.round === m.round + 1 && x.index === Math.floor(m.index / 2));
-  if (child) {
-    if (m.index % 2 === 0) child.entrantA = winnerEntrant;
-    else child.entrantB = winnerEntrant;
-  }
+  const loser = m.entrantA === winnerEntrant ? m.entrantB : m.entrantA;
+  route(copy, m.winToMatchId, m.winToSlot, winnerEntrant);
+  route(copy, m.lossToMatchId, m.lossToSlot, loser);
   return copy;
 }
 

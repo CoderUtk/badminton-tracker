@@ -1,4 +1,5 @@
 import { buildBracket, advanceWinner, bracketStatus } from "../src/tournament/bracket";
+import { singleElim } from "../src/tournament/formats/singleElim";
 import type { Entrant } from "../src/tournament/types";
 
 let n = 0;
@@ -33,7 +34,7 @@ test("5 entrants into size 8 creates 3 byes that auto-advance to round 2", () =>
 });
 
 test("advanceWinner fills the next-round slot by parity", () => {
-  const b = buildBracket(ents(4), 4, "t1", gen);
+  const b = singleElim.build({ entrants: ents(4), tournamentId: "t1", gen });
   const r1 = b.filter((m) => m.round === 1);
   const b2 = advanceWinner(b, r1[0].id, r1[0].entrantA!);
   const final = b2.find((m) => m.round === 2)!;
@@ -43,7 +44,7 @@ test("advanceWinner fills the next-round slot by parity", () => {
 });
 
 test("advanceWinner is idempotent", () => {
-  const b = buildBracket(ents(4), 4, "t1", gen);
+  const b = singleElim.build({ entrants: ents(4), tournamentId: "t1", gen });
   const r1 = b.filter((m) => m.round === 1);
   const once = advanceWinner(b, r1[0].id, r1[0].entrantA!);
   const twice = advanceWinner(once, r1[0].id, r1[0].entrantA!);
@@ -51,7 +52,7 @@ test("advanceWinner is idempotent", () => {
 });
 
 test("bracketStatus reports champion when final resolved", () => {
-  let b = buildBracket(ents(4), 4, "t1", gen);
+  let b = singleElim.build({ entrants: ents(4), tournamentId: "t1", gen });
   const r1 = b.filter((m) => m.round === 1);
   b = advanceWinner(b, r1[0].id, "e1");
   b = advanceWinner(b, r1[1].id, "e2");
