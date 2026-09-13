@@ -1,12 +1,15 @@
 import * as Crypto from "expo-crypto";
 import { getDb } from "../db/db";
 import { supabase } from "../lib/supabase";
-import type { BracketMatch, Entrant } from "../tournament/types";
+import type { BracketMatch, Entrant, FormatId } from "../tournament/types";
 import { rowToBracketMatch, bracketMatchToRow, type BracketRow } from "../tournament/rows";
 import { pickBestOf } from "../tournament/format";
 import { buildTournamentConfig } from "../tournament/matchConfig";
-import { buildBracket } from "../tournament/bracket";
-import { drawSizeFor, courtForIndex } from "../tournament/draw";
+import { advanceWinner } from "../tournament/bracket";
+import { courtForIndex } from "../tournament/draw";
+import { formatOrDefault } from "../tournament/formats";
+import { settleGroups, settleByes } from "../tournament/formats/gate";
+import type { SlotFill } from "../tournament/formats/gate";
 import { createMatch } from "./matchRepo";
 import { listClubs, addGuestPlayer, listPlayers } from "./clubRepo";
 import { readTournamentCore, writeTournamentCore } from "./tournamentCache";
@@ -20,6 +23,7 @@ export type MatchType = "singles" | "doubles";
 export type TournamentRow = {
   id: string; clubId: string; name: string; size: number; status: string; createdAt: number;
   matchType: MatchType; bestOf: number; finalsBestOf: number; courts: number;
+  format: FormatId; groupCount: number | null; advancePerGroup: number | null;
 };
 
 // --- async persistence ------------------------------------------------------
@@ -31,6 +35,9 @@ export async function createTournament(
   finalsBestOf: number,
   entrants: { clubPlayerId: string; clubPlayerId2?: string | null; name: string; seed: number }[],
   courts = 4,
+  format: FormatId = "single_elim",
+  groupSize?: number,
+  advancePerGroup?: number,
 ): Promise<string> {
   if (!supabase) throw new Error("Sign in to create a tournament");
   const club = (await listClubs()).find((c) => c.personal);
@@ -43,8 +50,11 @@ export async function createTournament(
 
   // The draw is not known yet — no bracket exists until the tournament starts.
   const { error: tErr } = await supabase.from("tournaments").insert({
-    id: tid, club_id: club.id, name, format: "single_elim", size: 0, status: "draft",
+    id: tid, club_id: club.id, name, format, size: 0, status: "draft",
     match_type: matchType, bestof: bestOf, finals_bestof: finalsBestOf, courts,
+    group_count: format === "groups_knockout" && groupSize
+      ? Math.max(1, Math.round(entrants.length / groupSize)) : null,
+    advance_per_group: format === "groups_knockout" ? (advancePerGroup ?? 2) : null,
   });
   if (tErr) throw new Error(tErr.message);
 
@@ -72,12 +82,18 @@ export async function startTournament(id: string): Promise<void> {
   const full = await refreshTournament(id);
   if (!full) throw new Error("Tournament not found");
   const { tournament, entrants } = full;
-  const size = drawSizeFor(entrants.length);
-  const bracket = buildBracket(entrants, size, id, () => Crypto.randomUUID());
-  // Later rounds stay courtless and are assigned from Live Ops once their
-  // feeders resolve.
+  const mod = formatOrDefault(tournament.format);
+  const bracket = mod.build({
+    entrants, tournamentId: id, gen: () => Crypto.randomUUID(),
+    groupSize: tournament.groupCount
+      ? Math.round(entrants.length / tournament.groupCount) : undefined,
+    advancePerGroup: tournament.advancePerGroup ?? undefined,
+  });
+  // Courts go to whatever can be played immediately: a knockout's round 1, or
+  // every group-stage and round-robin match in the first scheduling round.
+  const firstRound = Math.min(...bracket.map((m) => m.round));
   const withCourts = bracket.map((m) =>
-    m.round === 1 ? { ...m, court: courtForIndex(m.index, tournament.courts) } : m,
+    m.round === firstRound ? { ...m, court: courtForIndex(m.index, tournament.courts) } : m,
   );
   const { error } = await supabase.rpc("start_tournament", {
     p_tournament_id: id,
@@ -94,6 +110,11 @@ const toTournamentRow = (r: Record<string, unknown>): TournamentRow => ({
   // 4 matches both the column default and the court count the ops screen used
   // to hardcode, so a row read before 0009 lands behaves as it always did.
   courts: (r.courts as number) ?? 4,
+  // A row written before 0053 has no format column, so it defaults to
+  // single_elim — exactly the format it was built with back then.
+  format: ((r.format as FormatId) ?? "single_elim"),
+  groupCount: (r.group_count as number) ?? null,
+  advancePerGroup: (r.advance_per_group as number) ?? null,
 });
 
 /** Remove an entrant from a draft. Refused once a bracket exists. */
@@ -380,13 +401,60 @@ export async function deleteTournament(id: string): Promise<void> {
   await db?.runAsync("delete from tournaments where id = ?", id);
 }
 
-/** Record a bracket-cell winner: advance the bracket via atomic RPC. */
-export async function finishBracketMatch(bracketMatchId: string, winnerEntrant: string): Promise<void> {
+/** Record a bracket-cell winner: advance the bracket via atomic RPC.
+ *  `fills` carries seeding-gate results for groups → knockout; every other
+ *  format passes none and hits identical behaviour. */
+export async function finishBracketMatch(
+  bracketMatchId: string, winnerEntrant: string, fills: SlotFill[] = [],
+): Promise<void> {
   if (!supabase) throw new Error("Sign in to record a result");
   const { error } = await supabase.rpc("finish_bracket_match", {
     p_bracket_match_id: bracketMatchId, p_winner_entrant: winnerEntrant,
+    p_slot_fills: fills,
   });
   if (error) throw new Error(error.message);
+}
+
+/**
+ * Record a bracket-cell result end to end: apply it locally to see what it
+ * unlocks, ship it (plus any group→knockout slot fills that result exposes)
+ * in one RPC, then walk any bye chain the fills expose.
+ *
+ * For every format except groups_knockout, settleGroups and settleByes both
+ * return empty, so this is exactly today's single finish_bracket_match call.
+ *
+ * A bye win is sent through the plain finishBracketMatch path (no fills) —
+ * the server routes it along the match's existing win/loss edges the same
+ * way a played result would, and its winner-validation already accepts a
+ * match whose entrant_b is null.
+ */
+export async function recordBracketResult(
+  bracketMatchId: string, winnerEntrant: string,
+  bracket: BracketMatch[], entrants: Entrant[],
+): Promise<void> {
+  const postResult = advanceWinner(bracket, bracketMatchId, winnerEntrant);
+  const fills = settleGroups(postResult, entrants);
+  await finishBracketMatch(bracketMatchId, winnerEntrant, fills);
+
+  // Apply the fills locally so settleByes can see the slots they just filled,
+  // then resolve byes one round of cascade at a time. A bye can only ever
+  // expose more byes (never more group fills), so this loop alone is enough.
+  let current = fills.reduce(
+    (acc, f) => acc.map((m) => (m.id === f.matchId
+      ? { ...m, [f.slot === "a" ? "entrantA" : "entrantB"]: f.entrantId }
+      : m)),
+    postResult,
+  );
+  const MAX_BYE_ROUNDS = 64; // generous bound on a 64-entrant bracket's depth
+  for (let i = 0; i < MAX_BYE_ROUNDS; i++) {
+    const byes = settleByes(current);
+    if (byes.length === 0) return;
+    for (const bye of byes) {
+      await finishBracketMatch(bye.matchId, bye.winnerEntrant);
+      current = advanceWinner(current, bye.matchId, bye.winnerEntrant);
+    }
+  }
+  throw new Error("Bye cascade did not terminate");
 }
 
 /** Assign a court before a match starts. Refused once the match is live — the RPC enforces it. */

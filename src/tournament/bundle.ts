@@ -4,7 +4,7 @@
  * No native imports (no expo-sqlite, no supabase client) so this loads in
  * plain Jest — the same rule src/tournament/rows.ts follows.
  */
-import type { BracketMatch, Entrant } from "./types";
+import type { BracketMatch, Entrant, FormatId } from "./types";
 import { rowToBracketMatch, type BracketRow } from "./rows";
 import type { MatchType, TournamentRow } from "../repos/tournamentRepo";
 import type {
@@ -75,6 +75,9 @@ export function tournamentRowFromCache(r: Record<string, unknown>): TournamentRo
     bestOf: (r.bestof as number) ?? 3,
     finalsBestOf: (r.finals_bestof as number) ?? 3,
     courts: (r.courts as number) ?? 4,
+    format: ((r.format as FormatId) ?? "single_elim"),
+    groupCount: (r.group_count as number) ?? null,
+    advancePerGroup: (r.advance_per_group as number) ?? null,
   };
 }
 
@@ -101,6 +104,9 @@ export function rpcToFull(p: FullViewPayload): TournamentFull {
       bestOf: (t.bestof as number) ?? 3,
       finalsBestOf: (t.finals_bestof as number) ?? 3,
       courts: (t.courts as number) ?? 4,
+      format: ((t.format as FormatId) ?? "single_elim"),
+      groupCount: (t.group_count as number) ?? null,
+      advancePerGroup: (t.advance_per_group as number) ?? null,
     },
     entrants: (p.entrants ?? []).map(entrantRowToEntrant),
     bracket: (p.bracket ?? []).map(rowToBracketMatch),

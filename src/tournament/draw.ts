@@ -1,5 +1,6 @@
-import type { BracketSize } from "./types";
+import type { BracketSize, FormatId } from "./types";
 import type { MatchType } from "../repos/tournamentRepo";
+import { formatOrDefault } from "./formats";
 
 const SIZES: BracketSize[] = [4, 8, 16, 32, 64];
 
@@ -20,10 +21,14 @@ export function drawSizeFor(entrants: number): BracketSize {
  * cannot disagree about the rule.
  *
  * `players` counts people, not entrants: a doubles entrant is two players.
+ * Minimums are per format — round-robin is fine with three, a knockout is not.
  */
-export function startBlocker(players: number, matchType: MatchType): string | null {
+export function startBlocker(
+  players: number, matchType: MatchType, format: FormatId = "single_elim",
+): string | null {
   const perEntrant = matchType === "doubles" ? 2 : 1;
-  const min = matchType === "doubles" ? 6 : 4;
+  const mod = formatOrDefault(format);
+  const min = mod.minPlayers(matchType);
   if (players < min) return `Add at least ${min} players to start`;
   if (players % perEntrant !== 0) return "Pair every player to start";
   if (players / perEntrant > 64) return "A tournament holds at most 64 entrants";

@@ -75,10 +75,10 @@ export async function writeTournamentCore(core: TournamentCore): Promise<void> {
     await db.runAsync(
       `insert into tournaments
          (id, club_id, name, format, size, status, created_at,
-          match_type, bestof, finals_bestof, courts)
-       values (?, ?, ?, 'single_elim', ?, ?, ?, ?, ?, ?, ?)`,
-      t.id, t.clubId, t.name, t.size, t.status, t.createdAt,
-      t.matchType, t.bestOf, t.finalsBestOf, t.courts
+          match_type, bestof, finals_bestof, courts, group_count, advance_per_group)
+       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      t.id, t.clubId, t.name, t.format, t.size, t.status, t.createdAt,
+      t.matchType, t.bestOf, t.finalsBestOf, t.courts, t.groupCount, t.advancePerGroup
     );
 
     for (const e of core.entrants) {
@@ -94,10 +94,14 @@ export async function writeTournamentCore(core: TournamentCore): Promise<void> {
       await db.runAsync(
         `insert into bracket_matches
            (id, tournament_id, round, idx, match_id, entrant_a, entrant_b,
-            winner_entrant, court, scored_by)
-         values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            winner_entrant, court, scored_by,
+            win_to_match_id, win_to_slot, loss_to_match_id, loss_to_slot,
+            group_idx, src_a, src_b)
+         values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         r.id, r.tournament_id, r.round, r.idx, r.match_id,
-        r.entrant_a, r.entrant_b, r.winner_entrant, r.court, r.scored_by
+        r.entrant_a, r.entrant_b, r.winner_entrant, r.court, r.scored_by,
+        r.win_to_match_id, r.win_to_slot, r.loss_to_match_id, r.loss_to_slot,
+        r.group_idx, r.src_a, r.src_b
       );
     }
   });

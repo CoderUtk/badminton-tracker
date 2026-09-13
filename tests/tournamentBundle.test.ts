@@ -39,6 +39,7 @@ describe("tournamentRowFromCache", () => {
       id: "t1", clubId: "c1", name: "Cup", size: 8, status: "live",
       createdAt: 1700000000000, matchType: "doubles", bestOf: 3,
       finalsBestOf: 5, courts: 2,
+      format: "single_elim", groupCount: null, advancePerGroup: null,
     });
   });
 
@@ -49,6 +50,9 @@ describe("tournamentRowFromCache", () => {
     expect(r.bestOf).toBe(3);
     expect(r.finalsBestOf).toBe(3);
     expect(r.status).toBe("draft");
+    expect(r.format).toBe("single_elim");
+    expect(r.groupCount).toBeNull();
+    expect(r.advancePerGroup).toBeNull();
   });
 });
 
