@@ -1,4 +1,6 @@
+import type { FormatId } from "./types";
 import type { FormatModule } from "./formats/types";
+import { FORMATS } from "./formats";
 
 /** Rough minutes for one match. A best-of-3 to 21 runs about 25 minutes on a
  *  club court including the changeover; each extra game adds about 10. */
@@ -33,4 +35,49 @@ export function formatDuration(minutes: number): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return m === 0 ? `~${h}h` : `~${h}h${String(m).padStart(2, "0")}`;
+}
+
+export type FormatRow = {
+  id: FormatId;
+  label: string;
+  blurb: string;
+  matches: number;
+  minutes: number;
+  long: boolean;
+  estimateText: string;
+  warning: string | null;
+};
+
+/**
+ * Pure per-row view model for the format picker — kept out of the .tsx
+ * component (see bracketLabel.ts's header comment) so the decidable logic is
+ * unit-testable under this project's Jest setup.
+ *
+ * A row flagged `long` names the cheapest non-long format by its own
+ * estimate, so the host is pointed at a format that actually fits the night
+ * rather than just told "this one doesn't".
+ */
+export function formatRows(
+  entrants: number, bestOf: number, courts: number,
+  o?: { groupSize?: number; advancePerGroup?: number },
+): FormatRow[] {
+  const rows = Object.values(FORMATS).map((mod) => {
+    const { matches, minutes, long } = formatEstimate(mod, entrants, bestOf, courts, o);
+    return { mod, matches, minutes, long };
+  });
+
+  const cheapest = rows.filter((r) => !r.long).sort((a, b) => a.minutes - b.minutes)[0] ?? null;
+
+  return rows.map(({ mod, matches, minutes, long }) => ({
+    id: mod.id,
+    label: mod.label,
+    blurb: mod.blurb,
+    matches,
+    minutes,
+    long,
+    estimateText: `≈ ${matches} matches · ${formatDuration(minutes)} on ${courts} courts`,
+    warning: long && cheapest && cheapest.mod.id !== mod.id
+      ? `Long for one night — ${cheapest.mod.label} finishes in about ${formatDuration(cheapest.minutes)}.`
+      : null,
+  }));
 }

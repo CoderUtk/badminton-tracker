@@ -3,9 +3,13 @@ import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, 
 import { useRouter } from "expo-router";
 import { createTournament, type MatchType } from "../../../src/repos/tournamentRepo";
 import { addGuestPlayer, listClubs, listPlayers, type ClubPlayer } from "../../../src/repos/clubRepo";
-import { drawSizeFor, startBlocker } from "../../../src/tournament/draw";
+import { startBlocker } from "../../../src/tournament/draw";
+import { formatEstimate, formatDuration } from "../../../src/tournament/estimate";
+import { FORMATS } from "../../../src/tournament/formats";
+import type { FormatId } from "../../../src/tournament/types";
 import { C, F, press, selected, selectedText } from "../../../src/theme";
 import Icon from "../../../src/components/Icon";
+import FormatPicker from "../../../src/components/FormatPicker";
 import { toast } from "../../../src/lib/toast";
 import { validateName } from "../../../src/lib/validate";
 
@@ -22,6 +26,9 @@ export default function NewTournament() {
   const [bestOf, setBestOf] = useState<number>(3);
   const [finalsBestOf, setFinalsBestOf] = useState<number>(3);
   const [courts, setCourts] = useState<number>(4);
+  const [format, setFormat] = useState<FormatId>("single_elim");
+  const [groupSize, setGroupSize] = useState<number>(4);
+  const [advancePerGroup, setAdvancePerGroup] = useState<number>(2);
   const [players, setPlayers] = useState<ClubPlayer[]>([]);
   const [picked, setPicked] = useState<string[]>([]); // club_player_id in selection order
   const [guestName, setGuestName] = useState("");
@@ -49,7 +56,10 @@ export default function NewTournament() {
 
   const entrantCount = Math.floor(picked.length / perEntrant);
   const nameError = validateName(name, "Tournament name");
-  const entrantsBlocker = startBlocker(picked.length, matchType);
+  const entrantsBlocker = startBlocker(picked.length, matchType, format);
+  const { matches: estMatches, minutes: estMinutes } =
+    formatEstimate(FORMATS[format], entrantCount, bestOf, courts, { groupSize, advancePerGroup });
+  const drawEstimateLine = `${entrantCount} entrants • ${estMatches} matches · ${formatDuration(estMinutes)}`;
   const canCreate = useMemo(
     () => nameError === null && picked.length > 0 && picked.length % perEntrant === 0 && entrantsBlocker === null,
     [nameError, picked.length, perEntrant, entrantsBlocker],
@@ -67,7 +77,10 @@ export default function NewTournament() {
               return { clubPlayerId: p1, clubPlayerId2: p2, name: `${nameOf(p1)} / ${nameOf(p2)}`, seed: i + 1 };
             })
           : picked.map((pid, i) => ({ clubPlayerId: pid, name: nameOf(pid), seed: i + 1 }));
-      const tid = await createTournament(name.trim(), matchType, bestOf, finalsBestOf, entrants, courts);
+      const tid = await createTournament(
+        name.trim(), matchType, bestOf, finalsBestOf, entrants, courts,
+        format, groupSize, advancePerGroup,
+      );
       router.replace(`/tournaments/${tid}`);
     } catch (e) {
       toast((e as Error).message || "Could not create tournament", "error");
@@ -153,8 +166,16 @@ export default function NewTournament() {
           />
           {nameTouched && nameError ? <Text style={s.err}>{nameError}</Text> : null}
 
-          <Text style={s.h}>Format</Text>
+          <Text style={s.h}>Match type</Text>
           <Segmented value={matchType} options={["singles", "doubles"]} onPick={(v) => setMode(v as MatchType)} />
+
+          <Text style={s.h}>Format</Text>
+          <FormatPicker
+            value={format} onPick={setFormat}
+            entrants={entrantCount} bestOf={bestOf} courts={courts}
+            groupSize={groupSize} advancePerGroup={advancePerGroup}
+            onGroupSize={setGroupSize} onAdvance={setAdvancePerGroup}
+          />
 
           <View style={s.gamesRow}>
             <View style={s.gamesCol}>
@@ -173,7 +194,7 @@ export default function NewTournament() {
         </View>
       ) : (
         <View style={{ flex: 1, gap: 10 }}>
-          <Text style={s.h}>{entrantCount} → {drawSizeFor(entrantCount)} draw</Text>
+          <Text style={s.h}>{drawEstimateLine}</Text>
 
           <View style={s.segRow}>
             <Pressable accessibilityRole="button"
