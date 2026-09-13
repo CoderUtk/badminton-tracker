@@ -3,6 +3,7 @@ import type { FormatModule } from "./types";
 import { singleElim } from "./singleElim";
 import { doubleElim } from "./doubleElim";
 import { roundRobin } from "./roundRobin";
+import { groupsKnockout } from "./groupsKnockout";
 
 /** The only lookup table. The picker renders Object.values(FORMATS); adding a
  *  format later is one file plus one entry here. Insertion order is the order
@@ -11,6 +12,7 @@ export const FORMATS: Record<FormatId, FormatModule> = {
   single_elim: singleElim,
   double_elim: doubleElim,
   round_robin: roundRobin,
+  groups_knockout: groupsKnockout,
 } as Record<FormatId, FormatModule>;
 
 export const formatOrDefault = (id: string | null | undefined): FormatModule =>
