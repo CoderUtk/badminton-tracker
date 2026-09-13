@@ -1,4 +1,4 @@
-import type { BracketMatch } from "../types";
+import type { BracketMatch, Entrant } from "../types";
 import type { FormatModule, GenOpts, MatchScore, Standing } from "./types";
 import { recordStandings } from "./standings";
 
@@ -52,17 +52,23 @@ export const roundRobin: FormatModule = {
   },
   standings: (bracket, entrants, scores?: Map<string, MatchScore>): Standing[] =>
     recordStandings(bracket, entrants, scores),
-  status: (bracket) => {
+  status: (bracket, entrants?: Entrant[]) => {
     if (bracket.length === 0) return { status: "pending", champion: null };
     const done = bracket.every((m) => m.winnerEntrant);
     if (!done) {
       return { status: bracket.some((m) => m.winnerEntrant || m.matchId) ? "live" : "pending", champion: null };
     }
-    const entrantIds = [...new Set(bracket.flatMap((m) => [m.entrantA, m.entrantB]))]
-      .filter((x): x is string => !!x);
-    const table = recordStandings(bracket, entrantIds.map((id, i) => ({
-      id, clubPlayerId: "", name: "", seed: i + 1, partnerClubPlayerId: null,
-    })));
-    return { status: "done", champion: table[0]?.entrantId ?? null };
+    // Real entrants (with real seeds) win when the caller has them. Only when
+    // they're absent do we fall back to a reconstruction from the bracket —
+    // and that reconstruction's seed is positional, not real, so it must
+    // never be allowed to break a sporting tie: if the top of the table is
+    // tied with its neighbour on every sporting key, there is no honest
+    // champion to name.
+    const usable = entrants ?? [...new Set(bracket.flatMap((m) => [m.entrantA, m.entrantB]))]
+      .filter((x): x is string => !!x)
+      .map((id, i) => ({ id, clubPlayerId: "", name: "", seed: i + 1, partnerClubPlayerId: null }));
+    const table = recordStandings(bracket, usable);
+    const champion = entrants || !table[0]?.tied ? table[0]?.entrantId ?? null : null;
+    return { status: "done", champion };
   },
 };

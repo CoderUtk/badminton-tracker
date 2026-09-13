@@ -48,5 +48,5 @@ export type FormatModule = {
   /** The whole match graph, routing edges included. Pure. */
   build(o: GenOpts): BracketMatch[];
   standings(bracket: BracketMatch[], entrants: Entrant[], scores?: Map<string, MatchScore>): Standing[];
-  status(bracket: BracketMatch[]): { status: "pending" | "live" | "done"; champion: string | null };
+  status(bracket: BracketMatch[], entrants?: Entrant[]): { status: "pending" | "live" | "done"; champion: string | null };
 };

@@ -28,7 +28,9 @@ export const singleElim: FormatModule = {
     stampTreeEdges(buildBracket(entrants, drawSizeFor(entrants.length), tournamentId, gen)),
   standings: (bracket, entrants, scores?: Map<string, MatchScore>): Standing[] =>
     recordStandings(bracket, entrants, scores),
-  status: (bracket) => {
+  // Its champion is the winner of the match with no win edge — entrants are
+  // irrelevant here, but the param is accepted to satisfy FormatModule.
+  status: (bracket, _entrants?: Entrant[]) => {
     if (bracket.length === 0) return { status: "pending", champion: null };
     const final = bracket.find((m) => m.winToMatchId === null)!;
     if (final.winnerEntrant) return { status: "done", champion: final.winnerEntrant };

@@ -10,7 +10,7 @@ const build = (n: number) => {
   return roundRobin.build({ entrants: ents(n), tournamentId: "t1", gen: () => `m${++k}` });
 };
 
-test.each([[3, 3], [4, 6], [5, 10], [6, 15], [8, 28]])(
+test.each([[3, 3], [4, 6], [5, 10], [6, 15], [8, 28], [9, 36]])(
   "%i entrants produce %i matches", (n, expected) => {
     expect(build(n).length).toBe(expected);
     expect(roundRobin.matchCount(n)).toBe(expected);
@@ -67,4 +67,31 @@ test("status is done only when every match has a winner", () => {
   const done = roundRobin.status(all);
   expect(done.status).toBe("done");
   expect(done.champion).toBe("e1");
+});
+
+test("a 3-way win cycle names the real seed's champion, never a positional one", () => {
+  const real = ents(3); // e1 seed 1, e2 seed 2, e3 seed 3
+  const b = build(3);
+  // build(3) pairs, in bracket order: (e2,e3), (e1,e3), (e1,e2).
+  // Bracket-appearance dedup order is therefore e2, e3, e1 — so a positional
+  // reconstruction would seed e2 first. Make a cycle (e1 beats e2, e2 beats
+  // e3, e3 beats e1) so every entrant ties on win rate and on the mini-league
+  // head-to-head count, forcing the decision onto the next tiebreak: real
+  // seed (favours e1) vs. fabricated positional seed (favours e2) disagree.
+  const winners: Record<string, string> = {
+    [`${b[0].entrantA}~${b[0].entrantB}`]: b[0].entrantA!, // e2 beats e3
+    [`${b[1].entrantA}~${b[1].entrantB}`]: b[1].entrantB!, // e3 beats e1
+    [`${b[2].entrantA}~${b[2].entrantB}`]: b[2].entrantA!, // e1 beats e2
+  };
+  const cyclic = b.map((m) => ({ ...m, winnerEntrant: winners[`${m.entrantA}~${m.entrantB}`] }));
+
+  const table = roundRobin.standings(cyclic, real);
+  expect(table[0].entrantId).toBe("e1"); // real seed 1 wins the sporting tie
+
+  const withReal = roundRobin.status(cyclic, real);
+  expect(withReal.champion).toBe(table[0].entrantId);
+
+  const withoutEntrants = roundRobin.status(cyclic);
+  expect(withoutEntrants.champion).not.toBe("e2"); // the positional-seed answer
+  expect(withoutEntrants.champion).toBeNull(); // honest: no sporting tiebreak decided it
 });
