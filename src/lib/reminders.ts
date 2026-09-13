@@ -1,6 +1,6 @@
 import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
-import { ensureNotificationPermission } from "./notificationPermission";
+import { hasNotificationPermission } from "./notificationPermission";
 import { remindersEnabled } from "../repos/settingsRepo";
 import { listSessions } from "../repos/sessionRepo";
 import { INACTIVITY_ID, SESSION_PREFIX, planSessionReminders } from "./reminderPlan";
@@ -29,7 +29,9 @@ export async function scheduleInactivityReminder(): Promise<boolean> {
 
   try {
     if (!(await remindersEnabled())) return false;
-    if (!(await ensureNotificationPermission())) return false;
+    // Checks, never requests — this runs at cold start, before sign-in.
+    // See hasNotificationPermission.
+    if (!(await hasNotificationPermission())) return false;
 
     // Cancel only our own identifier so session reminders survive.
     await Notifications.cancelScheduledNotificationAsync(INACTIVITY_ID);
@@ -61,7 +63,7 @@ export async function syncSessionReminders(): Promise<void> {
 
   try {
     if (!(await remindersEnabled())) return;
-    if (!(await ensureNotificationPermission())) return;
+    if (!(await hasNotificationPermission())) return;
 
     const sessions = await listSessions();
     const plan = planSessionReminders(sessions, Date.now(), await scheduledIds());

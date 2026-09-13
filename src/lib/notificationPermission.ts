@@ -22,6 +22,23 @@ export async function ensureNotificationPermission(): Promise<boolean> {
 }
 
 /**
+ * Whether the permission is ALREADY granted. Never shows a dialog.
+ *
+ * The distinction from ensureNotificationPermission matters: any code that can
+ * run before the user has signed in must use this one. Notifications default
+ * to on (remindersEnabled), so a scheduling call that reaches
+ * ensureNotificationPermission at cold start pops the OS dialog over the splash
+ * screen — which is the prompt people reflexively decline, and once
+ * canAskAgain flips the OS never offers it again.
+ *
+ * Requesting is primeNotificationPermission's job alone, and it waits for a
+ * real session.
+ */
+export async function hasNotificationPermission(): Promise<boolean> {
+  return (await Notifications.getPermissionsAsync()).granted;
+}
+
+/**
  * True when the permission is denied AND the OS refuses to prompt again, so
  * the only remaining route is system settings. Callers use this to pick
  * between "try again" and an Open settings affordance.
