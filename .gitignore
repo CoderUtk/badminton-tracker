@@ -116,3 +116,6 @@ ui_changes.txt
 
 # Supabase CLI local branch state
 supabase/.branches/
+
+# SDD workspace (ledger, briefs, review packages) — scratch, never committed
+.superpowers/
