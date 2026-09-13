@@ -309,7 +309,12 @@ export default function BracketView({
             <RoundHeader key={r.round} maxRound={maxRound} {...r} />
           ))}
         </View>
-        <ScrollView showsVerticalScrollIndicator style={{ maxHeight: dims.totalH + 8 }}>
+        {/* nestedScrollEnabled: Android only, but harmless elsewhere. Needed
+            because groups_knockout now renders this inside TournamentView's
+            own vertical ScrollView — a same-direction nesting that swallows
+            gestures on Android without it. The maxHeight above already
+            bounds this ScrollView so it never fights the parent for space. */}
+        <ScrollView showsVerticalScrollIndicator nestedScrollEnabled style={{ maxHeight: dims.totalH + 8 }}>
           <View style={{ width: dims.totalW, height: dims.totalH }}>
             <Svg
               width={dims.totalW}

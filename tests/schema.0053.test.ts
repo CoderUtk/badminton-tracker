@@ -47,7 +47,7 @@ test("the module-level backfill is scoped to single_elim tournaments", () => {
     sql.indexOf("update public.bracket_matches"),
     sql.indexOf("function public.finish_bracket_match"),
   );
-  expect(backfill).toMatch(/join public\.tournaments t on t\.id = m\.tournament_id/);
+  expect(backfill).toMatch(/join public\.tournaments t on t\.id = p\.tournament_id/);
   expect(backfill).toMatch(/coalesce\(t\.format, 'single_elim'\) = 'single_elim'/);
 });
 

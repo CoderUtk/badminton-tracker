@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import BracketView, { type BracketLiveScore } from "./BracketView";
 import FixtureList from "./FixtureList";
 import StandingsTable from "./StandingsTable";
@@ -31,21 +31,28 @@ export default function TournamentView({
     <BracketView bracket={rows} entrants={entrants} onCellPress={onCellPress} liveScores={liveScores} />
   );
 
+  // round_robin and groups_knockout render a standings table plus an
+  // unbounded fixture list (and, for groups_knockout, a knockout tree after
+  // it) — unlike the single_elim/double_elim branches below, none of that
+  // carries its own scrolling, so it needs a ScrollView here. single_elim
+  // and double_elim are deliberately left unwrapped: `tree()` is BracketView,
+  // which already owns a two-axis ScrollView, and wrapping it again would
+  // double-scroll and regress today's shipped behaviour.
   if (format === "round_robin") {
     return (
-      <View>
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator>
         <StandingsTable standings={mod.standings(bracket, entrants)} entrants={entrants} />
         <View style={s.section}>
           <FixtureList matches={bracket} entrants={entrants} onCellPress={onCellPress} />
         </View>
-      </View>
+      </ScrollView>
     );
   }
 
   if (format === "groups_knockout") {
     const knockout = bracket.filter((m) => m.groupIdx === null);
     return (
-      <View>
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator>
         {groupOrder(bracket).map((g) => {
           const rows = bracket.filter((m) => m.groupIdx === g);
           const ids = new Set(rows.flatMap((m) => [m.entrantA, m.entrantB]));
@@ -58,8 +65,14 @@ export default function TournamentView({
             </View>
           );
         })}
+        {/* BracketView (tree()) nests its own vertical ScrollView, bounded by
+            maxHeight: dims.totalH + 8 in BracketView.tsx — it does not grow to
+            fill this outer ScrollView, so this is a bounded-height child, not
+            a flex:1 one. nestedScrollEnabled on that inner ScrollView (set in
+            BracketView.tsx) is what keeps Android from swallowing the
+            gesture at the boundary between the two same-direction scrolls. */}
         {knockout.length > 0 ? <View style={s.section}>{tree(knockout)}</View> : null}
-      </View>
+      </ScrollView>
     );
   }
 

@@ -42,7 +42,7 @@ update public.bracket_matches m set
   win_to_match_id = p.id,
   win_to_slot     = case when m.idx % 2 = 0 then 'a' else 'b' end
 from public.bracket_matches p
-join public.tournaments t on t.id = m.tournament_id
+join public.tournaments t on t.id = p.tournament_id
 where p.tournament_id = m.tournament_id
   and coalesce(t.format, 'single_elim') = 'single_elim'
   and p.round = m.round + 1
