@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { FlatList, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import { createTournament, type MatchType } from "../../../src/repos/tournamentRepo";
 import { addGuestPlayer, listClubs, listPlayers, type ClubPlayer } from "../../../src/repos/clubRepo";
@@ -159,7 +159,12 @@ export default function NewTournament() {
       </View>
 
       {tab === "config" ? (
-        <View style={{ gap: 10 }}>
+        // Scrolls because the format picker made this tab taller than the
+        // screen: without it the Courts stepper and the Create button below
+        // are pushed off the bottom and the screen cannot create anything at
+        // all. Only this branch is wrapped — the entrants branch renders a
+        // FlatList, which must not be nested in a ScrollView.
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ gap: 10, paddingBottom: 8 }}>
           <TextInput
             style={s.input} placeholder="Tournament name" placeholderTextColor={C.text2}
             value={name} onChangeText={setName} onBlur={() => setNameTouched(true)}
@@ -191,7 +196,7 @@ export default function NewTournament() {
               <CourtsStepper />
             </View>
           </View>
-        </View>
+        </ScrollView>
       ) : (
         <View style={{ flex: 1, gap: 10 }}>
           <Text style={s.h}>{drawEstimateLine}</Text>
