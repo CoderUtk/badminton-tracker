@@ -2,7 +2,7 @@ import { Platform } from "react-native";
 import type { SQLiteDatabase } from "expo-sqlite";
 import {
   TOURNAMENT_DDL, TOURNAMENT_ALTER_DDL, TOURNAMENT_COURTS_DDL, CLUBS_PERSONAL_DDL,
-  MATCH_INDEXES_DDL, PROFILE_ANALYTICS_CACHE_DDL,
+  MATCH_INDEXES_DDL, PROFILE_ANALYTICS_CACHE_DDL, TOURNAMENT_FORMATS_DDL,
 } from "./schema";
 import { SETTINGS_DDL } from "./settings";
 import { captureError } from "../lib/observability";
@@ -83,6 +83,7 @@ const MIGRATIONS = [
   // Weekly club nights (0050_recurring_sessions.sql). Integer flag, same
   // reason as open_join, mapped back in sessionRepo's hydrate().
   `alter table sessions_cache add column repeat_weekly integer not null default 0;`,
+  TOURNAMENT_FORMATS_DDL,
 ];
 
 let dbPromise: Promise<SQLiteDatabase> | null = null;

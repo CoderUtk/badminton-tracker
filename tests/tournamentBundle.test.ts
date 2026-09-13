@@ -65,7 +65,9 @@ describe("rpcToFull", () => {
     ],
     bracket: [
       { id: "b1", tournament_id: "t1", round: 1, idx: 0, match_id: null,
-        entrant_a: "e1", entrant_b: "e2", winner_entrant: null, court: "1", scored_by: null },
+        entrant_a: "e1", entrant_b: "e2", winner_entrant: null, court: "1", scored_by: null,
+        win_to_match_id: null, win_to_slot: null, loss_to_match_id: null, loss_to_slot: null,
+        group_idx: null, src_a: null, src_b: null },
     ],
     my_staff_role: "admin",
     staff: [{ id: "s1", tournament_id: "t1", profile_id: "u1", role: "admin", display_name: "Ana" }],

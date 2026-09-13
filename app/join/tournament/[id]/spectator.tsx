@@ -62,6 +62,9 @@ export default function JoinTournamentSpectator() {
     id: `${c.round}:${c.idx}`, tournamentId: id!, round: c.round, index: c.idx,
     matchId: c.matchId, entrantA: c.entrantA, entrantB: c.entrantB,
     winnerEntrant: c.winnerEntrant, court: c.court, scoredBy: null,
+    winToMatchId: null, winToSlot: null,
+    lossToMatchId: null, lossToSlot: null,
+    groupIdx: null, srcA: null, srcB: null,
   }));
 
   const liveScores = new Map<string, BracketLiveScore>();

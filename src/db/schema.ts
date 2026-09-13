@@ -108,3 +108,27 @@ create table if not exists analytics_cache (
   computed_at integer not null
 );
 `;
+
+// Routing columns for the format engine: each bracket row records where its
+// winner and loser go, so progression is data rather than tree math. Plus the
+// group-stage columns.
+//
+// A SEPARATE migration entry appended to the list in db.ts — editing an applied
+// migration does not re-run it, so existing installs would never get these.
+//
+// One ALTER per statement with no IF NOT EXISTS: SQLite supports neither
+// multi-column ADD COLUMN nor IF NOT EXISTS on it, and db.ts splits this string
+// on ';'. Every column here MUST be absent from TOURNAMENT_DDL and
+// TOURNAMENT_ALTER_DDL above — "duplicate column name" aborts the whole
+// migration. Guarded by tests/schema.tournamentFormats.test.ts.
+export const TOURNAMENT_FORMATS_DDL = `
+ALTER TABLE bracket_matches ADD COLUMN win_to_match_id TEXT;
+ALTER TABLE bracket_matches ADD COLUMN win_to_slot TEXT;
+ALTER TABLE bracket_matches ADD COLUMN loss_to_match_id TEXT;
+ALTER TABLE bracket_matches ADD COLUMN loss_to_slot TEXT;
+ALTER TABLE bracket_matches ADD COLUMN group_idx INTEGER;
+ALTER TABLE bracket_matches ADD COLUMN src_a TEXT;
+ALTER TABLE bracket_matches ADD COLUMN src_b TEXT;
+ALTER TABLE tournaments ADD COLUMN group_count INTEGER;
+ALTER TABLE tournaments ADD COLUMN advance_per_group INTEGER;
+`;

@@ -31,6 +31,9 @@ export function buildBracket(
       entrantA: a ? a.id : null, entrantB: b ? b.id : null,
       winnerEntrant: present ? present.id : null, // bye auto-resolves
       court: null, scoredBy: null,
+      winToMatchId: null, winToSlot: null,
+      lossToMatchId: null, lossToSlot: null,
+      groupIdx: null, srcA: null, srcB: null,
     });
   }
   out.push(...r1);
@@ -43,7 +46,7 @@ export function buildBracket(
     count = count / 2;
     const cur: BracketMatch[] = [];
     for (let i = 0; i < count; i++) {
-      cur.push({ id: gen(), tournamentId, round, index: i, matchId: null, entrantA: null, entrantB: null, winnerEntrant: null, court: null, scoredBy: null });
+      cur.push({ id: gen(), tournamentId, round, index: i, matchId: null, entrantA: null, entrantB: null, winnerEntrant: null, court: null, scoredBy: null, winToMatchId: null, winToSlot: null, lossToMatchId: null, lossToSlot: null, groupIdx: null, srcA: null, srcB: null });
     }
     out.push(...cur);
     // Propagate byes already resolved in prev round into this round.
