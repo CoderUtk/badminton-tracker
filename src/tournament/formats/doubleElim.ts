@@ -81,7 +81,13 @@ export const doubleElim: FormatModule = {
       } else {
         const absorbIdx = (m.round - 1) * 2 - 1;
         const target = losers[absorbIdx]?.[m.index];
-        if (target) set(m, "loss", target, "b");
+        if (!target) {
+          throw new Error(
+            `doubleElim: no losers-bracket target for winners round ${m.round} index ${m.index} ` +
+            `(absorb round ${absorbIdx})`,
+          );
+        }
+        set(m, "loss", target, "b");
       }
     }
 

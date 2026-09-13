@@ -1,5 +1,6 @@
 import { doubleElim } from "../src/tournament/formats/doubleElim";
 import { advanceWinner } from "../src/tournament/bracket";
+import { drawSizeFor } from "../src/tournament/draw";
 import type { Entrant } from "../src/tournament/types";
 
 const ents = (n: number): Entrant[] => Array.from({ length: n }, (_, i) => ({
@@ -25,12 +26,18 @@ test("exactly one match ends the tournament", () => {
 test("every winners match routes its loser somewhere", () => {
   const b = build(8);
   const grandFinal = b.find((m) => m.winToMatchId === null)!;
-  const winners = b.filter((m) => m.lossToMatchId !== null);
-  // Every winners-bracket match except the grand final sheds a loser.
-  expect(winners.length).toBeGreaterThan(0);
-  for (const m of winners) {
+  // `doubleElim.build` returns winners rows first, in order, followed by the
+  // losers bracket and finally the grand final — so the first (size - 1)
+  // rows are exactly the winners bracket. Derived independently of
+  // lossToMatchId so a dropped edge (left null) fails this test instead of
+  // quietly disappearing from a filter on that same property.
+  const winnersCount = drawSizeFor(8) - 1;
+  const winnersMatches = b.slice(0, winnersCount);
+  expect(winnersMatches.length).toBeGreaterThan(0);
+  expect(winnersMatches.some((m) => m.id === grandFinal.id)).toBe(false);
+  for (const m of winnersMatches) {
+    expect(m.lossToMatchId).not.toBeNull();
     expect(b.some((x) => x.id === m.lossToMatchId)).toBe(true);
-    expect(m.id).not.toBe(grandFinal.id);
   }
 });
 
@@ -73,4 +80,34 @@ test("there is no bracket reset after the grand final", () => {
   const grandFinal = b.find((m) => m.winToMatchId === null)!;
   expect(b.filter((m) => m.winToMatchId === grandFinal.id).length).toBe(2);
   expect(doubleElim.blurb).toMatch(/two lives/i);
+});
+
+// Deterministic: lower seed number always wins.
+function play(n: number) {
+  let k = 0;
+  let b = doubleElim.build({ entrants: ents(n), tournamentId: "t1", gen: () => `m${++k}` });
+  const losses = new Map<string, number>();
+  let guard = 0;
+  for (;;) {
+    if (++guard > 500) throw new Error("bracket never completed — a match is stranded");
+    const next = b.find((m) => m.entrantA && m.entrantB && !m.winnerEntrant);
+    if (!next) break;
+    const w = Number(next.entrantA!.slice(1)) < Number(next.entrantB!.slice(1)) ? next.entrantA! : next.entrantB!;
+    const l = w === next.entrantA ? next.entrantB! : next.entrantA!;
+    losses.set(l, (losses.get(l) ?? 0) + 1);
+    b = advanceWinner(b, next.id, w);
+  }
+  return { b, losses };
+}
+
+test.each([4, 8, 16])("a %i-entrant draw plays out to one champion", (n) => {
+  const { b, losses } = play(n);
+  const st = doubleElim.status(b);
+  expect(b.filter((m) => !m.winnerEntrant).length).toBe(0);
+  expect(st.status).toBe("done");
+  expect(st.champion).toBe("e1");
+  // The defining property of double elimination: everyone except the
+  // champion goes out on exactly two losses, and nobody survives three.
+  expect([...losses.values()].filter((c) => c >= 2).length).toBe(n - 1);
+  expect(Math.max(...losses.values())).toBe(2);
 });
