@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
-  deleteTournament, finishBracketMatch, readTournament, refreshTournament,
+  deleteTournament, readTournament, recordBracketResult, refreshTournament,
   startBracketMatch, startTournament,
   type MatchType, type TournamentRow,
 } from "../../../src/repos/tournamentRepo";
@@ -11,10 +11,11 @@ import { getClub, listMyClubPlayers } from "../../../src/repos/clubRepo";
 import type {
   TournamentJoinRequest, TournamentStaff,
 } from "../../../src/repos/tournamentStaffRepo";
-import { bracketStatus } from "../../../src/tournament/bracket";
+import { formatOrDefault } from "../../../src/tournament/formats";
 import { startBlocker } from "../../../src/tournament/draw";
 import type { BracketMatch, Entrant } from "../../../src/tournament/types";
-import BracketView, { type BracketLiveScore } from "../../../src/components/BracketView";
+import TournamentView from "../../../src/components/TournamentView";
+import type { BracketLiveScore } from "../../../src/components/BracketView";
 import Sheet from "../../../src/components/Sheet";
 import BottomPanel from "../../../src/components/BottomPanel";
 import MenuButton from "../../../src/components/MenuButton";
@@ -113,17 +114,24 @@ export default function TournamentBracket() {
       });
       setLiveMatches(new Map(liveMatchesRef.current));
 
-      // Reconcile: any cell whose linked match has completed advances the winner.
+      // Reconcile: any cell whose linked match has completed advances the
+      // winner. Sequential, not Promise.all: recordBracketResult computes
+      // groups→knockout seeding-gate fills from this same b0 snapshot, and
+      // two concurrent calls both reading that snapshot could each compute
+      // fills blind to the other's result. A failed call here is caught by
+      // the outer try/catch and left for the next poll tick, which re-fetches
+      // a fresh bracket before reconciling again — never a retry against this
+      // stale b0.
       let changed = false;
-      await Promise.all(toReconcile.map(async ({ cell, match: m }) => {
+      for (const { cell, match: m } of toReconcile) {
         if (m.status !== "live" && m.winner) {
           const winnerEntrant = m.winner === "A" ? cell.entrantA : cell.entrantB;
           if (winnerEntrant) {
-            await finishBracketMatch(cell.id, winnerEntrant);
+            await recordBracketResult(cell.id, winnerEntrant, b0, ents);
             changed = true;
           }
         }
-      }));
+      }
 
       // Only re-fetch if reconciliation actually advanced something — the
       // common case (nothing to advance) skips a second redundant RPC.
@@ -215,7 +223,7 @@ export default function TournamentBracket() {
   // sweeps and two linear finds over the entrant list, and the 15s poll made
   // that a timer-driven cost even when nothing had changed.
   const { champ, champName, champClubPlayerId, runnerUpName, runnerUpClubPlayerId } = useMemo(() => {
-    const c = bracketStatus(bracket).champion;
+    const c = formatOrDefault(tournament?.format).status(bracket, entrants).champion;
     const maxR = bracket.length ? Math.max(...bracket.map((m) => m.round)) : 0;
     const finalMatch = bracket.find((m) => m.round === maxR && m.index === 0);
     const runnerUpId = finalMatch && c
@@ -229,7 +237,7 @@ export default function TournamentBracket() {
       runnerUpName: runnerUpId ? entrantOf.get(runnerUpId)?.name ?? "Runner-up" : "TBD",
       runnerUpClubPlayerId: runnerUpId ? entrantOf.get(runnerUpId)?.clubPlayerId ?? null : null,
     };
-  }, [bracket, entrants]);
+  }, [bracket, entrants, tournament?.format]);
   const champAvatarUrl = champClubPlayerId ? avatars[champClubPlayerId] ?? null : null;
   const runnerUpAvatarUrl = runnerUpClubPlayerId ? avatars[runnerUpClubPlayerId] ?? null : null;
   const isAdmin = clubRole === "owner" || clubRole === "admin" || isTournamentAdmin;
@@ -238,7 +246,7 @@ export default function TournamentBracket() {
   // match). Such a tournament must render its bracket, not the Start flow.
   const isDraft = tournament?.status === "draft" && bracket.length === 0;
   const players = entrants.length * ((tournament?.matchType ?? "singles" as MatchType) === "doubles" ? 2 : 1);
-  const blocker = startBlocker(players, tournament?.matchType ?? "singles");
+  const blocker = startBlocker(players, tournament?.matchType ?? "singles", tournament?.format);
 
   const onStart = async () => {
     if (!id) return;
@@ -365,7 +373,13 @@ export default function TournamentBracket() {
       {!isDraft ? (
         <>
           <View style={{ flex: 1, marginBottom: 8 }}>
-            <BracketView bracket={bracket} entrants={entrants} onCellPress={onCellPress} liveScores={liveScores} />
+            <TournamentView
+              format={tournament.format}
+              bracket={bracket}
+              entrants={entrants}
+              onCellPress={onCellPress}
+              liveScores={liveScores}
+            />
           </View>
 
           <View style={s.tabRow}>

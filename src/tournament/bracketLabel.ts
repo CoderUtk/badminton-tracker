@@ -14,11 +14,11 @@ import type { BracketMatch } from "./types";
  * untestable under the existing Jest setup.
  */
 export function bracketCellLabel(
-  cell: Pick<BracketMatch, "entrantA" | "entrantB" | "winnerEntrant">,
+  cell: Pick<BracketMatch, "entrantA" | "entrantB" | "winnerEntrant" | "srcA" | "srcB">,
   nameA: string,
   nameB: string
 ): string {
-  const { entrantA, entrantB, winnerEntrant } = cell;
+  const { entrantA, entrantB, winnerEntrant, srcA, srcB } = cell;
   const wonA = !!winnerEntrant && winnerEntrant === entrantA;
   const wonB = !!winnerEntrant && winnerEntrant === entrantB;
 
@@ -29,7 +29,22 @@ export function bracketCellLabel(
   }
   if (entrantA) return wonA ? `${nameA}, bye` : `${nameA}, waiting for opponent`;
   if (entrantB) return wonB ? `${nameB}, bye` : `${nameB}, waiting for opponent`;
-  return "Empty match slot";
+  // Falls through to "Empty match slot" for every format that has no gate.
+  return srcSlotLabel(srcA) ?? srcSlotLabel(srcB) ?? "Empty match slot";
+}
+
+const ORDINAL = ["", "1st", "2nd", "3rd", "4th"];
+
+/**
+ * Human name for a knockout slot the seeding gate has not filled yet.
+ * 'G1#2' becomes "2nd, Group B". Returns null for a slot with no source token,
+ * which is every format except groups → knockout.
+ */
+export function srcSlotLabel(token: string | null): string | null {
+  const m = token ? /^G(\d+)#(\d+)$/.exec(token) : null;
+  if (!m) return null;
+  const rank = Number(m[2]);
+  return `${ORDINAL[rank] ?? `${rank}th`}, Group ${String.fromCharCode(65 + Number(m[1]))}`;
 }
 
 /**

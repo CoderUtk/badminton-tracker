@@ -3,7 +3,8 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-nat
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { getTournamentSpectatorView, type SpectatorView } from "../../../../src/repos/tournamentStaffRepo";
 import type { BracketMatch, Entrant } from "../../../../src/tournament/types";
-import BracketView, { type BracketLiveScore } from "../../../../src/components/BracketView";
+import type { BracketLiveScore } from "../../../../src/components/BracketView";
+import TournamentView from "../../../../src/components/TournamentView";
 import { toast } from "../../../../src/lib/toast";
 import Logo from "../../../../src/components/Logo";
 import OpenInAppBanner from "../../../../src/components/OpenInAppBanner";
@@ -103,7 +104,23 @@ export default function JoinTournamentSpectator() {
         <Text style={s.sub}>This tournament hasn't started yet.</Text>
       ) : (
         <ScrollView contentContainerStyle={s.bracketWrap}>
-          <BracketView bracket={bracket} entrants={[...entrantMap.values()]} liveScores={liveScores} />
+          {/* tournament_spectator_view (0017/0021) doesn't select format,
+              group_idx, src_a or src_b, so every cell above is built with
+              groupIdx/srcA/srcB hardcoded null — there is no real per-format
+              data to hand TournamentView yet. Passing "single_elim" renders
+              exactly today's flat tree for every format, which is correct
+              for single/double elimination's flattened view but not
+              format-aware for round-robin or groups→knockout. Making the
+              spectator link fully format-aware needs a new migration
+              extending that RPC plus SpectatorBracketCell/SpectatorView in
+              tournamentStaffRepo.ts (out of Task 12's scope: that file is
+              under src/repos/). */}
+          <TournamentView
+            format="single_elim"
+            bracket={bracket}
+            entrants={[...entrantMap.values()]}
+            liveScores={liveScores}
+          />
         </ScrollView>
       )}
     </View>

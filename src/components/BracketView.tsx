@@ -8,7 +8,7 @@ import Svg, { Path } from "react-native-svg";
 import type { BracketMatch, Entrant } from "../tournament/types";
 import { gamesWonBy } from "../tournament/score";
 import {
-  bracketCellLabel, elbowPath, isUpset, roundName, splitPairName,
+  bracketCellLabel, elbowPath, isUpset, roundName, splitPairName, srcSlotLabel,
 } from "../tournament/bracketLabel";
 import CarvedCard from "./CarvedCard";
 import Icon from "./Icon";
@@ -192,9 +192,10 @@ const BracketCell = React.memo(function BracketCell({
           const lost = !!cell.winnerEntrant && !won;
           const wonGames = games.length ? gamesWonBy(games, side) : 0;
           if (!eid) {
+            const src = side === "A" ? cell.srcA : cell.srcB;
             return (
               <View key={side} style={s.sideRow}>
-                <Text style={s.tbd}>TBD</Text>
+                <Text style={s.tbd} numberOfLines={1}>{srcSlotLabel(src) ?? "TBD"}</Text>
               </View>
             );
           }
