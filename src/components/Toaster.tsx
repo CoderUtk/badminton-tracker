@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown, FadeOutUp, useReducedMotion } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { dismissToast, useToasts, type ToastKind } from "../lib/toast";
@@ -11,7 +11,17 @@ const edgeColor = (k: ToastKind) => (k === "error" ? C.red : k === "success" ? C
 export default function Toaster() {
   const toasts = useToasts();
   const insets = useSafeAreaInsets();
-  const reduced = useReducedMotion();
+  // Reanimated's entering layout animations do not run on web: the element is
+  // mounted with `visibility: hidden` waiting for an animation that never
+  // starts, so the toast is laid out at the right place, at opacity 1, and
+  // stays invisible forever. Since this component is where "every failure in
+  // the app surfaces, and nowhere else", that silently swallowed every error
+  // message in the web build — a guest pasting a bad tournament link got a
+  // dead button and no explanation.
+  //
+  // The reduced-motion path already renders the same toast without entering
+  // and exiting animations, so web takes it too.
+  const reduced = useReducedMotion() || Platform.OS === "web";
   if (toasts.length === 0) return null;
   return (
     <View pointerEvents="box-none" style={[s.wrap, { top: insets.top + 8 }]}>
