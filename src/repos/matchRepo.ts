@@ -80,7 +80,16 @@ export async function appendEvent(matchId: string, seq: number, event: MatchEven
 export async function removeEventsAfter(matchId: string, lastKeptSeq: number) {
   const db = await getDb();
   await db?.runAsync(
-    "delete from match_events where match_id = ? and seq > ? and synced = 0",
+    // No `and synced = 0`: a rally pushes within seconds, so that clause made
+    // undo a silent no-op for every rally the sync had already carried — the
+    // score fell back on screen, then came back on reopen. Worse, the row
+    // survived at that seq and appendEvent is `insert or ignore`, so the NEXT
+    // rally scored after such an undo was dropped and the stale one replayed
+    // in its place. Local state is what this device scores from, so it must
+    // follow the undo. The server's log is append-only by policy (0001), so
+    // its copy of the undone event stays; the match's score_summary is
+    // written from local state at finalize, which is what every screen reads.
+    "delete from match_events where match_id = ? and seq > ?",
     matchId, lastKeptSeq
   );
 }
