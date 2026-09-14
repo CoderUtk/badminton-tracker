@@ -8,7 +8,7 @@ import {
   approveTournamentRequest, denyTournamentRequest, type TournamentJoinRequest,
 } from "../repos/tournamentStaffRepo";
 import { drawSizeFor } from "../tournament/draw";
-import type { Entrant } from "../tournament/types";
+import type { Entrant, FormatId } from "../tournament/types";
 import { validateName } from "../lib/validate";
 import { toast } from "../lib/toast";
 import Icon from "./Icon";
@@ -21,12 +21,13 @@ import { C, F, press } from "../theme";
  * bracket already references these entrant ids.
  */
 export default function TournamentPlayersTab({
-  tournamentId, clubId, entrants, matchType, isAdmin, isDraft, requests, onChanged,
+  tournamentId, clubId, entrants, matchType, format, isAdmin, isDraft, requests, onChanged,
 }: {
   tournamentId: string;
   clubId: string;
   entrants: Entrant[];
   matchType: MatchType;
+  format: FormatId;
   isAdmin: boolean;
   isDraft: boolean;
   requests: TournamentJoinRequest[];
@@ -104,8 +105,15 @@ export default function TournamentPlayersTab({
 
   return (
     <View style={s.root}>
+      {/* Draw size and byes are elimination-bracket facts. A round robin
+          has neither — every entrant plays every other — and a groups stage
+          seeds its knockout from qualifiers, not from the entrant count, so
+          quoting drawSizeFor there told a 6-entrant host they had an 8 draw
+          with 2 byes when their knockout is a 4. */}
       <Text style={s.drawInfo}>
-        {entrants.length} entrants → {draw} draw, {byes} bye{byes === 1 ? "" : "s"}
+        {format === "single_elim" || format === "double_elim"
+          ? `${entrants.length} entrants → ${draw} draw, ${byes} bye${byes === 1 ? "" : "s"}`
+          : `${entrants.length} entrants`}
       </Text>
 
       {entrants.map((e) => {

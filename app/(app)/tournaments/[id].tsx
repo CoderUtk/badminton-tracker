@@ -298,6 +298,7 @@ export default function TournamentBracket() {
         clubId={tournament.clubId}
         entrants={entrants}
         matchType={tournament.matchType}
+        format={tournament.format}
         isAdmin={isAdmin}
         isDraft={!!isDraft}
         requests={requests}
