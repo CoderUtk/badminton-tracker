@@ -1,3 +1,4 @@
+import * as Linking from "expo-linking";
 import { supabase } from "../lib/supabase";
 
 /**
@@ -19,10 +20,12 @@ export async function upgradeGuestAccount(email: string, password: string): Prom
   if (!user) throw new Error("Sign-up is unavailable right now");
   if (!user.is_anonymous) throw new Error("You already have an account");
 
-  const { error } = await supabase.auth.updateUser({
-    email: email.trim(),
-    password,
-  });
+  const { error } = await supabase.auth.updateUser(
+    { email: email.trim(), password },
+    // Without this the confirmation link lands on the bare Site URL instead of
+    // coming back into the app, exactly as sign-in.tsx's signUp/reset do.
+    { emailRedirectTo: Linking.createURL("auth") },
+  );
   if (error) throw new Error(error.message);
 
   // Deliberately no local cleanup here. On native the guest match id list is
@@ -32,9 +35,11 @@ export async function upgradeGuestAccount(email: string, password: string): Prom
 }
 
 /**
- * Whether the project requires email confirmation is a server setting the
- * client cannot read, so the caller is told to check their inbox either way
- * rather than being promised an instant upgrade that may not have happened.
+ * The account is not permanent until the emailed link is opened: until then the
+ * user is still `is_anonymous`, so the 30-day guest purge (0055) still counts
+ * their rows. Promising "already saved" here overstated a confirmation that can
+ * still fail, so the copy names the remaining step.
  */
 export const UPGRADE_CONFIRM_HINT =
-  "Check your email to confirm the address. Your matches are already saved to this account.";
+  "Check your email and tap the link to finish. Your matches stay on this account " +
+  "once the address is confirmed.";
