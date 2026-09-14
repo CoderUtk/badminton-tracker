@@ -20,12 +20,19 @@ const { getDefaultConfig } = require("expo/metro-config");
  *   cssSelect reference in css.tsx sits inside a function body, so a stub is
  *   inert at import time.
  *
- *   @sentry-internal/replay (295 KB), @sentry-internal/feedback (76 KB) and
- *   replay-canvas. Browser-only Session Replay, reached via
- *   @sentry/react-native -> @sentry/react -> `export * from '@sentry/browser'`,
- *   whose index.js re-exports them on lines 24-26. They are plain re-exports
- *   with no module-scope calls, and src/lib/observability.ts passes no
- *   `integrations` to Sentry.init, so nothing ever constructs them.
+ *   @sentry-internal/replay (295 KB) and replay-canvas. Browser-only Session
+ *   Replay, reached via @sentry/react-native -> @sentry/react ->
+ *   `export * from '@sentry/browser'`, whose index.js re-exports them on lines
+ *   24-25. Those are plain re-exports with no module-scope calls, and
+ *   src/lib/observability.ts passes no `integrations` to Sentry.init, so
+ *   nothing ever constructs them.
+ *
+ *   @sentry-internal/feedback (76 KB) looked like the same case and is NOT
+ *   stubbable: @sentry/browser's feedbackSync.js and feedbackAsync.js call
+ *   buildFeedbackIntegration() at module scope, so stubbing it threw during
+ *   bundle evaluation and white-screened the web build. Caught by loading the
+ *   exported web bundle in a browser; reading index.js alone did not show it.
+ *   Verify by running, not by reading, before adding anything here.
  *
  * Deliberately NOT stubbed: @sentry/core, @sentry/browser and @sentry/react.
  * app/_layout.tsx renders Sentry.ErrorBoundary, which comes from @sentry/react
@@ -40,7 +47,6 @@ const STUBBED_MODULES = new Set([
   "css-select",
   "@sentry-internal/replay",
   "@sentry-internal/replay-canvas",
-  "@sentry-internal/feedback",
 ]);
 
 const STUB = path.resolve(__dirname, "config/stub-module.js");
