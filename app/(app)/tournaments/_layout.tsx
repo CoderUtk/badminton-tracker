@@ -21,14 +21,18 @@ export default function TournamentsLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ title: "Tournaments" }} />
-      {/* Modal, so it overrides the stack's card inset: a sheet is already
-          inset from the top of the display and must not add the status bar
-          height a second time. */}
+      {/* Modal, so it overrides the stack's card inset with the taller sheet
+          bar. Pass the real inset, as every other modal here does: dropping
+          the status bar height is only correct for an iOS sheet, which is
+          already inset from the top of the display, and headerInset applies
+          that rule itself. Hardcoding 0 lost the bar height on Android, so
+          the Config/Entrants tabs rendered under the header — the Entrants
+          tab could not be tapped and no tournament could be created. */}
       <Stack.Screen
         name="new"
         options={{
           title: "New tournament", presentation: "modal",
-          contentStyle: { backgroundColor: "transparent", paddingTop: headerInset(0, "modal") },
+          contentStyle: { backgroundColor: "transparent", paddingTop: headerInset(insets.top, "modal") },
         }}
       />
       <Stack.Screen name="[id]" options={{ title: "Tournament" }} />
