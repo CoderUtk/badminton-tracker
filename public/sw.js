@@ -97,9 +97,20 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(req).then((hit) => {
       if (hit && !(wantsScript && !isScript(hit))) return hit;
-      return fetch(req).then((res) => {
-        // Same guard on the way in: only store a script response that really
-        // is a script, so the app shell can never be written under a .js URL.
+      return fetch(req).then(async (first) => {
+        let res = first;
+        // The browser's own HTTP cache can be poisoned the same way, and far
+        // more durably: vercel.json marks everything under /_expo/ immutable
+        // for a year, so an app shell served under a bundle URL is cached AS
+        // that bundle for a year. Going through the worker is the only chance
+        // to notice, and a reload-mode refetch bypasses the HTTP cache and
+        // replaces the bad entry — without this, a browser that loaded during
+        // a bad deploy window stays blank until its cache is cleared by hand.
+        if (wantsScript && !isScript(res)) {
+          res = await fetch(req.url, { cache: 'reload' }).catch(() => res);
+        }
+        // Only store a script response that really is a script, so the app
+        // shell can never be written under a .js URL.
         if (res.ok && res.type === 'basic' && (!wantsScript || isScript(res))) {
           const copy = res.clone();
           caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
