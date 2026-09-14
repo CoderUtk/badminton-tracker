@@ -24,6 +24,12 @@ export async function upgradeGuestAccount(email: string, password: string): Prom
     { email: email.trim(), password },
     // Without this the confirmation link lands on the bare Site URL instead of
     // coming back into the app, exactly as sign-in.tsx's signUp/reset do.
+    //
+    // This URL has to match the project's Redirect URLs allowlist or GoTrue
+    // silently drops it and falls back to Site URL. The list was
+    // `badminton://,exp://**`, which does NOT match `badminton:///auth`; it is
+    // now `badminton://,badminton://**,exp://**,https://courtside-links.vercel.app/**`.
+    // Change this expression and you have to widen that list too.
     { emailRedirectTo: Linking.createURL("auth") },
   );
   if (error) throw new Error(error.message);
