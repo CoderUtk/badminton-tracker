@@ -269,10 +269,19 @@ export default function Profile() {
   // profile's display name — not the raw auth metadata, which can diverge.
   const me = savedName || "Player";
 
+  // Two loads race on mount. The first fires with the "Player" placeholder,
+  // before getMyProfile resolves savedName: it misses the analytics cache and
+  // so takes the slow recompute path, then lands AFTER the real name's cached
+  // result and overwrites it with zeroes — the profile read 0 played while the
+  // home screen, which guards its own loads, read 11. Never query the
+  // placeholder, and drop any result that arrives after the name changed or
+  // the screen lost focus.
   const load = useCallback(() => {
-    void getPlayerAnalytics(me).then(setA);
-    void listMyClubRatings().then(setRatings);
-  }, [me]);
+    let live = true;
+    if (savedName) void getPlayerAnalytics(savedName).then((r) => { if (live) setA(r); });
+    void listMyClubRatings().then((r) => { if (live) setRatings(r); });
+    return () => { live = false; };
+  }, [savedName]);
   useFocusEffect(load);
   useEffect(load, [load]);
 
