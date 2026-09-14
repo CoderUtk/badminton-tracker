@@ -71,7 +71,13 @@ export default function TournamentView({
             a flex:1 one. nestedScrollEnabled on that inner ScrollView (set in
             BracketView.tsx) is what keeps Android from swallowing the
             gesture at the boundary between the two same-direction scrolls. */}
-        {knockout.length > 0 ? <View style={s.section}>{tree(knockout)}</View> : null}
+        {/* Renumbered for the same reason the double_elim slices are: the
+            knockout rows keep the absolute round numbers they were built
+            with (4 and 5 behind two groups), which BracketView's column
+            maths reads as gaps — on device the whole knockout rendered
+            "0/0" with no cells, under the headings "ROUND 1" and "ROUND OF
+            16" for what is a four-entrant draw. */}
+        {knockout.length > 0 ? <View style={s.section}>{tree(renumberRounds(knockout))}</View> : null}
       </ScrollView>
     );
   }
