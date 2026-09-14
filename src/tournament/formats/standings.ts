@@ -106,7 +106,16 @@ export function recordStandings(
   // a sporting tiebreak, sitting between win rate and game diff in the
   // comparator. Only seed and id — the two non-sporting keys — may mark a
   // row tied.
+  //
+  // `played` is part of it because `rate` maps an entrant who has not played
+  // at all to 0 — the same rate as one who has played and lost. Without this,
+  // a 0–0 row and a 0–1 row below it were both marked level, and the chip
+  // read as nonsense next to two visibly different records. Requiring an
+  // equal match count means LEVEL only ever appears on rows whose W–L a
+  // reader can see is identical, which is the only case where it explains
+  // anything.
   const sportingTie = (x: Acc, y: Acc): boolean =>
+    x.played === y.played &&
     rate(x) === rate(y) && h2h.get(x.entrantId) === h2h.get(y.entrantId) &&
     x.gameDiff === y.gameDiff && x.pointDiff === y.pointDiff;
 

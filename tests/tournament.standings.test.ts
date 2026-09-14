@@ -136,3 +136,21 @@ test("head-to-head separation is not marked tied", () => {
   expect(e1.tied).toBe(false);
   expect(e2.tied).toBe(false);
 });
+
+// A group part-way through: e1 has won once, e2 and e3 have lost to nobody
+// because they have not played, and e4 has lost. `rate` maps "no matches" and
+// "played and lost" to the same 0, so e2/e3/e4 used to come back all marked
+// tied — the LEVEL chip appeared next to a 0–0 row and a 0–1 row at the same
+// time, which reads as nonsense. Only rows with the same match count, and so
+// the same visible W–L, may be called level.
+test("a row that has played is never level with one that has not", () => {
+  const s = recordStandings([played("m1", "e1", "e4", "e1")], ents(4));
+  const by = Object.fromEntries(s.map((x) => [x.entrantId, x]));
+  expect(by.e1.tied).toBe(false);          // 1–0, alone on its rate
+  expect(by.e4.tied).toBe(false);          // 0–1, played once
+  expect(by.e2.played).toBe(0);
+  expect(by.e3.played).toBe(0);
+  // e2 and e3 have both played nothing and are genuinely indistinguishable.
+  expect(by.e2.tied).toBe(true);
+  expect(by.e3.tied).toBe(true);
+});
