@@ -4,7 +4,7 @@ import BracketView, { type BracketLiveScore } from "./BracketView";
 import FixtureList from "./FixtureList";
 import StandingsTable from "./StandingsTable";
 import { formatOrDefault } from "../tournament/formats";
-import { groupLabel, groupOrder, hasDoubleElimRouting, splitDoubleElimRounds } from "../tournament/tournamentView";
+import { groupLabel, groupOrder, hasDoubleElimRouting, renumberRounds, splitDoubleElimRounds } from "../tournament/tournamentView";
 import { C, F } from "../theme";
 import type { BracketMatch, Entrant, FormatId } from "../tournament/types";
 
@@ -95,10 +95,14 @@ export default function TournamentView({
       <View style={{ flex: 1 }}>
         <Text accessibilityRole="header" style={s.heading}>WINNERS</Text>
         <View style={s.bracketSlot}>{tree(winners)}</View>
+        {/* Renumbered: these slices carry absolute round numbers, which
+            BracketView's column maths reads as gaps and renders as empty
+            columns — on device the losers bracket and grand final showed
+            "0/0" with no cells, hiding half the tournament. */}
         <Text accessibilityRole="header" style={s.heading}>LOSERS</Text>
-        <View style={s.bracketSlot}>{tree(losers)}</View>
+        <View style={s.bracketSlot}>{tree(renumberRounds(losers))}</View>
         <Text accessibilityRole="header" style={s.heading}>GRAND FINAL</Text>
-        <View style={s.bracketSlot}>{tree(grandFinal)}</View>
+        <View style={s.bracketSlot}>{tree(renumberRounds(grandFinal))}</View>
       </View>
     );
   }

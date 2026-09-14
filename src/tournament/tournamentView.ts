@@ -77,6 +77,24 @@ export function hasDoubleElimRouting(bracket: BracketMatch[]): boolean {
  * that ends the tournament), which is what makes carving it out a safe,
  * purely structural rule rather than a guess.
  */
+/**
+ * Renumber a slice's rounds to start at 1, preserving order and gaps-as-steps.
+ *
+ * BracketView's computeCenters walks `for (r = 2; r <= maxRound; r++)` and so
+ * assumes a slice's rounds start at 1. The losers and grand-final slices carry
+ * ABSOLUTE round numbers (4, 5, 6 in a 4-draw), which made the renderer lay out
+ * phantom columns and draw no cells at all — on device the losers bracket and
+ * grand final showed "0/0" and were empty, hiding half a double-elimination
+ * tournament. It also fed roundName absolute numbers, so a 4-player draw
+ * announced "ROUND OF 16".
+ */
+export function renumberRounds(matches: BracketMatch[]): BracketMatch[] {
+  if (matches.length === 0) return matches;
+  const order = [...new Set(matches.map((m) => m.round))].sort((a, b) => a - b);
+  const to = new Map(order.map((r, i) => [r, i + 1]));
+  return matches.map((m) => ({ ...m, round: to.get(m.round)! }));
+}
+
 export function splitDoubleElimRounds(
   bracket: BracketMatch[]
 ): { winners: BracketMatch[]; grandFinal: BracketMatch[]; losers: BracketMatch[] } {

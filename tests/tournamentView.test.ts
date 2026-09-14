@@ -1,5 +1,6 @@
 import {
-  groupLabel, groupOrder, hasDoubleElimRouting, signedDiff, splitDoubleElimRounds, tiedRowLabel,
+  groupLabel, groupOrder, hasDoubleElimRouting, renumberRounds, signedDiff,
+  splitDoubleElimRounds, tiedRowLabel,
 } from "../src/tournament/tournamentView";
 import { doubleElim } from "../src/tournament/formats/doubleElim";
 import { drawSizeFor } from "../src/tournament/draw";
@@ -119,4 +120,22 @@ describe("splitDoubleElimRounds", () => {
     expect(losers.length).toBe(6);
     expect(winners.length + grandFinal.length + losers.length).toBe(doubleElim.matchCount(8));
   });
+});
+
+// On device the losers bracket and grand final rendered "0/0" with no cells —
+// BracketView's column maths assumes a slice's rounds start at 1, and these
+// slices carry absolute numbers. Half a double-elimination tournament was
+// invisible. Renumbering is what makes them render.
+test("renumberRounds maps a slice's rounds to 1..n, preserving order", () => {
+  const mk = (id: string, round: number): BracketMatch => ({
+    id, tournamentId: "t1", round, index: 0, matchId: null,
+    entrantA: null, entrantB: null, winnerEntrant: null, court: null, scoredBy: null,
+    winToMatchId: null, winToSlot: null, lossToMatchId: null, lossToSlot: null,
+    groupIdx: null, srcA: null, srcB: null,
+  });
+  const out = renumberRounds([mk("a", 4), mk("b", 6), mk("c", 4)]);
+  expect(out.map((m) => [m.id, m.round])).toEqual([["a", 1], ["b", 2], ["c", 1]]);
+  expect(renumberRounds([])).toEqual([]);
+  // Already 1-based slices are unchanged.
+  expect(renumberRounds([mk("x", 1), mk("y", 2)]).map((m) => m.round)).toEqual([1, 2]);
 });
