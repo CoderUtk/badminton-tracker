@@ -53,10 +53,21 @@ export default function SessionDetail() {
     const next = await getSession(id);
     setSession(next);
     if (next) {
-      const club = await getClub(next.club_id);
+      // Four independent cache reads. Each expo-sqlite call is its own async
+      // hop, so awaiting them in series cost four sequential round trips for
+      // no ordering benefit — same reasoning as app/(app)/index.tsx.
+      //
+      // getSessionStats is computed for a live session too: the standings are
+      // the point of logging results as you go, not a report you only see
+      // tomorrow.
+      const [club, attendance, rows, sessionStats] = await Promise.all([
+        getClub(next.club_id),
+        listAttendance(next.id, next.club_id),
+        listMatchesForSession(next.id),
+        getSessionStats(next.id),
+      ]);
       setClubRole(club?.role ?? null);
-      setAttendanceRows(await listAttendance(next.id, next.club_id));
-      const rows = await listMatchesForSession(next.id);
+      setAttendanceRows(attendance);
       // Attach a live score snapshot so paused/in-progress games show their
       // current score rather than "not started".
       setMatches(await Promise.all(rows.map(async (m): Promise<MatchRow> => {
@@ -64,9 +75,7 @@ export default function SessionDetail() {
         const st = await replayMatch(m.id);
         return st ? { ...m, live: st.score } : m;
       })));
-      // Computed for a live session too: the standings are the point of
-      // logging results as you go, not a report you only see tomorrow.
-      setStats(await getSessionStats(next.id));
+      setStats(sessionStats);
       if (next.status === "done") {
         setTab("games");
         setAvatarUrls(avatarMap(await listMyClubPlayers()));

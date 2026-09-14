@@ -39,10 +39,16 @@ export default function Sessions() {
   const router = useRouter();
   const [sessions, setSessions] = useState<ClubSession[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  // Paint from the local cache first, then refresh from the network and
+  // repaint — the shape app/(app)/index.tsx and tournaments/[id].tsx already
+  // use. Awaiting refreshSessions() before the first setSessions() held this
+  // tab on a blank list until two Supabase round trips and a full
+  // sessions_cache/attendance_cache rewrite completed, even though the rows
+  // were already on disk. Offline that wait was the whole request timeout.
   const reload = useCallback(async () => {
+    setSessions(await listSessions());
     await refreshSessions();
-    const list = await listSessions();
-    setSessions(list);
+    setSessions(await listSessions());
     void syncSessionReminders();
   }, []);
   useFocusEffect(useCallback(() => { void reload(); }, [reload]));

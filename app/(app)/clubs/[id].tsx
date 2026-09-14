@@ -29,9 +29,13 @@ export default function ClubDetail() {
 
   const reload = useCallback(async () => {
     if (!id) return;
-    setClub(await getClub(id));
-    setStats(await getClubStats(id));
-    setRoster(await listPlayers(id));
+    // Three independent cache reads — one round trip instead of three.
+    const [clubNow, statsNow, roster] = await Promise.all([
+      getClub(id), getClubStats(id), listPlayers(id),
+    ]);
+    setClub(clubNow);
+    setStats(statsNow);
+    setRoster(roster);
   }, [id]);
   useFocusEffect(useCallback(() => { void reload(); }, [reload]));
 
