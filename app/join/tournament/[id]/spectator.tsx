@@ -60,17 +60,21 @@ export default function JoinTournamentSpectator() {
     );
   }
 
-  // tournament_spectator_view (0053) doesn't select win_to_match_id or
-  // loss_to_match_id — a read-only view has no use for routing edges it will
-  // never follow — so those stay null here. TournamentView's double-elim
-  // branch (hasDoubleElimRouting) already treats a bracket with those edges
-  // uniformly null as "no routing data" and falls back to a flat tree.
+  // The routing edges come through (0054). They are opaque here — `id` below
+  // is a synthetic "round:idx", not the bracket_match uuid these point at, and
+  // nothing dereferences them — but splitDoubleElimRounds only ever tests them
+  // for null, which is all it needs to tell the winners bracket, the losers
+  // bracket and the grand final apart. Without them a double-elimination
+  // spectator got one flat tree over deliberately non-contiguous rounds: a
+  // four-entrant draw drawn as "ROUND 1 / ROUND OF 16 / QUARTERS / SEMIS /
+  // FINAL". Against a pre-0054 server they are null and the flat-tree fallback
+  // still applies.
   const bracket: BracketMatch[] = view.cells.map((c) => ({
     id: `${c.round}:${c.idx}`, tournamentId: id!, round: c.round, index: c.idx,
     matchId: c.matchId, entrantA: c.entrantA, entrantB: c.entrantB,
     winnerEntrant: c.winnerEntrant, court: c.court, scoredBy: null,
-    winToMatchId: null, winToSlot: null,
-    lossToMatchId: null, lossToSlot: null,
+    winToMatchId: c.winToMatchId, winToSlot: null,
+    lossToMatchId: c.lossToMatchId, lossToSlot: null,
     groupIdx: c.groupIdx, srcA: c.srcA, srcB: c.srcB,
   }));
 

@@ -52,6 +52,10 @@ export type SpectatorBracketCell = {
   court: string | null; matchStatus: string | null;
   scoreSummary: { games: { A: number; B: number }[]; current?: { A: number; B: number } } | null;
   groupIdx: number | null; srcA: string | null; srcB: string | null;
+  // Opaque to a spectator — nothing dereferences them. They exist so the
+  // double-elim renderer can tell winners, losers and the grand final apart;
+  // it only ever tests them for null. See 0054.
+  winToMatchId: string | null; lossToMatchId: string | null;
 };
 export type SpectatorView = { name: string; status: string; format: FormatId; cells: SpectatorBracketCell[] };
 
@@ -68,6 +72,7 @@ export async function getTournamentSpectatorView(tournamentId: string): Promise<
     court: string | null; match_status: string | null;
     score_summary: SpectatorBracketCell["scoreSummary"];
     group_idx: number | null; src_a: string | null; src_b: string | null;
+    win_to_match_id: string | null; loss_to_match_id: string | null;
   }[] | null) ?? [];
   if (rows.length === 0) return null;
   return {
@@ -86,6 +91,10 @@ export async function getTournamentSpectatorView(tournamentId: string): Promise<
       court: r.court, matchStatus: r.match_status, scoreSummary: r.score_summary,
       // Absent on a pre-0053 server, same fallback as `format` above.
       groupIdx: r.group_idx ?? null, srcA: r.src_a ?? null, srcB: r.src_b ?? null,
+      // Absent on a pre-0054 server — null then means "no routing data", which
+      // is exactly how hasDoubleElimRouting reads it, so an un-migrated server
+      // keeps today's flat-tree fallback instead of erroring.
+      winToMatchId: r.win_to_match_id ?? null, lossToMatchId: r.loss_to_match_id ?? null,
     })),
   };
 }

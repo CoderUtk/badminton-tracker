@@ -33,6 +33,7 @@ test("maps bracket cells from the RPC response, including group routing", async 
         entrantAName: "Ann", entrantBName: "Bo",
         court: null, matchStatus: null, scoreSummary: null,
         groupIdx: 1, srcA: null, srcB: null,
+        winToMatchId: null, lossToMatchId: null,
       },
     ],
   });
@@ -117,6 +118,7 @@ test("carries court and live score through for a match in progress", async () =>
     court: "2", matchStatus: "live",
     scoreSummary: { games: [], current: { A: 11, B: 7 } },
     groupIdx: null, srcA: null, srcB: null,
+    winToMatchId: null, lossToMatchId: null,
   });
 });
 
@@ -144,4 +146,49 @@ test("returns null when the tournament doesn't exist", async () => {
 test("throws instead of swallowing an RPC error", async () => {
   rpc.mockResolvedValue({ data: null, error: { message: "permission denied" } });
   await expect(getTournamentSpectatorView("t-1")).rejects.toThrow("permission denied");
+});
+
+// A double-elimination spectator saw one flat tree — a four-entrant draw drawn
+// as "ROUND 1 / ROUND OF 16 / QUARTERS / SEMIS / FINAL" — because the view
+// returned no routing edges and splitDoubleElimRounds had nothing to split on.
+// 0054 adds them; they are opaque ids here, tested only for null.
+test("carries the routing edges through so a double-elim bracket can be split", async () => {
+  rpc.mockResolvedValue({
+    data: [
+      {
+        name: "DEVerify", status: "live", format: "double_elim", round: 1, idx: 0, match_id: "m-1",
+        entrant_a: "e1", entrant_b: "e2", winner_entrant: null,
+        entrant_a_name: "Ann", entrant_b_name: "Bo",
+        court: null, match_status: null, score_summary: null,
+        group_idx: null, src_a: null, src_b: null,
+        win_to_match_id: "b-9", loss_to_match_id: "b-7",
+      },
+    ],
+    error: null,
+  });
+
+  const view = await getTournamentSpectatorView("t-1");
+
+  expect(view?.cells[0]).toMatchObject({ winToMatchId: "b-9", lossToMatchId: "b-7" });
+});
+
+// A server that has not had 0054 applied omits the columns entirely. That must
+// read as "no routing data" — the flat-tree fallback — not crash.
+test("a pre-0054 server without the routing columns still maps", async () => {
+  rpc.mockResolvedValue({
+    data: [
+      {
+        name: "Old", status: "live", format: "double_elim", round: 1, idx: 0, match_id: null,
+        entrant_a: null, entrant_b: null, winner_entrant: null,
+        entrant_a_name: null, entrant_b_name: null,
+        court: null, match_status: null, score_summary: null,
+        group_idx: null, src_a: null, src_b: null,
+      },
+    ],
+    error: null,
+  });
+
+  const view = await getTournamentSpectatorView("t-1");
+
+  expect(view?.cells[0]).toMatchObject({ winToMatchId: null, lossToMatchId: null });
 });
