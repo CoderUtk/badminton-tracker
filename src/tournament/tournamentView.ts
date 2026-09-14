@@ -13,17 +13,23 @@ export function signedDiff(n: number): string {
 }
 
 /**
- * accessibilityLabel for a `tied` standings row. React Native's explicit
+ * accessibilityLabel for a standings row. React Native's explicit
  * accessibilityLabel REPLACES a row's child-text aggregation rather than
- * adding to it, so a screen reader on a tied row would otherwise announce
- * only "level with the next player" and drop the rank/name/record/diff a
- * non-tied row announces by aggregation. This restates that same
- * information, in the same order, before appending the level marker — the
- * rows that most need explaining (a non-sporting tiebreak) must not be the
- * rows where a screen-reader user stops hearing the actual record.
+ * adding to it, so a label naming only the tie would drop the
+ * rank/name/record/diff a bare row announces by aggregation. This restates
+ * that information, in the same order, and appends the level marker when the
+ * split was non-sporting.
+ *
+ * EVERY row gets one, tied or not. Passing `undefined` for the untied rows
+ * does not clear the native contentDescription a previous render set, so a
+ * row that was tied and then won a match kept announcing its old rank,
+ * record and "level with the next player" — on device, a row reading
+ * "1 · Maya Patel · 1–0" announced "2, Maya Patel, 0–0, level with the next
+ * player". A label that is always present is always replaced.
  */
-export function tiedRowLabel(row: Standing, name: string): string {
-  return `${row.rank}, ${name}, ${row.wins}–${row.losses}, ${signedDiff(row.gameDiff)}, level with the next player`;
+export function standingRowLabel(row: Standing, name: string): string {
+  const base = `${row.rank}, ${name}, ${row.wins}–${row.losses}, ${signedDiff(row.gameDiff)}`;
+  return row.tied ? `${base}, level with the next player` : base;
 }
 
 /**

@@ -1,6 +1,6 @@
 import {
   groupLabel, groupOrder, hasDoubleElimRouting, renumberRounds, signedDiff,
-  splitDoubleElimRounds, tiedRowLabel,
+  splitDoubleElimRounds, standingRowLabel,
 } from "../src/tournament/tournamentView";
 import { doubleElim } from "../src/tournament/formats/doubleElim";
 import { drawSizeFor } from "../src/tournament/draw";
@@ -22,7 +22,7 @@ describe("signedDiff", () => {
   test("zero has no sign", () => { expect(signedDiff(0)).toBe("0"); });
 });
 
-describe("tiedRowLabel", () => {
+describe("standingRowLabel", () => {
   // Regression for the bug where an explicit accessibilityLabel of just
   // "1, Ana, level with the next player" replaced React Native's child-text
   // aggregation instead of adding to it — a screen reader on a tied row could
@@ -32,7 +32,7 @@ describe("tiedRowLabel", () => {
       entrantId: "e1", rank: 1, played: 2, wins: 2, losses: 0,
       gameDiff: 3, pointDiff: 20, tied: true,
     };
-    expect(tiedRowLabel(row, "Ana")).toBe("1, Ana, 2–0, +3, level with the next player");
+    expect(standingRowLabel(row, "Ana")).toBe("1, Ana, 2–0, +3, level with the next player");
   });
 
   test("a negative game diff uses the real minus sign", () => {
@@ -40,7 +40,19 @@ describe("tiedRowLabel", () => {
       entrantId: "e2", rank: 2, played: 2, wins: 1, losses: 1,
       gameDiff: -2, pointDiff: -5, tied: true,
     };
-    expect(tiedRowLabel(row, "Bo")).toBe("2, Bo, 1–1, −2, level with the next player");
+    expect(standingRowLabel(row, "Bo")).toBe("2, Bo, 1–1, −2, level with the next player");
+  });
+
+  // An untied row needs a label too. Leaving it undefined does not clear the
+  // contentDescription a previous render set, so a row that won its way out of
+  // a tie kept announcing the old rank, the old record and "level with the
+  // next player" long after the LEVEL chip was gone.
+  test("an untied row gets the same line without the level marker", () => {
+    const row: Standing = {
+      entrantId: "e3", rank: 1, played: 1, wins: 1, losses: 0,
+      gameDiff: 2, pointDiff: 20, tied: false,
+    };
+    expect(standingRowLabel(row, "Maya Patel")).toBe("1, Maya Patel, 1–0, +2");
   });
 });
 

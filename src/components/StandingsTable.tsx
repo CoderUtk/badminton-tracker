@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import CarvedCard from "./CarvedCard";
 import { C, F, radius } from "../theme";
-import { tiedRowLabel } from "../tournament/tournamentView";
+import { standingRowLabel } from "../tournament/tournamentView";
 import type { Standing } from "../tournament/formats/types";
 import type { Entrant } from "../tournament/types";
 
@@ -38,12 +38,11 @@ export default function StandingsTable({
       {standings.map((row) => {
         const name = nameOf.get(row.entrantId) ?? "?";
         const Row = onPressEntrant ? Pressable : View;
-        // A non-tied row has no explicit accessibilityLabel, so a screen
-        // reader aggregates its child Text nodes. React Native's explicit
-        // accessibilityLabel REPLACES that aggregation rather than adding to
-        // it — see tiedRowLabel's own comment for why a tied row's label has
-        // to restate the record instead of just naming the tie.
-        const label = row.tied ? tiedRowLabel(row, name) : undefined;
+        // Every row carries an explicit label, tied or not: undefined does
+        // not clear the contentDescription an earlier render set, so a row
+        // that stops being tied keeps announcing its stale one. See
+        // standingRowLabel.
+        const label = standingRowLabel(row, name);
         return (
           <Row
             key={row.entrantId}
