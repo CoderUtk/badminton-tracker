@@ -319,6 +319,16 @@ function RootLayout() {
           <Stack.Screen name="join/club/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="join/tournament/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="join/tournament/[id]/scorer" options={{ headerShown: false }} />
+          {/* The spectator screen was the one join route missing from this
+              list, so it fell back to the default header and rendered the raw
+              route — "join/tournament/[id]/spectator", brackets and all —
+              across the CourtSide logo. It is the screen a guest lands on
+              from a shared link, which makes it the most public screen in the
+              app. Every other join route already draws its own header. */}
+          <Stack.Screen name="join/tournament/[id]/spectator" options={{ headerShown: false }} />
+          {/* Same gap: join/session/[id] was never registered either, and no
+              join screen sets its own options. */}
+          <Stack.Screen name="join/session/[id]" options={{ headerShown: false }} />
           <Stack.Screen
             name="score/[matchId]"
             options={{ headerShown: false, presentation: "fullScreenModal", orientation: "all" }}
