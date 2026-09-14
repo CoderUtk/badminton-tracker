@@ -91,8 +91,15 @@ export default function TournamentView({
     // round-number split alone would file the tournament's deciding match
     // under LOSERS. See splitDoubleElimRounds's own comment.
     const { winners, grandFinal, losers } = splitDoubleElimRounds(bracket);
+    // A ScrollView, not a flex:1 View: three flex:1 sections split the screen
+    // into equal thirds whatever each one holds, so the winners bracket of a
+    // 4-draw lost its second semi-final off the bottom of its own third while
+    // the losers bracket sat above a screenful of empty space. Each
+    // BracketView is already bounded by its own maxHeight, so unflexed
+    // sections size to their content and this outer scroll carries the
+    // overflow — the same arrangement the groups_knockout branch above uses.
     return (
-      <View style={{ flex: 1 }}>
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator>
         <Text accessibilityRole="header" style={s.heading}>WINNERS</Text>
         <View style={s.bracketSlot}>{tree(winners)}</View>
         {/* Renumbered: these slices carry absolute round numbers, which
@@ -103,7 +110,7 @@ export default function TournamentView({
         <View style={s.bracketSlot}>{tree(renumberRounds(losers))}</View>
         <Text accessibilityRole="header" style={s.heading}>GRAND FINAL</Text>
         <View style={s.bracketSlot}>{tree(renumberRounds(grandFinal))}</View>
-      </View>
+      </ScrollView>
     );
   }
 
@@ -118,5 +125,5 @@ const s = StyleSheet.create({
     color: C.text3, fontFamily: F.display, fontSize: 11, letterSpacing: 1,
     marginBottom: 6,
   },
-  bracketSlot: { flex: 1, marginBottom: 8 },
+  bracketSlot: { marginBottom: 8 },
 });
