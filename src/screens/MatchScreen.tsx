@@ -184,7 +184,9 @@ export default function MatchScreen({
 
   const banner =
     state.phase === "match_over"
-      ? `${teamName(state.winner!)} win the match`
+      // "win" only reads right for a doubles pair. A singles winner is one
+      // person, and the match-over banner announced "Maya Patel win the match".
+      ? `${teamName(state.winner!)} ${state.config.teams[state.winner!].length > 1 ? "win" : "wins"} the match`
       : state.phase === "game_over"
       ? `Game to ${teamName(state.gameHistory.at(-1)!.winner)} — tap to start game ${state.game + 1}`
       : null;
