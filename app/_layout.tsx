@@ -85,7 +85,7 @@ function CrashFallback({ resetError }: { resetError: () => void }) {
 }
 
 function Gate({ children }: { children: React.ReactNode }) {
-  const { session, loading } = useSession();
+  const { session, loading, completingAuth } = useSession();
   const segments = useSegments();
   const pathname = usePathname();
   const router = useRouter();
@@ -119,12 +119,11 @@ function Gate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (loading) return;
-    // "auth" (no parens) is not a route in this app — it is the path Supabase
-    // redirects email links back to (`Linking.createURL("auth")` in sign-in).
-    // SessionProvider turns that URL into a session, but the router has already
-    // navigated to an unmatched route by then; treating it as an auth route is
-    // what lets the signed-in branch below replace it with home. Without this a
-    // confirmation or password-recovery link strands the user on Unmatched.
+    // "auth" (no parens) is app/auth.tsx — the path Supabase redirects email
+    // links back to (`Linking.createURL("auth")` in sign-in). It only shows a
+    // spinner; SessionProvider turns the URL into a session off the Linking
+    // listener, and grouping it with the real auth routes here is what lets
+    // the signed-in branch below replace it with home once that lands.
     const inAuth = segments[0] === "(auth)" || segments[0] === "auth";
     const inWelcome = segments[0] === "welcome";
     if (!session) {
@@ -132,6 +131,15 @@ function Gate({ children }: { children: React.ReactNode }) {
         // Web build is guest-only: skip the sign-in screen entirely and go
         // straight to an anonymous session so it lands on /guest below.
         void supabase?.auth.signInAnonymously();
+        return;
+      }
+      // /auth with no session and nothing in flight means the callback URL
+      // arrived without a usable token (seen on Play builds: the fragment is
+      // dropped somewhere between the browser and the intent, leaving a bare
+      // `badminton://auth`). Nothing will ever complete it, so sitting on the
+      // auth route strands the user for the rest of the launch.
+      if (segments[0] === "auth" && !completingAuth) {
+        router.replace("/sign-in");
         return;
       }
       // A public player page is readable with no account at all (0052 grants
@@ -167,7 +175,7 @@ function Gate({ children }: { children: React.ReactNode }) {
       router.replace(target ? joinRouteFor(target) : "/");
       return;
     }
-  }, [session, loading, needsName, segments, router]);
+  }, [session, loading, completingAuth, needsName, segments, router]);
 
   return <>{children}</>;
 }
@@ -313,6 +321,7 @@ function RootLayout() {
         >
           <Stack.Screen name="(app)" options={{ headerShown: false }} />
           <Stack.Screen name="(auth)/sign-in" options={{ headerShown: false }} />
+          <Stack.Screen name="auth" options={{ headerShown: false }} />
           <Stack.Screen name="welcome" options={{ headerShown: false }} />
           <Stack.Screen name="tour" options={{ headerShown: false }} />
           <Stack.Screen name="guest" options={{ headerShown: false }} />
